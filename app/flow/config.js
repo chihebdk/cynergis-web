@@ -2,6 +2,7 @@
 // the org↔htree toggle stays available. Our custom "Grounding" decorator + "GroundedTab"
 // property tab carry the D-031 grounding.
 export const flowConfig = {
+  fitView: true,                       // fit all nodes into view on load
   layout: { available: ["org", "htree"], default: "org" },
   // View-focused: no hover add-toolbar (it reserves vertical space taller than the
   // card and would shift the node's handle off-center → misaligned edges). Editing
@@ -24,7 +25,7 @@ export const flowConfig = {
   edgeTypes: {
     WorkflowEdge: {
       stroke: "#9ca3af", strokeWidth: 2, opacity: 0.9, markerEnd: false,
-      borderRadius: 0,                 // sharp right-angle (straight) orthogonal lines
+      borderRadius: 14,                // rounded corners on the orthogonal path
       focusedStyle: "solid", unfocusedStyle: "dashed",
       toolbar: [],
     },
