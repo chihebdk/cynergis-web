@@ -56,3 +56,22 @@
   width: 14px;
   height: 14px;
 }
+
+/* Start box (view-only): drop the add-node button, keep just a centered, slightly
+   larger "Start" label. (Overrides the built-in StartNode's Tailwind classes.) */
+.cyn-flow-embed .react-flow__node[data-id="start"] .rounded-full {
+  display: none;
+}
+.cyn-flow-embed .react-flow__node[data-id="start"] .rounded-2xl {
+  width: max-content;
+  padding: 10px 18px;
+}
+.cyn-flow-embed .react-flow__node[data-id="start"] p {
+  padding: 0;
+  width: max-content;      /* fit "Start" fully — override truncate + w-full */
+  flex: none;
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 16px;
+  text-align: center;
+}
