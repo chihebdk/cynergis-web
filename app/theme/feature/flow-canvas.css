@@ -75,3 +75,42 @@
   font-size: 13px;
   text-align: center;
 }
+
+/* ── Properties panel (bottom, on node click) — themed to the Ascent look ── */
+.cyn-flow-embed [data-testid="properties-panel"] {
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.cyn-flow-embed [data-testid="properties-resize-handle"] {
+  background: var(--line);
+}
+/* tab bar — underline tabs like the Ascent .ddd-tabs */
+.cyn-flow-embed [data-testid="properties-nav"] {
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+}
+.cyn-flow-embed .cyn-ptab {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-3);
+  background: transparent !important;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  height: auto;
+  padding: 8px 12px;
+  box-shadow: none;
+  transition: color .12s, border-color .12s;
+}
+.cyn-flow-embed .cyn-ptab:hover { color: var(--ink); }
+.cyn-flow-embed .cyn-ptab.cyn-ptab-on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.cyn-flow-embed .cyn-ptab svg { opacity: .8; }
+/* content box under the tabs */
+.cyn-flow-embed [data-testid="properties-panel"] .bg-primary-foreground {
+  background: var(--panel);
+  border-color: var(--line);
+}
