@@ -59,6 +59,13 @@
 
 /* Start box (view-only): drop the add-node button, keep just a centered, slightly
    larger "Start" label. (Overrides the built-in StartNode's Tailwind classes.) */
+/* Shrink the node wrapper to fit the label — it's a fixed 165px by default, so the
+   outgoing edge (which attaches to the wrapper's right edge) would otherwise start
+   ~50px to the right of the small box, leaving a visible gap. React Flow v12
+   re-measures via ResizeObserver and re-routes the edge flush to the box. */
+.cyn-flow-embed .react-flow__node[data-id="start"] {
+  width: max-content !important;
+}
 .cyn-flow-embed .react-flow__node[data-id="start"] .rounded-full {
   display: none;
 }
