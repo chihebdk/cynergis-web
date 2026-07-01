@@ -6,6 +6,7 @@ import './theme/feature/disdes.css';
 import './theme/feature/trace.css';
 import './theme/feature/delivery.css';
 import './theme/feature/design-ddd.css';
+import '@xyflow/react/dist/style.css';
 import './theme/feature/flow-canvas.css';
 import './theme/feature/inline.css';
 

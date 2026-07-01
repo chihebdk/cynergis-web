@@ -36,20 +36,20 @@ export const decisioningFlow = {
     { from: "Fallback when model / features unavailable (FR8)", reveals: "degradation path", pattern: "Circuit-breaker / graceful degradation" },
   ],
   nodes: [
-    { id: "e-scored", type: "EventNode", parentId: "start", kind: "event", summary: "Authorization scored", isPivotal: true, aggregate: "AGG-AUTH", grounds: ["UC1"],
+    { id: "e-scored", type: "SimpleNode", parentId: "start", kind: "event", summary: "Authorization scored", isPivotal: true, aggregate: "AGG-AUTH", grounds: ["UC1"],
       trigger: { label: "Card network", grounds: ["UC1"] },
       commands: [{ label: "Score authorization", on: "AGG-AUTH", grounds: ["UC1", "FR1"] }],
       businessRules: [{ label: "carries a risk band + explanation", grounds: ["FR2"] }],
       hotspots: [{ label: "decide within network timeout (p95 < 300 ms)", grounds: ["NFR-LAT"] }] },
-    { id: "e-approved-low", type: "EventNode", parentId: "e-scored", branch: "risk = low", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR1"],
+    { id: "e-approved-low", type: "SimpleNode", parentId: "e-scored", branch: "risk = low", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR1"],
       commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR1"] }] },
-    { id: "e-stepup", type: "EventNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["FR7"],
+    { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["FR7"],
       policies: [{ label: "when scored = medium → issue step-up", on: "POL-1", grounds: ["POL-1", "FR7"] }],
       commands: [{ label: "Issue step-up challenge", on: "AGG-STEPUP", grounds: ["FR7"] }],
       hotspots: [{ label: "step-up UX + timeout", grounds: [] }] },
-    { id: "e-stepup-pass", type: "EventNode", parentId: "e-stepup", branch: "passed", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"] },
-    { id: "e-stepup-fail", type: "EventNode", parentId: "e-stepup", branch: "failed", kind: "event", summary: "Authorization blocked", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"] },
-    { id: "e-blocked", type: "EventNode", parentId: "e-scored", branch: "risk = high", kind: "event", summary: "Authorization blocked", isPivotal: true, aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR3"],
+    { id: "e-stepup-pass", type: "SimpleNode", parentId: "e-stepup", branch: "passed", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"] },
+    { id: "e-stepup-fail", type: "SimpleNode", parentId: "e-stepup", branch: "failed", kind: "event", summary: "Authorization blocked", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"] },
+    { id: "e-blocked", type: "SimpleNode", parentId: "e-scored", branch: "risk = high", kind: "event", summary: "Authorization blocked", isPivotal: true, aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR3"],
       commands: [{ label: "Apply decision (soft-hold)", on: "AGG-AUTH", grounds: ["FR3"] }],
       businessRules: [{ label: "cannot be both approved and blocked", grounds: ["FR3"] }],
       readModels: [{ label: "Decision + explanation (audit)", grounds: ["FR10"] }],
@@ -72,13 +72,13 @@ export const caseMgmtFlow = {
     { from: "Assign → work → dispose is analyst-driven", reveals: "human-in-the-loop workflow", pattern: "Task / worklist service (not autonomous)" },
   ],
   nodes: [
-    { id: "c-opened", type: "EventNode", parentId: "start", kind: "event", summary: "Case opened", isPivotal: true, aggregate: "AGG-CASE", grounds: ["UC3", "FR5"],
+    { id: "c-opened", type: "SimpleNode", parentId: "start", kind: "event", summary: "Case opened", isPivotal: true, aggregate: "AGG-CASE", grounds: ["UC3", "FR5"],
       trigger: { label: "Authorization blocked (from Decisioning)", crosses: "BC-DEC", grounds: ["POL-2", "FR5"] },
       commands: [{ label: "Open case", on: "AGG-CASE", grounds: ["FR5"] }],
       businessRules: [{ label: "must reference the triggering authorization", grounds: ["FR5"] }] },
-    { id: "c-assigned", type: "EventNode", parentId: "c-opened", kind: "event", summary: "Case assigned", aggregate: "AGG-CASE", grounds: ["FR6"],
+    { id: "c-assigned", type: "SimpleNode", parentId: "c-opened", kind: "event", summary: "Case assigned", aggregate: "AGG-CASE", grounds: ["FR6"],
       commands: [{ label: "Assign analyst", on: "AGG-CASE", grounds: ["FR6"] }] },
-    { id: "c-disposed", type: "EventNode", parentId: "c-assigned", kind: "event", summary: "Case disposed", isPivotal: true, aggregate: "AGG-CASE", isEndNode: true, grounds: ["FR6"],
+    { id: "c-disposed", type: "SimpleNode", parentId: "c-assigned", kind: "event", summary: "Case disposed", isPivotal: true, aggregate: "AGG-CASE", isEndNode: true, grounds: ["FR6"],
       commands: [{ label: "Record disposition", on: "AGG-CASE", grounds: ["FR6"] }],
       businessRules: [
         { label: "a disposition requires a recorded rationale", grounds: ["FR6"] },
@@ -99,7 +99,7 @@ export const notifyFlow = {
     { from: "Reacts to 'Authorization blocked' from Decisioning", reveals: "inbound async reaction", pattern: "Event-driven subscriber via a published-language contract" },
   ],
   nodes: [
-    { id: "n-sent", type: "EventNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, isEndNode: true, grounds: ["FR4"],
+    { id: "n-sent", type: "SimpleNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, isEndNode: true, grounds: ["FR4"],
       trigger: { label: "Authorization blocked (from Decisioning)", crosses: "BC-DEC", grounds: ["POL-3", "FR4"] },
       commands: [{ label: "Send notification (confirm / deny)", grounds: ["FR4"] }],
       hotspots: [{ label: "channel + delivery SLA (60s)", grounds: ["FR4"] }] },
@@ -108,12 +108,19 @@ export const notifyFlow = {
 
 export const seedFlows = [decisioningFlow, caseMgmtFlow, notifyFlow];
 
+// Entity registry in the mapper's shape (map / submap / mapNode). Our event-flow
+// fields ride along as extra mapNode fields (declared so the state layer keeps them).
 export const entities = {
-  flowMap: { collection: "flowMap", fields: ["id", "name", "contextId", "summary", "signals", "createdAt", "updatedAt"] },
+  map: { collection: "map", fields: ["id", "name", "contextId", "summary", "signals", "createdAt", "updatedAt"] },
+  submap: { collection: "submap", fields: ["id", "name", "summary", "startNodeId", "endNodeId", "collapsed", "extraParentNodeIds", "colorIndex", "mapIds", "ungroupedInMapIds"] },
 };
 export const embeddedEntities = {
-  flowNode: {
-    rootCollection: "flowMap", arrayField: "nodes",
-    fields: ["id", "type", "parentId", "isEndNode", "submapId", "refNodeId", "domainId", "summary", "kind", "isPivotal", "aggregate", "branch", "grounds", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots"],
+  mapNode: {
+    rootCollection: "map", arrayField: "nodes",
+    fields: [
+      "id", "name", "summary", "parentId", "type", "isEndNode", "submapId", "refNodeId", "domainId", "submapInstanceParentId",
+      // event-flow extras (D-031 grounding + event-centric grammar)
+      "kind", "isPivotal", "aggregate", "branch", "grounds", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots",
+    ],
   },
 };
