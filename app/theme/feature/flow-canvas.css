@@ -77,6 +77,10 @@
 }
 
 /* ── Properties panel (bottom, on node click) — themed to the Ascent look ── */
+/* Only show it in fullscreen; inline (minimized) it would cover most of the flow. */
+.cyn-flow-inline [data-testid="properties-panel"] {
+  display: none !important;
+}
 .cyn-flow-embed [data-testid="properties-panel"] {
   background: var(--panel);
   border-top: 1px solid var(--line);

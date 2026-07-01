@@ -48,7 +48,7 @@ export default function FlowEmbed({ flowId = "decisioning" }) {
 
   return (
     <MapStateProvider>
-      <div className="cyn-flow-embed" style={shell}>
+      <div className={`cyn-flow-embed ${expanded ? "cyn-flow-expanded" : "cyn-flow-inline"}`} style={shell}>
         <button type="button" style={btn} onClick={() => setExpanded((e) => !e)}
           title={expanded ? "Collapse (Esc)" : "Expand to full page"} aria-label={expanded ? "Collapse" : "Expand"}>
           {expanded ? <IconCollapse /> : <IconExpand />}
