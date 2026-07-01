@@ -12,6 +12,7 @@ export const GROUNDING = {
   FR3: { id: "FR3", kind: "FunctionalRequirement", title: "Place a reversible soft-hold on high-risk transactions", evidencedBy: ["S1"] },
   FR4: { id: "FR4", kind: "FunctionalRequirement", title: "Notify the customer of a block within 60s", evidencedBy: ["S1"] },
   FR5: { id: "FR5", kind: "FunctionalRequirement", title: "Queue blocked / escalated transactions as cases", evidencedBy: ["S3"] },
+  FR6: { id: "FR6", kind: "FunctionalRequirement", title: "Let analysts hold / release and record a disposition", evidencedBy: ["S3"] },
   FR7: { id: "FR7", kind: "FunctionalRequirement", title: "Issue a step-up challenge on medium-risk decisions", evidencedBy: ["S2"] },
   FR10: { id: "FR10", kind: "FunctionalRequirement", title: "Record every decision as a tamper-evident audit entry", evidencedBy: ["S1"] },
   "NFR-LAT": { id: "NFR-LAT", kind: "NonFunctionalRequirement", title: "Decide within the network timeout (p95 < 300 ms)", evidencedBy: ["S2"] },
@@ -59,7 +60,53 @@ export const decisioningFlow = {
   ],
 };
 
-export const seedFlows = [decisioningFlow];
+// ── Case Management (BC-CASE) — supporting subdomain, compact flow ──
+export const caseMgmtFlow = {
+  id: "casemgmt",
+  name: "Case Management — triage & dispose",
+  contextId: "BC-CASE",
+  summary: "Blocked / escalated authorizations become analyst cases, worked to a recorded disposition.",
+  signals: [
+    { from: "AGG-CASE lifecycle + disposition invariants", reveals: "own consistency boundary", pattern: "Transactional aggregate, in-context" },
+    { from: "Reacts to 'Authorization blocked' from Decisioning", reveals: "inbound async reaction", pattern: "Event-driven subscriber (downstream of the seam)" },
+    { from: "Assign → work → dispose is analyst-driven", reveals: "human-in-the-loop workflow", pattern: "Task / worklist service (not autonomous)" },
+  ],
+  nodes: [
+    { id: "c-opened", type: "EventNode", parentId: "start", kind: "event", summary: "Case opened", isPivotal: true, aggregate: "AGG-CASE", grounds: ["UC3", "FR5"],
+      trigger: { label: "Authorization blocked (from Decisioning)", crosses: "BC-DEC", grounds: ["POL-2", "FR5"] },
+      commands: [{ label: "Open case", on: "AGG-CASE", grounds: ["FR5"] }],
+      businessRules: [{ label: "must reference the triggering authorization", grounds: ["FR5"] }] },
+    { id: "c-assigned", type: "EventNode", parentId: "c-opened", kind: "event", summary: "Case assigned", aggregate: "AGG-CASE", grounds: ["FR6"],
+      commands: [{ label: "Assign analyst", on: "AGG-CASE", grounds: ["FR6"] }] },
+    { id: "c-disposed", type: "EventNode", parentId: "c-assigned", kind: "event", summary: "Case disposed", isPivotal: true, aggregate: "AGG-CASE", isEndNode: true, grounds: ["FR6"],
+      commands: [{ label: "Record disposition", on: "AGG-CASE", grounds: ["FR6"] }],
+      businessRules: [
+        { label: "a disposition requires a recorded rationale", grounds: ["FR6"] },
+        { label: "only the assigned analyst can dispose a case", grounds: ["FR6"] },
+      ],
+      readModels: [{ label: "Case + disposition (audit)", grounds: ["FR10"] }] },
+  ],
+};
+
+// ── Customer Notification (BC-NOTIFY) — generic subdomain, off-the-shelf ──
+export const notifyFlow = {
+  id: "notify",
+  name: "Customer Notification — alert on block",
+  contextId: "BC-NOTIFY",
+  summary: "A pure reaction: notify the customer on a block, with a confirm / deny action. Generic — buy, don't build.",
+  signals: [
+    { from: "No domain state of its own — a pure reaction", reveals: "generic subdomain", pattern: "Buy an off-the-shelf notification service (SaaS)" },
+    { from: "Reacts to 'Authorization blocked' from Decisioning", reveals: "inbound async reaction", pattern: "Event-driven subscriber via a published-language contract" },
+  ],
+  nodes: [
+    { id: "n-sent", type: "EventNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, isEndNode: true, grounds: ["FR4"],
+      trigger: { label: "Authorization blocked (from Decisioning)", crosses: "BC-DEC", grounds: ["POL-3", "FR4"] },
+      commands: [{ label: "Send notification (confirm / deny)", grounds: ["FR4"] }],
+      hotspots: [{ label: "channel + delivery SLA (60s)", grounds: ["FR4"] }] },
+  ],
+};
+
+export const seedFlows = [decisioningFlow, caseMgmtFlow, notifyFlow];
 
 export const entities = {
   flowMap: { collection: "flowMap", fields: ["id", "name", "contextId", "summary", "signals", "createdAt", "updatedAt"] },

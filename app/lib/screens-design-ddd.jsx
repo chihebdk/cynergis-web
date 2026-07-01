@@ -7,8 +7,8 @@ const { Ref: DDRef, MermaidView: DDMermaid } = window;
 
 // the event-flow canvas (embedded @flowai/canvas) — client-only, heavy, load on demand
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
-// which bounded contexts have a modelled event flow (Decisioning first)
-const FLOW_BY_CONTEXT = { 'BC-DEC': 'decisioning' };
+// which bounded contexts have a modelled event flow
+const FLOW_BY_CONTEXT = { 'BC-DEC': 'decisioning', 'BC-CASE': 'casemgmt', 'BC-NOTIFY': 'notify' };
 
 /* ============================================================
    Cynergis — Design surfaces (D-026 / D-027), in method order:
