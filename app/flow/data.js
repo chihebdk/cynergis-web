@@ -22,6 +22,10 @@ export const GROUNDING = {
 };
 export const resolveGround = (id) => GROUNDING[id];
 
+// trigger.kind vocabulary — "what set this event off": an outside system, a person,
+// an automatic policy/rule, or simply the previous step in this flow.
+export const TRIGGER_KINDS = ["external", "human", "policy", "upstream"];
+
 // ── the Decisioning (BC-DEC) flow, fully grounded ──
 export const decisioningFlow = {
   id: "decisioning",
@@ -37,25 +41,49 @@ export const decisioningFlow = {
   ],
   nodes: [
     { id: "e-scored", type: "SimpleNode", parentId: "start", kind: "event", summary: "Authorization scored", isPivotal: true, aggregate: "AGG-AUTH", grounds: ["UC1"],
-      trigger: { label: "Card network", grounds: ["UC1"] },
-      commands: [{ label: "Score authorization", on: "AGG-AUTH", grounds: ["UC1", "FR1"] }],
-      businessRules: [{ label: "carries a risk band + explanation", grounds: ["FR2"] }],
-      hotspots: [{ label: "decide within network timeout (p95 < 300 ms)", grounds: ["NFR-LAT"] }] },
+      description: "The live model scored an incoming card authorization and attached a risk band plus a per-decision explanation. This is the fork the whole context turns on — approve, step-up or block.",
+      trigger: { kind: "external", actor: "Card network / acquirer", mechanism: "Inbound authorization request (sync path)",
+        label: "An authorization request arrives from the card network and must be scored inside the network timeout — no human, no queue.", grounds: ["UC1", "NFR-LAT"] },
+      commands: [{ label: "Score authorization", on: "AGG-AUTH", desc: "Run the transaction through the live risk model to produce a band and an explanation.", grounds: ["UC1", "FR1"] }],
+      businessRules: [{ label: "A score must carry a risk band and an explanation", desc: "A bare probability is not a valid decision — every score returns one of the defined bands together with a human-readable reason.", grounds: ["FR2"] }],
+      hotspots: [{ label: "Decide within the network timeout (p95 < 300 ms)", desc: "The scoring path is synchronous and co-located; blow the latency budget and the network times the auth out.", grounds: ["NFR-LAT"] }] },
+
     { id: "e-approved-low", type: "SimpleNode", parentId: "e-scored", branch: "risk = low", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR1"],
+      description: "Low risk, so the authorization is approved straight through with no customer friction. The decision and its explanation are written to the audit trail.",
+      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = low",
+        label: "No human or external call — a low band auto-approves immediately as a reaction to the score.", grounds: ["FR1"] },
       commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR1"] }] },
+
     { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["FR7"],
-      policies: [{ label: "when scored = medium → issue step-up", on: "POL-1", grounds: ["POL-1", "FR7"] }],
-      commands: [{ label: "Issue step-up challenge", on: "AGG-STEPUP", grounds: ["FR7"] }],
-      hotspots: [{ label: "step-up UX + timeout", grounds: [] }] },
-    { id: "e-stepup-pass", type: "SimpleNode", parentId: "e-stepup", branch: "passed", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"] },
-    { id: "e-stepup-fail", type: "SimpleNode", parentId: "e-stepup", branch: "failed", kind: "event", summary: "Authorization blocked", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"] },
+      description: "Medium risk, so rather than decide outright the customer is challenged to prove it's them. The authorization is held, pending the challenge outcome.",
+      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = medium (POL-1)",
+        label: "A medium band never auto-approves; POL-1 routes it to a step-up challenge automatically.", grounds: ["POL-1", "FR7"] },
+      policies: [{ label: "When scored = medium → issue step-up", desc: "POL-1: medium risk is neither approved nor blocked; it must be challenged first.", on: "POL-1", grounds: ["POL-1", "FR7"] }],
+      commands: [{ label: "Issue step-up challenge", on: "AGG-STEPUP", desc: "Start a step-up (e.g. OTP or in-app approval) and await the result.", grounds: ["FR7"] }],
+      hotspots: [{ label: "Step-up UX and timeout", desc: "How long do we wait, and what happens on no response? Undecided — a saga / timeout policy is implied.", grounds: [] }] },
+
+    { id: "e-stepup-pass", type: "SimpleNode", parentId: "e-stepup", branch: "passed", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"],
+      description: "The customer cleared the step-up challenge, so the held authorization is approved. Confidence now comes from the challenge, not the model alone.",
+      trigger: { kind: "human", actor: "Cardholder", mechanism: "Completed challenge (OTP / app approval)",
+        label: "A person actively responded and passed the challenge within the timeout.", grounds: ["FR7"] },
+      commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR7"] }] },
+
+    { id: "e-stepup-fail", type: "SimpleNode", parentId: "e-stepup", branch: "failed", kind: "event", summary: "Authorization blocked", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"],
+      description: "The customer failed or abandoned the step-up challenge, so the authorization is blocked — the same outcome and downstream reactions as a high-risk block.",
+      trigger: { kind: "human", actor: "Cardholder", mechanism: "Failed / abandoned challenge (or timeout)",
+        label: "The challenge was not passed — a wrong code, an explicit decline, or no response before the timeout.", grounds: ["FR7"] },
+      commands: [{ label: "Apply decision (block)", on: "AGG-AUTH", grounds: ["FR7"] }] },
+
     { id: "e-blocked", type: "SimpleNode", parentId: "e-scored", branch: "risk = high", kind: "event", summary: "Authorization blocked", isPivotal: true, aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR3"],
-      commands: [{ label: "Apply decision (soft-hold)", on: "AGG-AUTH", grounds: ["FR3"] }],
-      businessRules: [{ label: "cannot be both approved and blocked", grounds: ["FR3"] }],
-      readModels: [{ label: "Decision + explanation (audit)", grounds: ["FR10"] }],
+      description: "High risk, so a reversible soft-hold is placed — never both approved and blocked. The block fans out to two other contexts: a case is opened and the customer is alerted.",
+      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = high",
+        label: "A high band triggers an immediate reversible soft-hold — automatic, with no human in the loop.", grounds: ["FR3"] },
+      commands: [{ label: "Apply decision (soft-hold)", on: "AGG-AUTH", desc: "Place a reversible hold rather than a hard decline, so a false positive can still be released.", grounds: ["FR3"] }],
+      businessRules: [{ label: "An authorization cannot be both approved and blocked", desc: "AGG-AUTH is decided exactly once; approve and block are mutually exclusive terminal states.", grounds: ["FR3"] }],
+      readModels: [{ label: "Decision + explanation (audit record)", desc: "The immutable decision, its band and reason are projected for audit and dispute handling.", grounds: ["FR10"] }],
       policies: [
-        { label: "when blocked → open case", crosses: "BC-CASE", grounds: ["POL-2", "FR5"] },
-        { label: "when blocked → notify customer", crosses: "BC-NOTIFY", grounds: ["POL-3", "FR4"] },
+        { label: "When blocked → open case", desc: "POL-2: every block is queued as an analyst case in Case Management so it can be worked to a disposition.", crosses: "BC-CASE", grounds: ["POL-2", "FR5"] },
+        { label: "When blocked → notify customer", desc: "POL-3: the customer is alerted of the block within 60s with a confirm / deny action.", crosses: "BC-NOTIFY", grounds: ["POL-3", "FR4"] },
       ] },
   ],
 };
@@ -73,18 +101,28 @@ export const caseMgmtFlow = {
   ],
   nodes: [
     { id: "c-opened", type: "SimpleNode", parentId: "start", kind: "event", summary: "Case opened", isPivotal: true, aggregate: "AGG-CASE", grounds: ["UC3", "FR5"],
-      trigger: { label: "Authorization blocked (from Decisioning)", crosses: "BC-DEC", grounds: ["POL-2", "FR5"] },
+      description: "A block from Decisioning has been queued as a fraud case for a human to work. The case references the exact authorization that triggered it.",
+      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event (POL-2)",
+        label: "An inbound domain event from another context — Decisioning's block is picked up here as a fire-and-forget reaction across the seam.", crosses: "BC-DEC", grounds: ["POL-2", "FR5"] },
       commands: [{ label: "Open case", on: "AGG-CASE", grounds: ["FR5"] }],
-      businessRules: [{ label: "must reference the triggering authorization", grounds: ["FR5"] }] },
+      businessRules: [{ label: "A case must reference the triggering authorization", desc: "No orphan cases — every case links back to the exact authorization that was blocked, for traceability.", grounds: ["FR5"] }] },
+
     { id: "c-assigned", type: "SimpleNode", parentId: "c-opened", kind: "event", summary: "Case assigned", aggregate: "AGG-CASE", grounds: ["FR6"],
+      description: "The open case has been picked up by (or routed to) an analyst who now owns it. Work can begin.",
+      trigger: { kind: "human", actor: "Fraud analyst / triage", mechanism: "Claim or assignment from the queue",
+        label: "A person takes ownership from the worklist — assignment is analyst-driven, not automatic.", grounds: ["FR6"] },
       commands: [{ label: "Assign analyst", on: "AGG-CASE", grounds: ["FR6"] }] },
+
     { id: "c-disposed", type: "SimpleNode", parentId: "c-assigned", kind: "event", summary: "Case disposed", isPivotal: true, aggregate: "AGG-CASE", isEndNode: true, grounds: ["FR6"],
+      description: "The analyst reached a verdict and recorded it with a rationale, closing the case. The disposition is kept for audit and to improve the model.",
+      trigger: { kind: "human", actor: "Assigned analyst", mechanism: "Records a disposition",
+        label: "The owning analyst decides the outcome and records why — a deliberate human judgement, not a system reaction.", grounds: ["FR6"] },
       commands: [{ label: "Record disposition", on: "AGG-CASE", grounds: ["FR6"] }],
       businessRules: [
-        { label: "a disposition requires a recorded rationale", grounds: ["FR6"] },
-        { label: "only the assigned analyst can dispose a case", grounds: ["FR6"] },
+        { label: "A disposition requires a recorded rationale", desc: "You cannot close a case with a bare outcome — the reason is mandatory for audit and learning.", grounds: ["FR6"] },
+        { label: "Only the assigned analyst can dispose a case", desc: "Ownership matters — disposition is restricted to whoever the case is assigned to.", grounds: ["FR6"] },
       ],
-      readModels: [{ label: "Case + disposition (audit)", grounds: ["FR10"] }] },
+      readModels: [{ label: "Case + disposition (audit)", desc: "The full case history and its final disposition are projected for audit and QA.", grounds: ["FR10"] }] },
   ],
 };
 
@@ -100,9 +138,11 @@ export const notifyFlow = {
   ],
   nodes: [
     { id: "n-sent", type: "SimpleNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, isEndNode: true, grounds: ["FR4"],
-      trigger: { label: "Authorization blocked (from Decisioning)", crosses: "BC-DEC", grounds: ["POL-3", "FR4"] },
-      commands: [{ label: "Send notification (confirm / deny)", grounds: ["FR4"] }],
-      hotspots: [{ label: "channel + delivery SLA (60s)", grounds: ["FR4"] }] },
+      description: "A pure reaction: on a block, the customer is alerted through their preferred channel with a confirm / deny action. This context owns no domain state of its own.",
+      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event (POL-3)",
+        label: "An inbound domain event from Decisioning — the block is consumed here via a published-language contract.", crosses: "BC-DEC", grounds: ["POL-3", "FR4"] },
+      commands: [{ label: "Send notification (confirm / deny)", desc: "Push an alert the customer can act on, closing the loop on the block.", grounds: ["FR4"] }],
+      hotspots: [{ label: "Channel choice + 60s delivery SLA", desc: "Which channel, and can we guarantee delivery within 60s? Points to an off-the-shelf provider.", grounds: ["FR4"] }] },
   ],
 };
 
@@ -123,7 +163,7 @@ export const embeddedEntities = {
     fields: [
       "id", "name", "summary", "parentId", "type", "isEndNode", "submapId", "refNodeId", "domainId", "submapInstanceParentId",
       // event-flow extras (D-031 grounding + event-centric grammar)
-      "kind", "isPivotal", "aggregate", "branch", "grounds", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots",
+      "kind", "isPivotal", "aggregate", "branch", "grounds", "description", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots",
     ],
   },
 };
