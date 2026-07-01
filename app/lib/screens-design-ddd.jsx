@@ -517,8 +517,7 @@ function ContextDetail({ c, D, M, prd, onBack }) {
           {FLOW_BY_CONTEXT[c.id] && (
             <div className="asc-section ddd-sec">
               <div className="asc-sec-head">
-                <div className="asc-sec-title"><DDPico d={DDI.event} w={14} /> Event flow — process model</div>
-                <div className="asc-sec-sub">How work moves through this context over time · click an event for its grounded detail · rendered on <b>@flowai/canvas</b></div>
+                <div className="asc-sec-title"><DDPico d={DDI.event} w={14} /> Event flow</div>
               </div>
               <div style={{ height: '580px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
                 <FlowEmbed flowId={FLOW_BY_CONTEXT[c.id]} />
