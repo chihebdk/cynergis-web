@@ -7,7 +7,6 @@ const { Ref: DDRef, MermaidView: DDMermaid } = window;
 
 // the event-flow canvas (embedded @flowai/canvas) — client-only, heavy, load on demand
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
-import { signalsFor } from '../flow/data';
 // which bounded contexts have a modelled event flow
 const FLOW_BY_CONTEXT = { 'BC-DEC': 'decisioning', 'BC-CASE': 'casemgmt', 'BC-NOTIFY': 'notify' };
 
@@ -531,24 +530,6 @@ function ContextDetail({ c, D, M, prd, onBack }) {
 
       {tab === 'model' && (
         <>
-          {(signalsFor(c.id) || []).length > 0 && (
-            <div className="asc-section ddd-sec">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title"><DDPico d={DDI.arrow} w={14} /> What this flow decides</div>
-                <div className="asc-sec-sub">Architecture-pattern signals the event flow reveals — inputs to the Architecture step</div>
-              </div>
-              <div className="ddd-signals">
-                {signalsFor(c.id).map((s, i) => (
-                  <div className="ddd-signal" key={i}>
-                    <div className="ddd-signal-from">{s.from}</div>
-                    <div className="ddd-signal-pattern">{s.pattern}</div>
-                    <div className="ddd-signal-reveals">{s.reveals}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="asc-section ddd-sec">
             <div className="asc-sec-head">
               <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> Domain model — aggregates & invariants</div>
