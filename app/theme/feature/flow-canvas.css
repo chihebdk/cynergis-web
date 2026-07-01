@@ -1,0 +1,13 @@
+/* Tailwind utilities for the embedded @flowai/canvas island.
+   NO preflight — only the theme tokens + utility classes are emitted, so this
+   cannot reset or restyle the Ascent design system (its class-based CSS wins,
+   being unlayered and therefore higher-priority than these @layer utilities). */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* scan the canvas package so the utilities its components use get generated */
+@source "../../../node_modules/@flowai/canvas/dist/index.js";
+
+/* the canvas package's own component styles (submap borders, etc.) */
+@import "../../../node_modules/@flowai/canvas/dist/index.css";

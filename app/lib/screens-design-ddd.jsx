@@ -1,8 +1,14 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import './trace-core';
 import './ddd-data';
 import './domain-model-data';
 const { Ref: DDRef, MermaidView: DDMermaid } = window;
+
+// the event-flow canvas (embedded @flowai/canvas) — client-only, heavy, load on demand
+const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
+// which bounded contexts have a modelled event flow (Decisioning first)
+const FLOW_BY_CONTEXT = { 'BC-DEC': 'decisioning' };
 
 /* ============================================================
    Cynergis — Design surfaces (D-026 / D-027), in method order:
@@ -508,6 +514,18 @@ function ContextDetail({ c, D, M, prd, onBack }) {
 
       {tab === 'model' && (
         <>
+          {FLOW_BY_CONTEXT[c.id] && (
+            <div className="asc-section ddd-sec">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title"><DDPico d={DDI.event} w={14} /> Event flow — process model</div>
+                <div className="asc-sec-sub">How work moves through this context over time · click an event for its grounded detail · rendered on <b>@flowai/canvas</b></div>
+              </div>
+              <div style={{ height: '580px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+                <FlowEmbed flowId={FLOW_BY_CONTEXT[c.id]} />
+              </div>
+            </div>
+          )}
+
           <div className="asc-section ddd-sec">
             <div className="asc-sec-head">
               <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> Domain model — aggregates & invariants</div>
