@@ -1,0 +1,23 @@
+/* ============================================================
+   Cynergis — Radius, spacing & density tokens
+   Page padding and row height are bound to a density mode set on
+   [data-density]; the whole console tightens with one switch.
+   ============================================================ */
+:root{
+  /* ---- Corner radius ---- */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+
+  /* ---- Density-driven layout rhythm (comfortable default) ---- */
+  --pad-x: 28px;
+  --pad-y: 22px;
+  --row-h: 36px;
+}
+
+[data-density="compact"]{
+  --pad-x: 20px;
+  --pad-y: 16px;
+  --row-h: 30px;
+}

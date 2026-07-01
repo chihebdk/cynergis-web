@@ -1,0 +1,113 @@
+/* ============================================================
+   Cynergis — Traceability layer styles.
+   Ref chips, the universal entity modal, relationship boxes,
+   Mermaid diagram framing, and clickable-card affordances.
+   Reuses design tokens: --ink-*, --line, --panel, --bg,
+   --accent, --accent-soft.
+   ============================================================ */
+
+/* ---- clickable cards / rows ---- */
+.dd-clickable, .env-clickable{ cursor:pointer; transition:border-color .12s ease, background .12s ease, box-shadow .12s ease; }
+.dd-clickable:hover, .env-clickable:hover{ border-color:var(--accent); box-shadow:0 1px 0 var(--accent-soft), 0 6px 18px -12px var(--accent); }
+.dd-risk.dd-clickable:hover, .dd-fr.dd-clickable:hover, .dd-govrow.dd-clickable:hover{ background:var(--accent-soft); box-shadow:none; border-color:transparent; }
+.dd-card-foot{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:13px; padding-top:11px; border-top:1px dashed var(--line); color:var(--accent); }
+.dd-trace-hint{ font-size:11px; font-weight:600; letter-spacing:.01em; }
+.env-crit-go{ font-size:11px; font-weight:600; color:var(--accent); opacity:0; transition:opacity .12s ease; align-self:center; white-space:nowrap; }
+.env-crit.env-clickable:hover .env-crit-go{ opacity:1; }
+
+/* ---- <Ref> chip ---- */
+.tr-ref{ display:inline-flex; align-items:center; gap:4px; cursor:pointer; font-family:var(--font-mono, ui-monospace, monospace); font-size:11px; font-weight:600; line-height:1; color:var(--accent); background:var(--accent-soft); border:1px solid transparent; border-radius:6px; padding:3px 7px; margin:2px 4px 2px 0; transition:background .12s ease, border-color .12s ease; vertical-align:middle; }
+.tr-ref:hover{ border-color:var(--accent); }
+.tr-ref-g{ font-size:10px; opacity:.8; }
+.tr-ref-k{ font-family:var(--font-sans); font-weight:500; color:var(--ink-3); margin-left:2px; }
+.tr-ref-dead{ display:inline-flex; align-items:center; font-family:var(--font-mono, monospace); font-size:11px; color:var(--ink-3); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:3px 7px; margin:2px 4px 2px 0; }
+.tr-ref.plain{ background:transparent; padding:1px 3px; }
+
+/* ---- ref rows inside trace boxes ---- */
+.tr-box{ min-width:0; border:1px solid var(--line); border-radius:11px; background:var(--bg); padding:11px 12px; }
+.tr-box-h{ font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--ink-3); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.tr-box-sub{ text-transform:none; letter-spacing:0; font-weight:500; color:var(--ink-3); }
+.tr-box-rows{ display:flex; flex-direction:column; gap:4px; }
+.tr-refrow{ display:flex; align-items:center; gap:9px; width:100%; text-align:left; cursor:pointer; font-family:inherit; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:7px 10px; transition:border-color .12s ease, background .12s ease; }
+.tr-refrow:hover{ border-color:var(--accent); background:var(--accent-soft); }
+.tr-refrow-g{ font-size:12px; color:var(--accent); flex:none; width:16px; text-align:center; }
+.tr-refrow-id{ font-family:var(--font-mono, monospace); font-size:11px; font-weight:700; color:var(--accent); flex:none; min-width:38px; }
+.tr-refrow-label{ font-size:12.5px; color:var(--ink-2); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tr-refrow-go{ color:var(--ink-3); font-size:13px; flex:none; }
+.tr-refrow:hover .tr-refrow-go{ color:var(--accent); }
+
+/* ---- relationship panel (the full bidirectional graph) ---- */
+.tr-rel{ margin-top:20px; border-top:1px solid var(--line); padding-top:16px; }
+.tr-rel-h{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; color:var(--ink-2); margin-bottom:12px; }
+.tr-rel-grid{ display:flex; flex-direction:column; gap:10px; }
+
+/* ---- universal entity modal ---- */
+.tr-overlay{ position:fixed; inset:0; z-index:1000; background:oklch(0.2 0.02 265 / 0.42); backdrop-filter:blur(3px); display:flex; align-items:flex-start; justify-content:center; padding:6vh 20px 20px; overflow-y:auto; animation:tr-fade .14s ease; }
+@keyframes tr-fade{ from{ opacity:0; } to{ opacity:1; } }
+.tr-modal{ width:min(680px,100%); background:var(--panel); border:1px solid var(--line); border-radius:18px; box-shadow:0 24px 70px -20px oklch(0.2 0.04 265 / 0.5); overflow:hidden; animation:tr-rise .18s cubic-bezier(.2,.7,.3,1); }
+@keyframes tr-rise{ from{ transform:translateY(10px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+.tr-modal-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px 10px; }
+.tr-modal-head-l{ display:flex; align-items:center; gap:9px; min-width:0; }
+.tr-modal-head-r{ display:flex; align-items:center; gap:8px; flex:none; }
+.tr-modal-back{ cursor:pointer; border:1px solid var(--line); background:var(--bg); color:var(--ink-2); border-radius:8px; width:26px; height:26px; font-size:14px; line-height:1; flex:none; }
+.tr-modal-back:hover{ border-color:var(--accent); color:var(--accent); }
+.tr-modal-kind{ font-size:11px; font-weight:600; color:var(--ink-3); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.tr-modal-id{ font-family:var(--font-mono, monospace); font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:6px; }
+.tr-modal-jump{ cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:600; color:var(--accent); background:var(--accent-soft); border:1px solid transparent; border-radius:8px; padding:5px 11px; white-space:nowrap; }
+.tr-modal-jump:hover{ border-color:var(--accent); }
+.tr-modal-x{ cursor:pointer; border:1px solid var(--line); background:var(--bg); color:var(--ink-2); border-radius:8px; width:26px; height:26px; font-size:17px; line-height:1; flex:none; }
+.tr-modal-x:hover{ border-color:var(--accent); color:var(--accent); }
+.tr-modal-title{ padding:0 16px 12px; font-family:var(--font-display, var(--font-sans)); font-size:21px; font-weight:650; line-height:1.25; color:var(--ink-1); letter-spacing:-0.01em; }
+.tr-modal-body{ padding:4px 16px 18px; max-height:64vh; overflow-y:auto; }
+
+/* ---- use-case detail tabs (sticky bar; active panel scrolls beneath) ---- */
+.tr-uctabs{ position:sticky; top:0; z-index:2; display:flex; gap:2px; background:var(--panel); padding-top:4px; margin-bottom:6px; border-bottom:1px solid var(--line); box-shadow:0 1px 0 var(--line); }
+.tr-uctab{ cursor:pointer; border:0; background:transparent; font:inherit; font-size:12.5px; font-weight:600; color:var(--ink-3); padding:9px 13px; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.tr-uctab:hover{ color:var(--ink-1); }
+.tr-uctab.on{ color:var(--accent); border-bottom-color:var(--accent); }
+.tr-uctab-panel{ padding-top:6px; }
+
+/* ---- detail body primitives ---- */
+.tr-drow{ display:grid; grid-template-columns:130px 1fr; gap:14px; padding:7px 0; border-bottom:1px solid var(--line); }
+.tr-drow:last-child{ border-bottom:none; }
+.tr-dk{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; color:var(--ink-3); padding-top:2px; }
+.tr-dv{ font-size:13.5px; line-height:1.6; color:var(--ink-1); }
+.tr-dlist{ margin:0; padding-left:18px; line-height:1.7; font-size:13.5px; color:var(--ink-1); }
+.tr-seclabel{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; color:var(--ink-2); margin:18px 0 8px; }
+.tr-pill{ display:inline-block; font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; background:var(--bg); border:1px solid var(--line); color:var(--ink-2); margin-right:5px; }
+.tr-pill.ok{ background:oklch(0.95 0.05 155); border-color:oklch(0.8 0.08 155); color:oklch(0.42 0.10 155); }
+.tr-pill.warn{ background:oklch(0.96 0.06 75); border-color:oklch(0.82 0.10 75); color:oklch(0.48 0.12 60); }
+.tr-pill.bad{ background:oklch(0.95 0.05 25); border-color:oklch(0.82 0.10 25); color:oklch(0.5 0.15 25); }
+.tr-pill.info{ background:var(--accent-soft); border-color:transparent; color:var(--accent); }
+.tr-persona-top{ display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.tr-quote{ font-style:italic; font-size:14px; line-height:1.55; color:var(--ink-1); border-left:3px solid var(--accent); padding:3px 0 3px 13px; margin:12px 0 4px; }
+.tr-flow{ margin:0; padding-left:20px; line-height:1.85; font-size:13.5px; color:var(--ink-1); }
+.tr-acc{ border:1px solid var(--line); border-radius:10px; background:var(--bg); padding:11px 13px; margin-bottom:9px; }
+.tr-acc-t{ font-weight:650; font-size:13px; color:var(--ink-1); margin-bottom:6px; }
+.tr-acc-l{ font-size:13px; line-height:1.6; color:var(--ink-2); }
+.tr-acc-l b{ color:var(--accent); font-weight:600; display:inline-block; min-width:48px; }
+.tr-hot{ font-size:13px; line-height:1.55; color:var(--ink-2); margin-bottom:7px; }
+.tr-code{ font-family:var(--font-mono, monospace); font-size:12.5px; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:2px 7px; color:var(--ink-1); }
+.tr-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+.tr-table td{ padding:6px 10px; border:1px solid var(--line); color:var(--ink-2); }
+.tr-table td:first-child{ font-weight:600; color:var(--ink-1); white-space:nowrap; }
+.tr-fallback{ font-size:13.5px; color:var(--ink-1); }
+
+/* ---- Mermaid framing ---- */
+.mm-block{ margin:4px 0; }
+.mm-wrap{ width:100%; overflow-x:auto; background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:18px 14px; display:flex; justify-content:center; }
+.mm-wrap svg{ max-width:100%; height:auto; }
+.mm-cap{ text-align:center; font-size:11.5px; color:var(--ink-3); margin-top:7px; }
+.mm-fallback{ white-space:pre-wrap; font-family:var(--font-mono, monospace); font-size:11.5px; color:var(--ink-2); margin:0; text-align:left; }
+
+.asc-gd-fulltrace{ display:inline-block; margin-top:8px; cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:600; color:var(--accent); background:var(--accent-soft); border:1px solid transparent; border-radius:8px; padding:5px 11px; }
+.asc-gd-fulltrace:hover{ border-color:var(--accent); }
+
+/* ---- use-case inline trace strip + workflow ---- */
+.dd-uc-trace{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:10px 0 12px; border-bottom:1px solid var(--line); margin-bottom:13px; }
+.dd-uc-trace-l{ font-size:10px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; color:var(--ink-3); margin-left:6px; }
+.dd-uc-trace-l:first-child{ margin-left:0; }
+.dd-uc-full{ margin-left:auto; cursor:pointer; font-family:inherit; font-size:11.5px; font-weight:600; color:var(--accent); background:var(--accent-soft); border:1px solid transparent; border-radius:8px; padding:5px 11px; }
+.dd-uc-full:hover{ border-color:var(--accent); }
+.dd-uc-wf{ margin-top:16px; }
+.dd-flow-main .dd-flow-side-h{ margin-bottom:9px; }

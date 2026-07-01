@@ -1,0 +1,20 @@
+{
+  "name": "cynergis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cynergis — product lifecycle management platform (Next.js port of the design handoff).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "mermaid": "^11.16.0",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1"
+  }
+}

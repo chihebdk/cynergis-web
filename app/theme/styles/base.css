@@ -1,0 +1,6 @@
+/* Cynergis — base resets & document defaults.
+   Imported after tokens so var(--*) are available. */
+*{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 13px; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em;}
+  button{ font-family: inherit; color: inherit; }
+  ::selection{ background: var(--accent-soft); }

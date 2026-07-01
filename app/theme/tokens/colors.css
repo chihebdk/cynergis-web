@@ -1,0 +1,45 @@
+/* ============================================================
+   Cynergis — Color tokens
+   Everything is OKLCH and parametric on ONE variable: --accent-h.
+   Neutrals reference that same hue at very low chroma, so changing
+   the accent retints panels, ink, and lines together. Status hues
+   are fixed (they must read the same in any theme).
+   ============================================================ */
+:root{
+  /* ---- Accent (theme driver) ---- */
+  --accent-h: 265;                                   /* the one knob */
+  --accent:      oklch(0.52 0.14 var(--accent-h));   /* primary actions, active dots */
+  --accent-soft: oklch(0.955 0.025 var(--accent-h)); /* accent fills, soft badges */
+  --accent-ink:  oklch(0.34 0.12 var(--accent-h));   /* accent text on light */
+
+  /* ---- Neutral surfaces (hue-tinted greys) ---- */
+  --bg:        oklch(0.985 0.006 var(--accent-h));   /* app background */
+  --panel:     oklch(0.998 0.003 var(--accent-h));   /* cards, raised surfaces */
+  --panel-2:   oklch(0.975 0.009 var(--accent-h));   /* sidebars, table heads, insets */
+  --panel-3:   oklch(0.955 0.012 var(--accent-h));   /* hover fills, chips, tracks */
+  --line:        oklch(0.905 0.014 var(--accent-h)); /* hairline borders & dividers */
+  --line-strong: oklch(0.83 0.020 var(--accent-h));  /* emphasis borders, hover edges */
+
+  /* ---- Ink (text) ---- */
+  --ink:   oklch(0.20 0.022 var(--accent-h));        /* headings, primary text, active nav */
+  --ink-2: oklch(0.40 0.020 var(--accent-h));        /* body text */
+  --ink-3: oklch(0.56 0.016 var(--accent-h));        /* secondary / muted */
+  --ink-4: oklch(0.72 0.012 var(--accent-h));        /* faint / disabled / meta */
+
+  /* ---- Semantic status (fixed hues + soft tints) ---- */
+  --ok:        oklch(0.58 0.1 145);   --ok-soft:     oklch(0.95 0.04 145);
+  --warn:      oklch(0.66 0.12 70);   --warn-soft:   oklch(0.95 0.05 70);
+  --err:       oklch(0.58 0.14 25);   --err-soft:    oklch(0.95 0.04 25);
+  --info:      oklch(0.55 0.1 240);   --info-soft:   oklch(0.95 0.035 240);
+  --violet:    oklch(0.55 0.12 295);  --violet-soft: oklch(0.95 0.035 295);
+  --teal:      oklch(0.58 0.08 195);  --teal-soft:   oklch(0.95 0.03 195);
+
+  /* ---- Lens hues (cross-cutting persona framings) ----
+     applied as oklch(0.55 0.14 var(--lens-h)) */
+  --lens-architecture: 225;  /* blue   */
+  --lens-security:     12;   /* red    */
+  --lens-cost:         145;  /* green  */
+  --lens-data:         280;  /* violet */
+  --lens-compliance:   42;   /* amber  */
+  --lens-people:       320;  /* magenta */
+}

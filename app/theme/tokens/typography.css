@@ -1,0 +1,13 @@
+/* ============================================================
+   Cynergis — Typography tokens
+   Three families, each with a clear job:
+   - Inter Tight  → display: titles, metrics, names (tight tracking)
+   - Inter        → body & UI text
+   - JetBrains Mono → ids, counts, timestamps, eyebrow labels (tabular)
+   Base UI size is 13px; the console is intentionally dense.
+   ============================================================ */
+:root{
+  --font-sans:    'Inter', system-ui, sans-serif;
+  --font-display: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+}
