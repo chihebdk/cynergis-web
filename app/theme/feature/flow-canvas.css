@@ -64,7 +64,7 @@
 }
 .cyn-flow-embed .react-flow__node[data-id="start"] .rounded-2xl {
   width: max-content;
-  padding: 10px 18px;
+  padding: 6px 13px;
 }
 .cyn-flow-embed .react-flow__node[data-id="start"] p {
   padding: 0;
@@ -72,6 +72,6 @@
   flex: none;
   overflow: visible;
   text-overflow: clip;
-  font-size: 16px;
+  font-size: 13px;
   text-align: center;
 }
