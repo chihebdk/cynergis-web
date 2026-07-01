@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@flowai/canvas": "file:vendor/flowai-canvas-0.2.36.tgz",
+    "@flowai/canvas": "file:vendor/flowai-canvas-0.2.38.tgz",
     "@flowai/state": "file:vendor/flowai-state-0.2.1.tgz",
     "@iconify/react": "^5.2.0",
     "@paralleldrive/cuid2": "^2.2.2",
