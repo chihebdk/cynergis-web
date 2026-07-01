@@ -177,6 +177,13 @@
 .ddd-tab:hover{ color:var(--ink); }
 .ddd-tab.on{ color:var(--accent-ink); border-bottom-color:var(--accent); }
 
+/* subdomain-level architecture signals (Model & capabilities → "What this flow decides") */
+.ddd-signals{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:10px; }
+.ddd-signal{ border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel); padding:11px 13px; }
+.ddd-signal-from{ font-size:11px; color:var(--ink-3); line-height:1.45; }
+.ddd-signal-pattern{ font-family:var(--font-display); font-size:13.5px; font-weight:600; color:var(--accent-ink); margin-top:4px; }
+.ddd-signal-reveals{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-3); text-transform:uppercase; letter-spacing:0.04em; margin-top:3px; }
+
 /* ============================================================
    Context Owner Agent (D-029)
    ============================================================ */

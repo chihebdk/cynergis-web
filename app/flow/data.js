@@ -108,6 +108,9 @@ export const notifyFlow = {
 
 export const seedFlows = [decisioningFlow, caseMgmtFlow, notifyFlow];
 
+// subdomain-level: the architecture-pattern signals a context's flow reveals
+export const signalsFor = (contextId) => (seedFlows.find((f) => f.contextId === contextId)?.signals) || [];
+
 // Entity registry in the mapper's shape (map / submap / mapNode). Our event-flow
 // fields ride along as extra mapNode fields (declared so the state layer keeps them).
 export const entities = {

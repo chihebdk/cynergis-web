@@ -40,7 +40,6 @@ export const flowConfig = {
       { tab: "ReadModelsTab", title: "Read models", icon: "mdi:eye-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
       { tab: "ReactionsTab", title: "Reactions", icon: "mdi:arrow-decision-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
       { tab: "HotspotsTab", title: "Hotspots", icon: "mdi:alert-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
-      { tab: "DecidesTab", title: "Decides", icon: "mdi:sitemap-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
     ],
   },
 };

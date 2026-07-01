@@ -7,6 +7,7 @@ const { Ref: DDRef, MermaidView: DDMermaid } = window;
 
 // the event-flow canvas (embedded @flowai/canvas) — client-only, heavy, load on demand
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
+import { signalsFor } from '../flow/data';
 // which bounded contexts have a modelled event flow
 const FLOW_BY_CONTEXT = { 'BC-DEC': 'decisioning', 'BC-CASE': 'casemgmt', 'BC-NOTIFY': 'notify' };
 
@@ -432,6 +433,7 @@ function ContextDetail({ c, D, M, prd, onBack }) {
     { key: 'rels',  label: 'Relationships' },
     { key: 'agent', label: 'Agent' },
     { key: 'model', label: 'Model & capabilities' },
+    { key: 'flow',  label: 'Event flow' },
     { key: 'lang',  label: 'Ubiquitous Language' },
   ];
 
@@ -512,15 +514,37 @@ function ContextDetail({ c, D, M, prd, onBack }) {
 
       {tab === 'agent' && <ContextOwnerAgent c={c} D={D} M={M} prd={prd} />}
 
+      {tab === 'flow' && (
+        FLOW_BY_CONTEXT[c.id]
+          ? <div className="ddd-wrap" style={{ paddingTop: '4px' }}>
+              <p className="ddd-lead" style={{ marginBottom: '10px' }}>
+                How work moves through this context over time — click an event to inspect its commands, rules,
+                read models and reactions, each grounded in a captured node. (<b>Tree</b> shows the whole flow;
+                <b> Org</b> focuses one path.)
+              </p>
+              <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+                <FlowEmbed flowId={FLOW_BY_CONTEXT[c.id]} />
+              </div>
+            </div>
+          : <div className="ddd-empty-inline">No event flow modelled for this context yet.</div>
+      )}
+
       {tab === 'model' && (
         <>
-          {FLOW_BY_CONTEXT[c.id] && (
+          {(signalsFor(c.id) || []).length > 0 && (
             <div className="asc-section ddd-sec">
               <div className="asc-sec-head">
-                <div className="asc-sec-title"><DDPico d={DDI.event} w={14} /> Event flow</div>
+                <div className="asc-sec-title"><DDPico d={DDI.arrow} w={14} /> What this flow decides</div>
+                <div className="asc-sec-sub">Architecture-pattern signals the event flow reveals — inputs to the Architecture step</div>
               </div>
-              <div style={{ height: '580px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
-                <FlowEmbed flowId={FLOW_BY_CONTEXT[c.id]} />
+              <div className="ddd-signals">
+                {signalsFor(c.id).map((s, i) => (
+                  <div className="ddd-signal" key={i}>
+                    <div className="ddd-signal-from">{s.from}</div>
+                    <div className="ddd-signal-pattern">{s.pattern}</div>
+                    <div className="ddd-signal-reveals">{s.reveals}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

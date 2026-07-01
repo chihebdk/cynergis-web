@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useNodeCache, useEventMapCache } from "@flowai/canvas";
+import { useNodeCache } from "@flowai/canvas";
 import { resolveGround } from "./data";
 
 /* ── shared bits ── */
@@ -108,23 +108,8 @@ export function ReadModelsTab() { return <ClusterTab clusterKey="readModels" emp
 export function ReactionsTab() { return <ClusterTab clusterKey="policies" empty="No reactions for this event." />; }
 export function HotspotsTab() { return <ClusterTab clusterKey="hotspots" empty="No hotspots for this event." />; }
 
-export function DecidesTab() {
-  const { selected: flow } = useEventMapCache();
-  const signals = flow?.signals || [];
-  if (!signals.length) return <Empty>No architecture signals.</Empty>;
-  return (
-    <ul className="flex flex-col gap-2">
-      {signals.map((s, i) => (
-        <li key={i} className="rounded-md border border-gray-200 bg-gray-50 p-2">
-          <div className="text-[11px] text-gray-500">{s.from}</div>
-          <div className="text-[13px] font-medium text-indigo-600 mt-0.5">{s.pattern}</div>
-          <div className="text-[10px] text-gray-400">{s.reveals}</div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
+// Node-scoped tabs only. Subdomain-level "What this flow decides" now lives in the
+// Model & capabilities tab (screens-design-ddd), not in the per-event panel.
 export const panelTabComponents = {
-  OverviewTab, CommandsTab, RulesTab, ReadModelsTab, ReactionsTab, HotspotsTab, DecidesTab,
+  OverviewTab, CommandsTab, RulesTab, ReadModelsTab, ReactionsTab, HotspotsTab,
 };
