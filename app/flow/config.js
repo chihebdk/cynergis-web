@@ -2,17 +2,20 @@
 // the org↔htree toggle stays available. Our custom "Grounding" decorator + "GroundedTab"
 // property tab carry the D-031 grounding.
 export const flowConfig = {
-  layout: { available: ["htree", "org"], default: "htree" },
+  layout: { available: ["org", "htree"], default: "org" },
+  // View-focused: no hover add-toolbar (it reserves vertical space taller than the
+  // card and would shift the node's handle off-center → misaligned edges). Editing
+  // stays available via the right-click context menu.
   nodeTypes: {
     SimpleNode: {
-      toolbar: ["addNode", "addReference", "addSubflow"],
+      toolbar: [],
       contextMenu: ["copyNode", "cutNode", "deleteNode", "pasteNode", "submapStart", "submapEnd", "markEndNode"],
       decorators: ["Grounding"],
       showEndMarker: true,
     },
     ReferenceNode: { toolbar: [], contextMenu: ["deleteNode"], decorators: [], showEndMarker: true },
     SubmapNode: {
-      toolbar: ["addNode", "addReference", "addSubflow"],
+      toolbar: [],
       contextMenu: ["submapExpand", "markEndNode"],
       decorators: ["Grounding"],
       showEndMarker: true,
@@ -20,9 +23,10 @@ export const flowConfig = {
   },
   edgeTypes: {
     WorkflowEdge: {
-      stroke: "#9ca3af", strokeWidth: 2, opacity: 0.6, markerEnd: true,
+      stroke: "#9ca3af", strokeWidth: 2, opacity: 0.9, markerEnd: false,
+      borderRadius: 0,                 // sharp right-angle (straight) orthogonal lines
       focusedStyle: "solid", unfocusedStyle: "dashed",
-      toolbar: ["addNode", "addReference", "addSubflow"],
+      toolbar: [],
     },
   },
   lanes: { show: false },
