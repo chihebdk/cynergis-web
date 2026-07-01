@@ -11,3 +11,40 @@
 
 /* the canvas package's own component styles (submap borders, etc.) */
 @import "../../../node_modules/@flowai/canvas/dist/index.css";
+
+/* ── Theme the canvas layout toggle as an Ascent pill segmented control ──
+   These rules are unlayered, so they override the component's default Tailwind
+   utilities and re-skin it with the design-system tokens (matches .asc-scope). */
+.flowai-layout-toggle {
+  gap: 2px;
+  padding: 3px;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  box-shadow: none;
+}
+.flowai-layout-toggle .flowai-seg-btn {
+  gap: 6px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: none;
+  transition: color 0.12s, background 0.12s;
+}
+.flowai-layout-toggle .flowai-seg-btn:hover {
+  color: var(--ink-2);
+}
+.flowai-layout-toggle .flowai-seg-btn[aria-pressed="true"] {
+  background: var(--panel);
+  color: var(--accent);
+  box-shadow: 0 1px 2px oklch(0.3 0.02 var(--accent-h) / 0.10);
+}
+.flowai-layout-toggle .flowai-seg-btn svg {
+  width: 14px;
+  height: 14px;
+}
