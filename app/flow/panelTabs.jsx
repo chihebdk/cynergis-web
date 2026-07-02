@@ -244,7 +244,8 @@ export function NodeBoard() {
 
   return (
     <div className="cyn-board">
-      {/* header — title left, Spec|Architecture switcher top-centre, labels right */}
+      {/* header — row 1: title left, Spec|Architecture switcher centre;
+                    row 2: description left, labels bottom-right */}
       <div className="cyn-board-head">
         <div className="cyn-board-headrow">
           <h2 className="cyn-board-title">{node.summary}</h2>
@@ -252,6 +253,10 @@ export function NodeBoard() {
             <button type="button" className="flowai-seg-btn" aria-pressed={lens === "spec"} onClick={() => setLens("spec")}>Spec</button>
             <button type="button" className="flowai-seg-btn" aria-pressed={lens === "arch"} onClick={() => setLens("arch")}>Architecture</button>
           </div>
+          <div className="cyn-board-headspacer" />
+        </div>
+        <div className="cyn-board-subrow">
+          {node.description ? <p className="cyn-board-desc">{node.description}</p> : <span />}
           <div className="cyn-board-labels">
             {risk && <span className={`cyn-risk cyn-risk-${risk.tone}`}>{risk.label}</span>}
             {node.isPivotal && <span className="cyn-pivotal">pivotal</span>}
@@ -267,7 +272,6 @@ export function NodeBoard() {
                 </>}
           </div>
         </div>
-        {node.description && <p className="cyn-board-desc">{node.description}</p>}
       </div>
 
       {/* columns — behavioral tense (spec) or structural tense (architecture) */}

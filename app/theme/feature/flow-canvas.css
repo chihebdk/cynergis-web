@@ -137,17 +137,26 @@
   padding: 11px 18px 10px;
   border-bottom: 1px solid var(--line);
 }
+/* row 1 — title vertically centred against the toggle (sits a touch lower than
+   flex-start would put it); spacer balances the title so the toggle stays centred */
 .cyn-flow-embed .cyn-board-headrow {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
-/* title and labels get equal flex baskets so the lens toggle sits dead-centre */
 .cyn-flow-embed .cyn-board-title {
   font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; line-height: 1.25;
   color: var(--ink); flex: 1 1 0; min-width: 0;
+  margin: 0;              /* kill the h2's UA margins (no preflight in this island) */
+  align-self: flex-end;   /* sit at the row's baseline — lower, and tight to the description */
+}
+.cyn-flow-embed .cyn-board-headspacer { flex: 1 1 0; min-width: 0; }
+/* row 2 — description left, labels anchored bottom-right */
+.cyn-flow-embed .cyn-board-subrow {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  margin-top: 4px;
 }
 .cyn-flow-embed .cyn-board-labels {
   display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center;
-  flex: 1 1 0; min-width: 0;
+  flex: none; max-width: 55%;
 }
 .cyn-flow-embed .cyn-risk {
   font-size: 10px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
@@ -161,7 +170,7 @@
   background: #f97316; color: #fff;
 }
 .cyn-flow-embed .cyn-board-desc {
-  font-size: 12px; line-height: 1.4; color: var(--ink-3); margin-top: 3px;
+  font-size: 12px; line-height: 1.4; color: var(--ink-3); margin: 0; min-width: 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
