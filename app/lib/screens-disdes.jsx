@@ -575,7 +575,8 @@ function DesignArchitecture({ prd }) {
       <ArchResources A={A} open={open} />
       <ArchApisContracts A={A} open={open} />
       <ArchSecuritySecrets A={A} open={open} />
-      <ArchInfraEnvironments A={A} open={open} />
+      {/* Infrastructure & environments (as-built actuals) live in Build — D-035:
+          Design holds the intent, Build accrues the actuals against it. */}
     </>
   );
 }
@@ -691,26 +692,56 @@ function ArchSecuritySecrets({ A, open }) {
   );
 }
 
-/* ---- Architecture page · Infrastructure & environments ---- */
-function ArchInfraEnvironments({ A, open }) {
+/* ---- Build · Infrastructure & environments (the as-built surface, D-035) ----
+   Design holds the architecture INTENT (ADRs, components, contracts); this surface
+   accrues the ACTUALS — the environments, deployed resources and per-component build
+   status the AI coding agent produces. Populated from __ARCH__ for now; the coding
+   agent becomes the writer once Build is live. */
+function EnvCards({ A, open }) {
   const inf = A.infra;
-  if (!inf) return null;
   const resIn = (envId) => (A.resources || []).filter(r => (r.environments || []).includes(envId));
   return (
-    <DSec icon="arch" title="Infrastructure & environments" sub={`${inf.cloud} · ${inf.platform} — what runs where`}>
-      <p className="dd-infra-sum">{inf.summary} <span onClick={e => e.stopPropagation()}>{(inf.adrs || []).map(a => <TRef id={a} key={a} />)}{(inf.meets || []).map(m => <TRef id={m} key={m} />)}</span></p>
-      <div className="dd-envs">
-        {(inf.environments || []).map(env => (
-          <div className="dd-env" key={env.id}>
-            <div className="dd-env-h"><span className="dd-env-name">{env.name}</span><span className="dd-env-cluster">{env.cluster}</span><span className="dd-env-region">{env.region}</span></div>
-            <div className="dd-env-notes">{env.notes}</div>
-            <div className="dd-env-row"><span className="dd-env-k">services</span>{(env.services || []).map((s, i) => <span className="dd-env-chip" key={i}>{s.name}</span>)}</div>
-            <div className="dd-env-row"><span className="dd-env-k">resources</span>{resIn(env.id).map(r => <button type="button" className="dd-env-res" key={r.id} onClick={() => open(r.id)}>{r.name}</button>)}</div>
-            <div className="dd-env-row"><span className="dd-env-k">dashboards</span>{(env.dashboards || []).map((dsh, i) => <span className="dd-env-chip" key={i}>{dsh.name}</span>)}</div>
-          </div>
-        ))}
-      </div>
-    </DSec>
+    <div className="dd-envs">
+      {(inf.environments || []).map(env => (
+        <div className="dd-env" key={env.id}>
+          <div className="dd-env-h"><span className="dd-env-name">{env.name}</span><span className="dd-env-cluster">{env.cluster}</span><span className="dd-env-region">{env.region}</span></div>
+          <div className="dd-env-notes">{env.notes}</div>
+          <div className="dd-env-row"><span className="dd-env-k">services</span>{(env.services || []).map((s, i) => <span className="dd-env-chip" key={i}>{s.name}</span>)}</div>
+          <div className="dd-env-row"><span className="dd-env-k">resources</span>{resIn(env.id).map(r => <button type="button" className="dd-env-res" key={r.id} onClick={() => open(r.id)}>{r.name}</button>)}</div>
+          <div className="dd-env-row"><span className="dd-env-k">dashboards</span>{(env.dashboards || []).map((dsh, i) => <span className="dd-env-chip" key={i}>{dsh.name}</span>)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function BuildInfrastructure() {
+  const A = window.__ARCH__;
+  const open = useOpen();
+  if (!A || !A.infra) return <div className="env-empty"><div className="env-empty-ic"><DIco k="arch" w={20} /></div><div className="env-empty-t">Infrastructure</div><div className="env-empty-s">Nothing built yet — the AI coding agent populates this surface as it deploys.</div></div>;
+  const comps = (A.domains || []).flatMap(dm => (dm.components || []).map(c => ({ ...c, domainName: dm.name })));
+  return (
+    <>
+      <p className="dd-lead">The as-built picture: what actually runs, where, and how each component stands against the Design blueprint. Deployed and updated by the AI coding agent — the architect reads it, the drift against Design is the review.</p>
+
+      <DSec icon="arch" title="Environments" sub={`${A.infra.cloud} · ${A.infra.platform} — what runs where`}>
+        <p className="dd-infra-sum">{A.infra.summary} <span onClick={e => e.stopPropagation()}>{(A.infra.adrs || []).map(a => <TRef id={a} key={a} />)}{(A.infra.meets || []).map(m => <TRef id={m} key={m} />)}</span></p>
+        <EnvCards A={A} open={open} />
+      </DSec>
+
+      <DSec icon="check" title="As-built component status" sub="Code, tests and ownership per component · click to trace">
+        <div className="asc-panel dd-bstats">
+          {comps.map(c => (
+            <div className="dd-bstat dd-clickable" key={c.id} onClick={() => open(c.id)}>
+              <span className="dd-bstat-name"><b>{c.id}</b> {c.name}<span className="dd-bstat-dom"> · {c.domainName}</span></span>
+              <code className="dd-bstat-path">{c.code?.path || '—'}</code>
+              <span className="dd-bstat-tests">{c.code?.tests || 'not built'}</span>
+              <span className="dd-bstat-cov">{c.code?.coverage || ''}</span>
+              <span className="dd-bstat-own">{c.code?.owners || ''}</span>
+            </div>
+          ))}
+        </div>
+      </DSec>
+    </>
   );
 }
 
@@ -736,6 +767,8 @@ function DisDesContent({ phase, entry, prd }) {
     'X/governance':          DesignControls,
     // Design (genuine outputs)
     'Design/arch':           DesignArchitecture,
+    // Build (as-built actuals — D-035)
+    'Build/infra':           BuildInfrastructure,
     // retained for back-compat / trace jumps
     'Design/usecases':       DesignUseCases,
     'Design/specs':          DesignSpecs,

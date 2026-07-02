@@ -91,6 +91,7 @@ const PHASE_ENTRIES = {
     { key: 'arch',        label: 'Architecture',               ico: 'tree' },
   ],
   Build: [
+    { key: 'infra',    label: 'Infrastructure & environments', ico: 'tree' },   // as-built actuals (D-035)
     { key: 'backlog',  label: 'Delivery backlog',     ico: 'board' },
     { key: 'agents',   label: 'Agents & skills',      ico: 'spark' },
     { key: 'integ',    label: 'Integrations',         ico: 'link' },
