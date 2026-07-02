@@ -23,18 +23,20 @@ function navTargetFor(id) {
   return t ? { ...base, ...t } : null;
 }
 function navRef(id) {
-  const t = navTargetFor(id);
-  if (!t || typeof window === "undefined") return;
-  // cynPushUrl writes the URL; __cynApplyProd switches the in-product view state
-  // (phase / entry / ctx / tab). Both are needed for a real redirect.
-  if (typeof window.cynPushUrl === "function") window.cynPushUrl(t);
-  if (typeof window.__cynApplyProd === "function") window.__cynApplyProd(t);
-  // Trace-indexed refs (FR/UC/NFR/POL live in Discover) also open the item's detail
-  // modal, focused on it — after the flow unmounts so the modal isn't hidden behind
-  // the fullscreen overlay. No-ops if the id isn't in the trace index.
-  if (t.phase === "Discover" && typeof window.cynTraceOpen === "function") {
-    setTimeout(() => window.cynTraceOpen(id), 60);
+  if (typeof window === "undefined") return;
+  // Trace-indexed refs (FR/UC/NFR/POL): open the detail modal IN PLACE — stay on the
+  // Event Flow. The modal's own "View in …" button is the explicit way to jump to the
+  // defining page. (The modal is lifted above the fullscreen overlay via CSS.)
+  if (typeof window.cynTraceHas === "function" && window.cynTraceHas(id)) {
+    window.cynTraceOpen?.(id);
+    return;
   }
+  // Non-indexed refs (aggregates, bounded contexts): navigate to the definition.
+  // cynPushUrl writes the URL; __cynApplyProd switches the in-product view state.
+  const t = navTargetFor(id);
+  if (!t) return;
+  window.cynPushUrl?.(t);
+  window.__cynApplyProd?.(t);
 }
 
 /* ── shared chips ── */

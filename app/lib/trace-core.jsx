@@ -166,7 +166,8 @@ function TraceProvider({ prd, arch, goTo, children }) {
   // board) can open an entity's detail modal by id. No-ops for unindexed ids.
   useTE(() => {
     window.cynTraceOpen = id => { if (idx.has(id)) setStack(s => (s[s.length - 1] === id ? s : [...s, id])); };
-    return () => { if (window.cynTraceOpen) delete window.cynTraceOpen; };
+    window.cynTraceHas = id => idx.has(id);
+    return () => { if (window.cynTraceOpen) delete window.cynTraceOpen; if (window.cynTraceHas) delete window.cynTraceHas; };
   }, [idx]);
   const back = () => setStack(s => s.slice(0, -1));
   const close = () => setStack([]);
