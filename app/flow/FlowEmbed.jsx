@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { MapStateProvider } from "./providers.jsx";
 import { flowConfig } from "./config";
@@ -29,6 +29,7 @@ const IconCollapse = () => (
 export default function FlowEmbed({ flowId = "decisioning" }) {
   const [expanded, setExpanded] = useState(false);
   const [lens, setLens] = useState("spec");
+  const lensCtx = useMemo(() => ({ lens, setLens }), [lens]);
 
   useEffect(() => { registerGroundingDecorator(); }, []);
   useEffect(() => {
@@ -50,17 +51,12 @@ export default function FlowEmbed({ flowId = "decisioning" }) {
 
   return (
     <MapStateProvider>
-      <LensContext.Provider value={lens}>
+      <LensContext.Provider value={lensCtx}>
         <div className={`cyn-flow-embed ${expanded ? "cyn-flow-expanded" : "cyn-flow-inline"}`} style={shell}>
           <button type="button" style={btn} onClick={() => setExpanded((e) => !e)}
             title={expanded ? "Collapse (Esc)" : "Expand to full page"} aria-label={expanded ? "Collapse" : "Expand"}>
             {expanded ? <IconCollapse /> : <IconExpand />}
           </button>
-          {/* the flow's perspective: business/spec grounding vs architecture realization */}
-          <div className="flowai-layout-toggle cyn-lens-toggle" role="group" aria-label="Flow perspective">
-            <button type="button" className="flowai-seg-btn" aria-pressed={lens === "spec"} onClick={() => setLens("spec")}>Spec</button>
-            <button type="button" className="flowai-seg-btn" aria-pressed={lens === "arch"} onClick={() => setLens("arch")}>Architecture</button>
-          </div>
           <div className="w-full h-full min-h-[500px]">
             <FlowMapSelfWired mapId={flowId} config={flowConfig} tabComponents={tabComponents} />
           </div>

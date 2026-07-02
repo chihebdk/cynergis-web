@@ -58,15 +58,11 @@
 }
 
 /* Spec | Architecture lens toggle (D-034) — an Ascent-styled segmented control
-   floated top-left over the canvas, mirroring the expand button top-right. */
+   sitting top-centre of the board panel's header row. */
 .cyn-flow-embed .cyn-lens-toggle {
-  position: absolute;
-  top: 10px;
-  left: 12px;
-  z-index: 9999;
   display: inline-flex;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  flex: none;
 }
 .cyn-flow-embed .cyn-lens-toggle .flowai-seg-btn {
   cursor: pointer;
@@ -144,13 +140,14 @@
 .cyn-flow-embed .cyn-board-headrow {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
 }
+/* title and labels get equal flex baskets so the lens toggle sits dead-centre */
 .cyn-flow-embed .cyn-board-title {
   font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; line-height: 1.25;
-  color: var(--ink); flex: 1; min-width: 0;
+  color: var(--ink); flex: 1 1 0; min-width: 0;
 }
 .cyn-flow-embed .cyn-board-labels {
   display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center;
-  flex: none; max-width: 56%;
+  flex: 1 1 0; min-width: 0;
 }
 .cyn-flow-embed .cyn-risk {
   font-size: 10px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;

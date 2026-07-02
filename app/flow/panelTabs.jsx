@@ -2,7 +2,7 @@
 
 import { useNodeCache } from "@flowai/canvas";
 import { resolveGround } from "./data";
-import { useLens } from "./lens";
+import { useLensState } from "./lens";
 import { archFor, archLabel, ENTRY_META } from "./arch";
 
 /* ── reference → "where it's defined" navigation ──
@@ -224,7 +224,7 @@ function ArchColumns({ node }) {
 /* ── the board ── */
 export function NodeBoard() {
   const { selected: node } = useNodeCache();
-  const lens = useLens();
+  const { lens, setLens } = useLensState();
   if (!node) return null;
 
   const risk = riskBadge(node);
@@ -244,10 +244,14 @@ export function NodeBoard() {
 
   return (
     <div className="cyn-board">
-      {/* header — title + short description on the left, all labels top-right */}
+      {/* header — title left, Spec|Architecture switcher top-centre, labels right */}
       <div className="cyn-board-head">
         <div className="cyn-board-headrow">
           <h2 className="cyn-board-title">{node.summary}</h2>
+          <div className="flowai-layout-toggle cyn-lens-toggle" role="group" aria-label="Flow perspective">
+            <button type="button" className="flowai-seg-btn" aria-pressed={lens === "spec"} onClick={() => setLens("spec")}>Spec</button>
+            <button type="button" className="flowai-seg-btn" aria-pressed={lens === "arch"} onClick={() => setLens("arch")}>Architecture</button>
+          </div>
           <div className="cyn-board-labels">
             {risk && <span className={`cyn-risk cyn-risk-${risk.tone}`}>{risk.label}</span>}
             {node.isPivotal && <span className="cyn-pivotal">pivotal</span>}
