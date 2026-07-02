@@ -102,7 +102,6 @@ export function NodeBoard() {
         <div className="cyn-board-headrow">
           <h2 className="cyn-board-title">{node.summary}</h2>
           <div className="cyn-board-labels">
-            <span className="cyn-board-kind">{(node.kind || "event").toUpperCase()}</span>
             {risk && <span className={`cyn-risk cyn-risk-${risk.tone}`}>{risk.label}</span>}
             {node.isPivotal && <span className="cyn-pivotal">pivotal</span>}
             {node.aggregate && <AggChip on={node.aggregate} />}

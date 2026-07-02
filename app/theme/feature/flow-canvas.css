@@ -137,10 +137,6 @@
   display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center;
   flex: none; max-width: 56%;
 }
-.cyn-flow-embed .cyn-board-kind {
-  font-size: 10px; font-weight: 600; letter-spacing: .09em;
-  text-transform: uppercase; color: var(--ink-3);
-}
 .cyn-flow-embed .cyn-risk {
   font-size: 10px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
   padding: 1px 7px; border-radius: 99px;
