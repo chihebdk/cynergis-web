@@ -104,14 +104,8 @@
 .cyn-flow-embed [data-testid="properties-resize-handle"] {
   background: var(--line);
 }
-/* Single board view: hide the (now single-entry) tab nav entirely, and collapse the
-   card header + card padding it lived in so the board sits flush at the panel top. */
+/* Single board view: hide the (now single-entry) tab nav entirely. */
 .cyn-flow-embed [data-testid="properties-nav"] { display: none; }
-.cyn-flow-embed [data-testid="properties-panel"] [data-slot="card-header"] { display: none; }
-.cyn-flow-embed [data-testid="properties-panel"] [data-slot="card"] { padding: 8px; gap: 0; }
-.cyn-flow-embed [data-testid="properties-panel"] [data-slot="card-content"] > div {
-  margin: 0; border: 0; border-radius: 0;
-}
 /* content box that holds the board */
 .cyn-flow-embed [data-testid="properties-panel"] .bg-primary-foreground {
   background: var(--panel);
