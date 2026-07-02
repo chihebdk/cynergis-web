@@ -15,10 +15,10 @@ export const GROUNDING = {
   FR6: { id: "FR6", kind: "FunctionalRequirement", title: "Let analysts hold / release and record a disposition", evidencedBy: ["S3"] },
   FR7: { id: "FR7", kind: "FunctionalRequirement", title: "Issue a step-up challenge on medium-risk decisions", evidencedBy: ["S2"] },
   FR10: { id: "FR10", kind: "FunctionalRequirement", title: "Record every decision as a tamper-evident audit entry", evidencedBy: ["S1"] },
-  "NFR-LAT": { id: "NFR-LAT", kind: "NonFunctionalRequirement", title: "Decide within the network timeout (p95 < 300 ms)", evidencedBy: ["S2"] },
+  "NFR1": { id: "NFR1", kind: "NonFunctionalRequirement", title: "p95 scoring latency under 300 ms at 3,000 TPS sustained", evidencedBy: ["S2"] },
   "POL-1": { id: "POL-1", kind: "Policy", title: "Medium risk → issue step-up", evidencedBy: ["S2"] },
   "POL-2": { id: "POL-2", kind: "Policy", title: "Blocked → open case", evidencedBy: ["S3"] },
-  "POL-3": { id: "POL-3", kind: "Policy", title: "Blocked → notify customer", evidencedBy: ["S1"] },
+  "POL1": { id: "POL1", kind: "Policy", title: "Notify on block", evidencedBy: ["S1"] },
 };
 export const resolveGround = (id) => GROUNDING[id];
 
@@ -35,7 +35,7 @@ export const decisioningFlow = {
   signals: [
     { from: "AGG-AUTH decided exactly once + single command→event", reveals: "strong consistency boundary", pattern: "Transactional aggregate, in-context" },
     { from: "p95 < 300 ms on the sync path (NFR)", reveals: "latency budget", pattern: "Co-located synchronous scoring — no chatty hops" },
-    { from: "POL-2 / POL-3 fire after commit, cross a seam", reveals: "fire-and-forget reactions", pattern: "Event-driven pub/sub across seams" },
+    { from: "POL-2 / POL1 fire after commit, cross a seam", reveals: "fire-and-forget reactions", pattern: "Event-driven pub/sub across seams" },
     { from: "Step-up: issue → await passed / failed / timeout", reveals: "short-lived stateful wait", pattern: "Process manager / saga with a timeout policy" },
     { from: "Fallback when model / features unavailable (FR8)", reveals: "degradation path", pattern: "Circuit-breaker / graceful degradation" },
   ],
@@ -43,10 +43,10 @@ export const decisioningFlow = {
     { id: "e-scored", type: "SimpleNode", parentId: "start", kind: "event", summary: "Authorization scored", isPivotal: true, aggregate: "AGG-AUTH", grounds: ["UC1"],
       description: "The model scored the authorization and attached a risk band plus an explanation — the fork the whole context turns on.",
       trigger: { kind: "external", actor: "Card network / acquirer", mechanism: "Inbound authorization request (sync path)",
-        label: "An authorization request arrives from the card network and must be scored inside the network timeout — no human, no queue.", grounds: ["UC1", "NFR-LAT"] },
+        label: "An authorization request arrives from the card network and must be scored inside the network timeout — no human, no queue.", grounds: ["UC1", "NFR1"] },
       commands: [{ label: "Score authorization", on: "AGG-AUTH", desc: "Run the transaction through the live risk model to produce a band and an explanation.", grounds: ["UC1", "FR1"] }],
       businessRules: [{ label: "A score must carry a risk band and an explanation", desc: "A bare probability is not a valid decision — every score returns one of the defined bands together with a human-readable reason.", grounds: ["FR2"] }],
-      hotspots: [{ label: "Decide within the network timeout (p95 < 300 ms)", desc: "The scoring path is synchronous and co-located; blow the latency budget and the network times the auth out.", grounds: ["NFR-LAT"] }] },
+      hotspots: [{ label: "Decide within the network timeout (p95 < 300 ms)", desc: "The scoring path is synchronous and co-located; blow the latency budget and the network times the auth out.", grounds: ["NFR1"] }] },
 
     { id: "e-approved-low", type: "SimpleNode", parentId: "e-scored", branch: "risk = low", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR1"],
       description: "Low risk — the authorization is approved straight through, with no customer friction.",
@@ -88,7 +88,7 @@ export const decisioningFlow = {
       readModels: [{ label: "Decision + explanation (audit record)", desc: "The immutable decision, its band and reason are projected for audit and dispute handling.", grounds: ["FR10"] }],
       policies: [
         { label: "When blocked → open case", desc: "POL-2: every block is queued as an analyst case in Case Management so it can be worked to a disposition.", crosses: "BC-CASE", grounds: ["POL-2", "FR5"] },
-        { label: "When blocked → notify customer", desc: "POL-3: the customer is alerted of the block within 60s with a confirm / deny action.", crosses: "BC-NOTIFY", grounds: ["POL-3", "FR4"] },
+        { label: "When blocked → notify customer", desc: "POL1: the customer is alerted of the block within 60s with a confirm / deny action.", crosses: "BC-NOTIFY", grounds: ["POL1", "FR4"] },
       ] },
   ],
 };
@@ -144,8 +144,8 @@ export const notifyFlow = {
   nodes: [
     { id: "n-sent", type: "SimpleNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, isEndNode: true, grounds: ["FR4"],
       description: "A pure reaction: on a block, the customer is alerted with a confirm / deny action. This context owns no domain state of its own.",
-      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event (POL-3)",
-        label: "An inbound domain event from Decisioning — the block is consumed here via a published-language contract.", crosses: "BC-DEC", grounds: ["POL-3", "FR4"] },
+      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event (POL1)",
+        label: "An inbound domain event from Decisioning — the block is consumed here via a published-language contract.", crosses: "BC-DEC", grounds: ["POL1", "FR4"] },
       commands: [{ label: "Send notification (confirm / deny)", desc: "Push an alert the customer can act on, closing the loop on the block.", grounds: ["FR4"] }],
       hotspots: [{ label: "Channel choice + 60s delivery SLA", desc: "Which channel, and can we guarantee delivery within 60s? Points to an off-the-shelf provider.", grounds: ["FR4"] }] },
   ],
