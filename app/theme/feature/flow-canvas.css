@@ -108,7 +108,7 @@
    card header + card padding it lived in so the board sits flush at the panel top. */
 .cyn-flow-embed [data-testid="properties-nav"] { display: none; }
 .cyn-flow-embed [data-testid="properties-panel"] [data-slot="card-header"] { display: none; }
-.cyn-flow-embed [data-testid="properties-panel"] [data-slot="card"] { padding: 0; gap: 0; }
+.cyn-flow-embed [data-testid="properties-panel"] [data-slot="card"] { padding: 8px; gap: 0; }
 .cyn-flow-embed [data-testid="properties-panel"] [data-slot="card-content"] > div {
   margin: 0; border: 0; border-radius: 0;
 }
