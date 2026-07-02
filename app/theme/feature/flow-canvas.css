@@ -69,6 +69,15 @@
 .cyn-flow-embed .react-flow__node[data-id="start"] .rounded-full {
   display: none;
 }
+/* Node description scrolls within the fixed-height box, with the scrollbar hidden
+   (so overflow never changes the node's height). */
+.cyn-flow-embed .cyn-node-desc {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cyn-flow-embed .cyn-node-desc::-webkit-scrollbar {
+  display: none;
+}
 .cyn-flow-embed .react-flow__node[data-id="start"] .rounded-2xl {
   width: max-content;
   padding: 6px 13px;
