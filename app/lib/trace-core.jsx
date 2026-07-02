@@ -35,12 +35,15 @@ const SECTION = {
   integration: { phase: 'Design',   entry: 'arch' },
   api:         { phase: 'Design',   entry: 'arch' },
   resource:    { phase: 'Design',   entry: 'arch' },
+  schema:      { phase: 'Design',   entry: 'arch' },
+  secret:      { phase: 'Design',   entry: 'arch' },
 };
 /* glyph per kind — used on chips + in trace boxes */
 const KGLYPH = {
   sc:'◎', objective:'◇', kr:'·', dependency:'⛓', persona:'☻', journey:'➤', risk:'△',
   usecase:'▤', fr:'⚙', nfr:'◈', policy:'§', governance:'⚖', security:'🔒', adr:'🧭',
   component:'▢', integration:'🔌', api:'❲❳', resource:'🗃', stakeholder:'♟',
+  schema:'⧉', secret:'🔑',
 };
 const KLABEL = {
   sc:'Success metric', objective:'Objective', kr:'Key result', dependency:'Dependency',
@@ -48,7 +51,7 @@ const KLABEL = {
   fr:'Functional requirement', nfr:'Non-functional requirement', policy:'Policy',
   governance:'Governance', security:'Security control', adr:'Decision (ADR)',
   component:'Component', integration:'Integration', api:'API', resource:'Resource',
-  stakeholder:'Stakeholder',
+  stakeholder:'Stakeholder', schema:'Schema / contract', secret:'Secret',
 };
 
 /* ============================================================
@@ -85,6 +88,8 @@ function buildTraceIndex(PRD, ARCH) {
     (ARCH.apis || []).forEach(a => add('api', a.id, a.method + ' ' + a.path, a.purpose, a));
     (ARCH.resources || []).forEach(r => add('resource', r.id, r.name, r.engine, r));
     (ARCH.security || []).forEach(s => add('security', s.id, s.control, '', s));
+    (ARCH.schemas || []).forEach(s => add('schema', s.id, s.name, s.kind + ' · v' + (s.version || '1'), s));
+    (ARCH.secrets || []).forEach(s => add('secret', s.id, s.name, s.kind, s));
   }
 
   /* ---- edges: [from, to, fwdLabel, revLabel] ---- */
@@ -118,7 +123,14 @@ function buildTraceIndex(PRD, ARCH) {
         const t = dep.type === 'resource' ? dep.ref : dep.type === 'integration' ? dep.ref : dep.ref;
         E(c.id, t, 'Depends on', 'Used by component');
       });
+      (c.resource || []).forEach(r => E(c.id, r, 'Uses resource', 'Used by component'));
     }));
+    (ARCH.schemas || []).forEach(s => {
+      (s.producers || []).forEach(p => E(p, s.id, 'Publishes', 'Published by'));
+      (s.consumers || []).forEach(cn => E(cn, s.id, 'Consumes', 'Consumed by'));
+      if (s.api) E(s.api, s.id, 'Carries schema', 'Carried by API');
+    });
+    (ARCH.secrets || []).forEach(s => (s.usedBy || []).forEach(u => E(u, s.id, 'Uses secret', 'Used by')));
     (ARCH.apis || []).forEach(a => (a.realizes || []).forEach(fr => E(a.id, fr, 'Realizes', 'Exposed via API')));
     (ARCH.security || []).forEach(s => (s.addresses || []).forEach(r => E(s.id, r, 'Addresses', 'Controlled by')));
     (ARCH.integrations || []).forEach(i => E(i.id, i.dependsOn, 'Fulfils dependency', 'Realized by integration'));

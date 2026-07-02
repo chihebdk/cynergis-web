@@ -159,13 +159,45 @@ window.__ARCH__ = {
       ]}
   ],
   resources:[
-    {id:'res-bus', name:'auth-bus', cat:'Messaging', engine:'Kafka', desc:'The authorization event backbone — requests in, decisions out.', config:[{k:'Partitions', v:'48'},{k:'Retention', v:'72h'},{k:'Replication', v:'3'},{k:'Idempotent producers', v:'on'}]},
-    {id:'res-featcache', name:'feature-cache', cat:'Cache', engine:'Redis', desc:'Single-digit-ms feature reads for scoring.', config:[{k:'Mode', v:'Cluster'},{k:'Eviction', v:'noeviction'},{k:'Replicas', v:'2'},{k:'TTL', v:'per-feature'}]},
-    {id:'res-decisiondb', name:'decision-db', cat:'Databases', engine:'PostgreSQL 16', desc:'Append-only decision log.', config:[{k:'Mode', v:'Primary + 2 replicas'},{k:'Partitioning', v:'by day'},{k:'Retention', v:'7 years (archived)'},{k:'Backups', v:'PITR'}]},
-    {id:'res-casedb', name:'case-db', cat:'Databases', engine:'PostgreSQL 16', desc:'Case state and links.', config:[{k:'Mode', v:'Primary + replica'},{k:'Backups', v:'PITR'}]},
-    {id:'res-notify', name:'notify-queue', cat:'Messaging', engine:'SQS', desc:'Outbound customer-alert queue.', config:[{k:'Type', v:'Standard'},{k:'Visibility', v:'30s'},{k:'DLQ', v:'on'}]},
-    {id:'res-audit', name:'audit-archive', cat:'Object storage', engine:'S3', desc:'Long-term, immutable decision-log archive.', config:[{k:'Object lock', v:'Compliance (7y)'},{k:'Encryption', v:'SSE-KMS'}]},
-    {id:'res-kms', name:'token-kms', cat:'Secrets', engine:'KMS', desc:'Keys for PAN tokenization and log encryption.', config:[{k:'Rotation', v:'annual'},{k:'Access', v:'IAM-scoped'}]}
+    {id:'res-bus', name:'auth-bus', cat:'Messaging', engine:'Kafka', desc:'The authorization event backbone — requests in, decisions out.', environments:['prod','staging'], config:[{k:'Partitions', v:'48'},{k:'Retention', v:'72h'},{k:'Replication', v:'3'},{k:'Idempotent producers', v:'on'}]},
+    {id:'res-featcache', name:'feature-cache', cat:'Cache', engine:'Redis', desc:'Single-digit-ms feature reads for scoring.', environments:['prod','staging'], config:[{k:'Mode', v:'Cluster'},{k:'Eviction', v:'noeviction'},{k:'Replicas', v:'2'},{k:'TTL', v:'per-feature'}]},
+    {id:'res-decisiondb', name:'decision-db', cat:'Databases', engine:'PostgreSQL 16', desc:'Append-only decision log.', environments:['prod','staging'], config:[{k:'Mode', v:'Primary + 2 replicas'},{k:'Partitioning', v:'by day'},{k:'Retention', v:'7 years (archived)'},{k:'Backups', v:'PITR'}]},
+    {id:'res-casedb', name:'case-db', cat:'Databases', engine:'PostgreSQL 16', desc:'Case state and links.', environments:['prod','staging'], config:[{k:'Mode', v:'Primary + replica'},{k:'Backups', v:'PITR'}]},
+    {id:'res-notify', name:'notify-queue', cat:'Messaging', engine:'SQS', desc:'Outbound customer-alert queue.', environments:['prod'], config:[{k:'Type', v:'Standard'},{k:'Visibility', v:'30s'},{k:'DLQ', v:'on'}]},
+    {id:'res-audit', name:'audit-archive', cat:'Object storage', engine:'S3', desc:'Long-term, immutable decision-log archive.', environments:['prod'], config:[{k:'Object lock', v:'Compliance (7y)'},{k:'Encryption', v:'SSE-KMS'}]},
+    {id:'res-kms', name:'token-kms', cat:'Secrets', engine:'KMS', desc:'Keys for PAN tokenization and log encryption.', environments:['prod','staging'], config:[{k:'Rotation', v:'annual'},{k:'Access', v:'IAM-scoped'}]}
+  ],
+  /* Contract registry — every event / table / API payload that crosses a boundary.
+     producers/consumers reference components (C*) and integrations (INT-*), so
+     alignment is checkable: who publishes, who reads, at which version. */
+  schemas:[
+    {id:'SCH-auth-requested', name:'auth.requested', kind:'event', version:'2.1', ownedBy:'INT-switch',
+      fields:[{name:'authId', type:'uuid'},{name:'cardToken', type:'string'},{name:'amount', type:'number'},{name:'merchant', type:'string'},{name:'mcc', type:'string'},{name:'ts', type:'timestamp'}],
+      producers:['INT-switch'], consumers:['C1']},
+    {id:'SCH-decision', name:'decision', kind:'event', version:'1.2', ownedBy:'C1',
+      fields:[{name:'authId', type:'uuid'},{name:'band', type:'enum(low|medium|high)'},{name:'score', type:'numeric'},{name:'explanation', type:'json'},{name:'modelVersion', type:'string'}],
+      producers:['C1'], consumers:['INT-switch','INT-ledger']},
+    {id:'SCH-blocked', name:'transaction.blocked', kind:'event', version:'1.0', ownedBy:'C1',
+      fields:[{name:'authId', type:'uuid'},{name:'cardToken', type:'string'},{name:'explanation', type:'json'}],
+      producers:['C1'], consumers:['C3','C4']},
+    {id:'SCH-decision-row', name:'decision_log (table)', kind:'table', version:'1.3', ownedBy:'C1',
+      fields:[{name:'decision_id', type:'uuid'},{name:'auth_id', type:'uuid'},{name:'band', type:'enum'},{name:'explanation', type:'jsonb'},{name:'model_version', type:'text'}],
+      producers:['C1'], consumers:['C3']},
+    {id:'SCH-outcome-label', name:'outcome.labelled', kind:'event', version:'1.0', ownedBy:'C3',
+      fields:[{name:'caseId', type:'uuid'},{name:'authId', type:'uuid'},{name:'disposition', type:'enum(fraud|cleared)'}],
+      producers:['C3'], consumers:['C5']},
+    {id:'SCH-score-req', name:'POST /v1/score (request)', kind:'api-req', version:'1.1', ownedBy:'C1', api:'API-1',
+      fields:[{name:'authId', type:'uuid'},{name:'cardToken', type:'string'},{name:'amount', type:'number'}],
+      producers:['INT-switch'], consumers:['C1']}
+  ],
+  /* Secret-management inventory — every credential the system needs, where it is
+     managed, who uses it, and where it exists. usedBy references components and
+     integrations; environments reference infra.environments. */
+  secrets:[
+    {id:'SCRT-switch-mtls', name:'switch-mtls-cert', kind:'mTLS certificate', manager:'AWS Secrets Manager', pathHint:'/fraud/switch/mtls', usedBy:['C1','INT-switch'], rotation:'90d', environments:['prod','staging']},
+    {id:'SCRT-registry-token', name:'model-registry-token', kind:'API token', manager:'AWS Secrets Manager', pathHint:'/fraud/registry/token', usedBy:['C1','INT-registry'], rotation:'30d', environments:['prod','staging']},
+    {id:'SCRT-notify-oauth', name:'notify-oauth-client', kind:'OAuth2 client', manager:'AWS Secrets Manager', pathHint:'/fraud/notify/oauth', usedBy:['C4','INT-notify'], rotation:'180d', environments:['prod']},
+    {id:'SCRT-pan-key', name:'pan-token-key', kind:'KMS key', manager:'KMS (res-kms)', pathHint:'alias/fraud/pan-token', usedBy:['C1'], rotation:'annual', environments:['prod','staging']}
   ],
   apis:[
     {id:'API-1', method:'POST', path:'/v1/score', purpose:'Score an authorization and return a decision + explanation (internal, hot path).', realizes:['FR1','FR2'], errors:'504 on budget exceeded → caller applies fail-open policy.'},

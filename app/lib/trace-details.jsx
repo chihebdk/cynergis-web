@@ -186,15 +186,64 @@ const { Ref, RelationshipPanel, MermaidView } = window;
         return <>
           <DRow k="Subdomain"><Pill>{d.domain}</Pill></DRow>
           <DRow k="Overview">{d.overview}</DRow>
+          {(d.trigger || []).length > 0 && <>
+            <SecLabel>Entry points (triggers)</SecLabel>
+            {(d.trigger || []).map((t, i) => <div className="tr-drow" key={i}><div className="tr-dk"><Pill tone="info">{t.type}</Pill></div><div className="tr-dv">{t.name || t.action}{t.source && <span className="tr-dim"> · from {t.source}</span>}{t.actor && <span className="tr-dim"> · {t.actor}</span>}{t.schema && <div className="tr-code-sm"><code>{t.schema}</code></div>}{t.why && <div className="tr-dim">{t.why}</div>}</div></div>)}
+          </>}
+          {(d.command || []).length > 0 && <><SecLabel>Commands</SecLabel><DList items={(d.command || []).map(c => c.command)} /></>}
           {(d.businessRules || []).length > 0 && <>
             <SecLabel>Business rules</SecLabel>
             {(d.businessRules || []).map((b, i) => <div className="tr-drow" key={i}><div className="tr-dk">{b.ref && <Ref id={b.ref} />}</div><div className="tr-dv">{b.rule}</div></div>)}
           </>}
-          {(d.command || []).length > 0 && <><SecLabel>Commands</SecLabel><DList items={(d.command || []).map(c => c.command)} /></>}
+          {(d.readModel || []).length > 0 && <>
+            <SecLabel>Reads</SecLabel>
+            {(d.readModel || []).map((r, i) => <div className="tr-drow" key={i}><div className="tr-dk"><Pill>{r.type}</Pill></div><div className="tr-dv">{r.table || r.api || ''}{(r.table || r.api) && r.desc ? ' — ' : ''}{r.desc}</div></div>)}
+          </>}
+          {(d.writeModel || []).length > 0 && <>
+            <SecLabel>Writes</SecLabel>
+            {(d.writeModel || []).map((w, i) => <div className="tr-drow" key={i}><div className="tr-dk"><Pill>{w.type}</Pill></div><div className="tr-dv">{w.table || w.queue || ''}{(w.table || w.queue) && w.desc ? ' — ' : ''}{w.desc}</div></div>)}
+          </>}
+          {(d.resource || []).length > 0 && <>
+            <SecLabel>Resources</SecLabel>
+            <div className="tr-chiprow">{(d.resource || []).map(r => <Ref id={r} key={r} />)}</div>
+          </>}
+          {(d.dependency || []).length > 0 && <>
+            <SecLabel>Dependencies</SecLabel>
+            {(d.dependency || []).map((dep, i) => <div className="tr-drow" key={i}><div className="tr-dk"><Ref id={dep.ref} /></div><div className="tr-dv">{dep.note}</div></div>)}
+          </>}
+          {d.code && <>
+            <SecLabel>Code</SecLabel>
+            <DRow k="Path"><code className="tr-code">{d.code.path}</code></DRow>
+            <DRow k="Tests">{d.code.tests}{d.code.coverage && <span className="tr-dim"> · {d.code.coverage} coverage</span>}</DRow>
+            <DRow k="Owners">{d.code.owners}</DRow>
+          </>}
           {(d.hotspot || []).length > 0 && <>
             <SecLabel>Hotspots</SecLabel>
             {(d.hotspot || []).map((m, i) => <div className="tr-hot" key={i}><Pill tone="warn">{m.level}</Pill> {m.text}</div>)}
           </>}
+          <Rel />
+        </>;
+
+      case 'schema':
+        return <>
+          <div className="tr-persona-top"><Pill>{d.kind}</Pill><Pill tone="info">v{d.version}</Pill>{d.ownedBy && <Ref id={d.ownedBy} />}</div>
+          {(d.fields || []).length > 0 && <>
+            <SecLabel>Fields</SecLabel>
+            <table className="tr-table"><tbody>{(d.fields || []).map((f, i) => <tr key={i}><td>{f.name}</td><td>{f.type}</td></tr>)}</tbody></table>
+          </>}
+          <SecLabel>Producers → consumers</SecLabel>
+          <div className="tr-drow"><div className="tr-dk">Producers</div><div className="tr-dv tr-chiprow">{(d.producers || []).map(p => <Ref id={p} key={p} />)}</div></div>
+          <div className="tr-drow"><div className="tr-dk">Consumers</div><div className="tr-dv tr-chiprow">{(d.consumers || []).length ? (d.consumers || []).map(c => <Ref id={c} key={c} />) : <Pill tone="warn">no consumers registered</Pill>}</div></div>
+          <Rel />
+        </>;
+
+      case 'secret':
+        return <>
+          <div className="tr-persona-top"><Pill>{d.kind}</Pill><Pill tone="info">{d.manager}</Pill></div>
+          <DRow k="Path"><code className="tr-code">{d.pathHint}</code></DRow>
+          <DRow k="Rotation">{d.rotation}</DRow>
+          <DRow k="Environments">{(d.environments || []).join(' · ')}</DRow>
+          <DRow k="Used by"><span className="tr-chiprow">{(d.usedBy || []).map(u => <Ref id={u} key={u} />)}</span></DRow>
           <Rel />
         </>;
 

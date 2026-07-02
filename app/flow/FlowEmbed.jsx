@@ -6,6 +6,7 @@ import { MapStateProvider } from "./providers.jsx";
 import { flowConfig } from "./config";
 import { panelTabComponents } from "./panelTabs.jsx";
 import { registerGroundingDecorator } from "./GroundingDecorator.jsx";
+import { LensContext } from "./lens";
 
 // FlowMapSelfWired handles node/edge building, layout, submaps, toolbars and editing.
 const FlowMapSelfWired = dynamic(
@@ -23,10 +24,11 @@ const IconCollapse = () => (
 );
 
 // Self-contained embed: mount anywhere with a flowId (= mapId). Sets up the state
-// provider, the self-wired canvas, our Grounding decorator + Grounded-detail tab,
-// and a top-right expand/collapse control.
+// provider, the self-wired canvas, our Grounding decorator + board panel, the
+// Spec|Architecture lens toggle (D-034), and a top-right expand/collapse control.
 export default function FlowEmbed({ flowId = "decisioning" }) {
   const [expanded, setExpanded] = useState(false);
+  const [lens, setLens] = useState("spec");
 
   useEffect(() => { registerGroundingDecorator(); }, []);
   useEffect(() => {
@@ -48,15 +50,22 @@ export default function FlowEmbed({ flowId = "decisioning" }) {
 
   return (
     <MapStateProvider>
-      <div className={`cyn-flow-embed ${expanded ? "cyn-flow-expanded" : "cyn-flow-inline"}`} style={shell}>
-        <button type="button" style={btn} onClick={() => setExpanded((e) => !e)}
-          title={expanded ? "Collapse (Esc)" : "Expand to full page"} aria-label={expanded ? "Collapse" : "Expand"}>
-          {expanded ? <IconCollapse /> : <IconExpand />}
-        </button>
-        <div className="w-full h-full min-h-[500px]">
-          <FlowMapSelfWired mapId={flowId} config={flowConfig} tabComponents={tabComponents} />
+      <LensContext.Provider value={lens}>
+        <div className={`cyn-flow-embed ${expanded ? "cyn-flow-expanded" : "cyn-flow-inline"}`} style={shell}>
+          <button type="button" style={btn} onClick={() => setExpanded((e) => !e)}
+            title={expanded ? "Collapse (Esc)" : "Expand to full page"} aria-label={expanded ? "Collapse" : "Expand"}>
+            {expanded ? <IconCollapse /> : <IconExpand />}
+          </button>
+          {/* the flow's perspective: business/spec grounding vs architecture realization */}
+          <div className="flowai-layout-toggle cyn-lens-toggle" role="group" aria-label="Flow perspective">
+            <button type="button" className="flowai-seg-btn" aria-pressed={lens === "spec"} onClick={() => setLens("spec")}>Spec</button>
+            <button type="button" className="flowai-seg-btn" aria-pressed={lens === "arch"} onClick={() => setLens("arch")}>Architecture</button>
+          </div>
+          <div className="w-full h-full min-h-[500px]">
+            <FlowMapSelfWired mapId={flowId} config={flowConfig} tabComponents={tabComponents} />
+          </div>
         </div>
-      </div>
+      </LensContext.Provider>
     </MapStateProvider>
   );
 }

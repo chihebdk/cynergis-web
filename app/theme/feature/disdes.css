@@ -232,3 +232,72 @@
   .dd-flow, .dd-dc, .dd-scope{ grid-template-columns:1fr; }
   .dd-arc, .dd-shifts, .dd-horizons{ grid-template-columns:1fr 1fr; }
 }
+
+/* ---- Architecture · Resources & data (inventory) ---- */
+.dd-resgroups{ display:flex; flex-direction:column; gap:14px; }
+.dd-resgroup{ border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden; }
+.dd-resgroup-h{ font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-3); padding:9px 18px 8px; background:var(--panel-3); border-bottom:1px solid var(--line); }
+.dd-res{ padding:11px 18px; border-top:1px solid var(--line); }
+.dd-res:first-of-type{ border-top:none; }
+.dd-res-main{ display:flex; align-items:baseline; gap:10px; }
+.dd-res-name{ font-weight:650; font-size:13.5px; color:var(--ink-1); }
+.dd-res-engine{ font-size:11px; font-weight:600; color:var(--accent); background:var(--accent-soft); border-radius:99px; padding:1px 8px; }
+.dd-res-envs{ margin-left:auto; font-size:11px; color:var(--ink-3); font-family:var(--font-mono, ui-monospace); }
+.dd-res-desc{ font-size:12.5px; line-height:1.5; color:var(--ink-2); margin:3px 0 6px; }
+.dd-res-used{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.dd-res-usedk{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-4); }
+.dd-res-unused{ font-size:11.5px; color:oklch(0.55 0.16 40); }
+.dd-res-drift{ margin-top:10px; font-size:12px; color:oklch(0.5 0.14 40); background:oklch(0.97 0.02 70); border:1px solid oklch(0.88 0.05 70); border-radius:10px; padding:9px 14px; }
+
+/* ---- Architecture · APIs & contracts ---- */
+.dd-api{ display:grid; grid-template-columns:1.1fr 1.6fr auto; gap:14px; align-items:center; padding:10px 18px; border-top:1px solid var(--line); }
+.dd-api:first-child{ border-top:none; }
+.dd-api-ep{ font-size:12px; color:var(--ink-1); }
+.dd-api-ep b{ color:var(--accent); }
+.dd-api-purpose{ font-size:12.5px; color:var(--ink-2); line-height:1.45; }
+.dd-api-realizes{ display:flex; gap:5px; }
+.dd-sub-h{ font-weight:650; font-size:13.5px; color:var(--ink-1); margin:16px 0 8px; }
+.dd-sub-sub{ font-weight:400; font-size:12px; color:var(--ink-3); margin-left:8px; }
+.dd-schema{ display:grid; grid-template-columns:1.3fr .6fr .45fr 1fr 1.2fr; gap:12px; align-items:center; padding:9px 18px; border-top:1px solid var(--line); font-size:12.5px; }
+.dd-schema:first-child{ border-top:none; }
+.dd-schema-head{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-4); background:var(--panel-3); }
+.dd-schema-name{ font-weight:600; color:var(--ink-1); font-family:var(--font-mono, ui-monospace); font-size:12px; }
+.dd-schema-kind{ color:var(--ink-3); }
+.dd-schema-ver{ color:var(--ink-3); font-family:var(--font-mono, ui-monospace); font-size:11.5px; }
+.dd-schema-refs{ display:flex; gap:4px; flex-wrap:wrap; }
+
+/* ---- Architecture · Security & secrets ---- */
+.dd-secrets{ overflow:hidden; }
+.dd-secret{ display:grid; grid-template-columns:1.1fr .8fr 1.2fr 1fr; gap:12px; align-items:center; padding:10px 18px; border-top:1px solid var(--line); font-size:12.5px; }
+.dd-secret:first-child{ border-top:none; }
+.dd-secret-name{ font-weight:600; color:var(--ink-1); }
+.dd-secret-kind{ color:var(--ink-3); }
+.dd-secret-mgr{ color:var(--ink-2); }
+.dd-secret-rot{ color:var(--ink-3); font-size:11.5px; }
+.dd-secret-used{ display:flex; gap:4px; flex-wrap:wrap; }
+
+/* ---- Architecture · Infrastructure & environments ---- */
+.dd-infra-sum{ font-size:13px; line-height:1.55; color:var(--ink-2); margin:0 0 12px; }
+.dd-envs{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.dd-env{ border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:14px 16px; }
+.dd-env-h{ display:flex; align-items:baseline; gap:9px; margin-bottom:4px; }
+.dd-env-name{ font-weight:650; font-size:13.5px; color:var(--ink-1); }
+.dd-env-cluster{ font-size:11px; color:var(--ink-3); font-family:var(--font-mono, ui-monospace); }
+.dd-env-region{ margin-left:auto; font-size:11px; color:var(--ink-3); }
+.dd-env-notes{ font-size:12px; line-height:1.5; color:var(--ink-2); margin-bottom:8px; }
+.dd-env-row{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:5px; }
+.dd-env-k{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-4); min-width:72px; }
+.dd-env-chip{ font-size:11px; color:var(--ink-2); background:var(--panel-3); border-radius:6px; padding:2px 7px; }
+.dd-env-res{ font-size:11px; color:var(--accent); background:var(--accent-soft); border:0; border-radius:6px; padding:2px 7px; cursor:pointer; }
+.dd-env-res:hover{ filter:brightness(.96); }
+
+/* trace-modal helpers used by the upgraded component/schema/secret details */
+.tr-chiprow{ display:flex; gap:4px; flex-wrap:wrap; }
+.tr-dim{ color:var(--ink-3); font-size:12px; }
+.tr-code-sm{ margin-top:3px; }
+.tr-code-sm code{ font-size:11px; color:var(--ink-2); background:var(--panel-3); border-radius:6px; padding:2px 6px; }
+
+@media (max-width: 920px){
+  .dd-envs{ grid-template-columns:1fr; }
+  .dd-schema, .dd-secret, .dd-api{ grid-template-columns:1fr; gap:4px; }
+}

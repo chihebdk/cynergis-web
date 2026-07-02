@@ -57,6 +57,21 @@
   height: 14px;
 }
 
+/* Spec | Architecture lens toggle (D-034) — an Ascent-styled segmented control
+   floated top-left over the canvas, mirroring the expand button top-right. */
+.cyn-flow-embed .cyn-lens-toggle {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.cyn-flow-embed .cyn-lens-toggle .flowai-seg-btn {
+  cursor: pointer;
+}
+
 /* Start box (view-only): drop the add-node button, keep just a centered, slightly
    larger "Start" label. (Overrides the built-in StartNode's Tailwind classes.) */
 /* Shrink the node wrapper to fit the label — it's a fixed 165px by default, so the

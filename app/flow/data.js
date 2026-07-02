@@ -44,13 +44,29 @@ export const decisioningFlow = {
         label: "An authorization request arrives from the card network and must be scored inside the network timeout — no human, no queue.", grounds: ["UC1", "NFR1"] },
       commands: [{ label: "Score authorization", on: "AGG-AUTH", desc: "Run the transaction through the live risk model to produce a band and an explanation.", grounds: ["UC1", "FR1"] }],
       businessRules: [{ label: "A score must carry a risk band and an explanation", desc: "A bare probability is not a valid decision — every score returns one of the defined bands together with a human-readable reason.", grounds: ["FR2"] }],
-      hotspots: [{ label: "Decide within the network timeout (p95 < 300 ms)", desc: "The scoring path is synchronous and co-located; blow the latency budget and the network times the auth out.", grounds: ["NFR1"] }] },
+      hotspots: [{ label: "Decide within the network timeout (p95 < 300 ms)", desc: "The scoring path is synchronous and co-located; blow the latency budget and the network times the auth out.", grounds: ["NFR1"] }],
+      arch: {
+        component: "C1",
+        entry: { type: "messageTrigger", ref: "INT-switch", topic: "auth.requested", schema: "SCH-auth-requested", auth: "mTLS" },
+        emits: { via: "res-bus", topic: "decision-events", schema: "SCH-decision" },
+        reads: [{ resource: "res-featcache" }, { ref: "INT-registry", label: "active model version" }],
+        writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
+        secrets: ["SCRT-switch-mtls", "SCRT-registry-token", "SCRT-pan-key"],
+        slo: ["NFR1"],
+      } },
 
     { id: "e-approved-low", type: "SimpleNode", parentId: "e-scored", branch: "risk = low", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR1"],
       description: "Low risk — the authorization is approved straight through, with no customer friction.",
       trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = low",
         label: "No human or external call — a low band auto-approves immediately as a reaction to the score.", grounds: ["FR1"] },
-      commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR1"] }] },
+      commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR1"] }],
+      arch: {
+        component: "C1",
+        entry: { type: "sequentialFlowTrigger", label: "continues from Authorization scored" },
+        emits: { via: "res-bus", topic: "decision-events", schema: "SCH-decision" },
+        writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
+        slo: ["NFR1"],
+      } },
 
     { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["FR7"],
       description: "Medium risk — the customer is challenged to prove it's them, and the authorization is held pending the outcome.",
@@ -63,19 +79,38 @@ export const decisioningFlow = {
         { label: "When step-up passed → resume decision", desc: "A passed challenge releases the hold and re-decides the authorization as low risk.", crosses: "BC-DEC", grounds: ["FR7"] },
         { label: "When step-up expired → block", desc: "An unanswered challenge falls through to a block at SLA expiry.", crosses: "BC-DEC", grounds: ["FR7"] },
       ],
-      hotspots: [{ label: "Step-up UX + timeout policy", desc: "How long do we wait, and what happens on no response? A saga / timeout policy is implied.", grounds: [] }] },
+      hotspots: [{ label: "Step-up UX + timeout policy", desc: "How long do we wait, and what happens on no response? A saga / timeout policy is implied.", grounds: [] }],
+      arch: {
+        component: "C1",
+        entry: { type: "sequentialFlowTrigger", label: "continues from Authorization scored" },
+        emits: { via: "res-bus", topic: "stepup.challenge", schema: null },   // contract not designed yet → assumed
+        writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
+        slo: ["NFR1"],
+      } },
 
     { id: "e-stepup-pass", type: "SimpleNode", parentId: "e-stepup", branch: "passed", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"],
       description: "The customer cleared the step-up challenge, so the held authorization is approved.",
       trigger: { kind: "human", actor: "Cardholder", mechanism: "Completed challenge (OTP / app approval)",
         label: "A person actively responded and passed the challenge within the timeout.", grounds: ["FR7"] },
-      commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR7"] }] },
+      commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR7"] }],
+      arch: {
+        component: "C1",
+        entry: { type: "userTrigger", ref: "API-2", label: "cardholder confirm releases the hold" },
+        emits: { via: "res-bus", topic: "decision-events", schema: "SCH-decision" },
+        writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
+      } },
 
     { id: "e-stepup-fail", type: "SimpleNode", parentId: "e-stepup", branch: "failed", kind: "event", summary: "Authorization blocked", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"],
       description: "The customer failed or abandoned the challenge, so the authorization is blocked — same as a high-risk block.",
       trigger: { kind: "human", actor: "Cardholder", mechanism: "Failed / abandoned challenge (or timeout)",
         label: "The challenge was not passed — a wrong code, an explicit decline, or no response before the timeout.", grounds: ["FR7"] },
-      commands: [{ label: "Apply decision (block)", on: "AGG-AUTH", grounds: ["FR7"] }] },
+      commands: [{ label: "Apply decision (block)", on: "AGG-AUTH", grounds: ["FR7"] }],
+      arch: {
+        component: "C1",
+        entry: { type: "userTrigger", ref: "INT-notify", label: "challenge failed / declined / timed out" },
+        emits: { via: "res-bus", topic: "transaction.blocked", schema: "SCH-blocked" },
+        writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
+      } },
 
     { id: "e-blocked", type: "SimpleNode", parentId: "e-scored", branch: "risk = high", kind: "event", summary: "Authorization blocked", isPivotal: true, aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR3"],
       description: "High risk — a reversible soft-hold is placed, and the block fans out: a case is opened and the customer is alerted.",
@@ -87,7 +122,19 @@ export const decisioningFlow = {
       policies: [
         { label: "When blocked → open case", desc: "Every block is queued as an analyst case in Case Management so it can be worked to a disposition.", crosses: "BC-CASE", grounds: ["FR5"] },
         { label: "When blocked → notify customer", desc: "POL1: the customer is alerted of the block within 60s with a confirm / deny action.", crosses: "BC-NOTIFY", grounds: ["POL1", "FR4"] },
-      ] },
+      ],
+      arch: {
+        component: "C1",
+        entry: { type: "sequentialFlowTrigger", label: "continues from Authorization scored" },
+        emits: { via: "res-bus", topic: "transaction.blocked", schema: "SCH-blocked" },
+        writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }, { resource: "res-audit" }],
+        reactions: [
+          { via: "res-bus", topic: "transaction.blocked", consumer: "C3" },
+          { via: "res-notify", topic: "block.placed", consumer: "C4" },
+        ],
+        secrets: ["SCRT-pan-key"],
+        slo: ["NFR3"],
+      } },
   ],
 };
 
@@ -166,7 +213,7 @@ export const embeddedEntities = {
     fields: [
       "id", "name", "summary", "parentId", "type", "isEndNode", "submapId", "refNodeId", "domainId", "submapInstanceParentId",
       // event-flow extras (D-031 grounding + event-centric grammar)
-      "kind", "isPivotal", "aggregate", "branch", "grounds", "description", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots",
+      "kind", "isPivotal", "aggregate", "branch", "grounds", "description", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots", "arch",
     ],
   },
 };

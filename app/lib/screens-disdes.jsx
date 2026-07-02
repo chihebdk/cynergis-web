@@ -571,7 +571,146 @@ function DesignArchitecture({ prd }) {
           ))}
         </div>
       </DSec>
+
+      <ArchResources A={A} open={open} />
+      <ArchApisContracts A={A} open={open} />
+      <ArchSecuritySecrets A={A} open={open} />
+      <ArchInfraEnvironments A={A} open={open} />
     </>
+  );
+}
+
+/* ---- Architecture page · Resources & data (the inventory) ---- */
+/* Usage is derived bottom-up from component links — never hand-maintained. */
+function archResourceUsers(A, resId) {
+  const users = [];
+  (A.domains || []).forEach(dm => (dm.components || []).forEach(c => {
+    const uses = (c.resource || []).includes(resId) || (c.dependency || []).some(d => d.ref === resId);
+    if (uses) users.push(c.id);
+  }));
+  return users;
+}
+function ArchResources({ A, open }) {
+  const groups = {};
+  (A.resources || []).forEach(r => { (groups[r.cat] = groups[r.cat] || []).push(r); });
+  const order = ['Databases', 'Messaging', 'Cache', 'Object storage', 'Secrets'];
+  const cats = [...order.filter(c => groups[c]), ...Object.keys(groups).filter(c => !order.includes(c))];
+  const unused = (A.resources || []).filter(r => archResourceUsers(A, r.id).length === 0);
+  return (
+    <DSec icon="board" title="Resources & data" sub="The runtime inventory — every store, queue and cache, who uses it, and where it runs">
+      <div className="dd-resgroups">
+        {cats.map(cat => (
+          <div className="dd-resgroup" key={cat}>
+            <div className="dd-resgroup-h">{cat}</div>
+            {groups[cat].map(r => {
+              const users = archResourceUsers(A, r.id);
+              return (
+                <div className="dd-res dd-clickable" key={r.id} onClick={() => open(r.id)}>
+                  <div className="dd-res-main">
+                    <span className="dd-res-name">{r.name}</span>
+                    <span className="dd-res-engine">{r.engine}</span>
+                    <span className="dd-res-envs">{(r.environments || []).join(' · ')}</span>
+                  </div>
+                  <div className="dd-res-desc">{r.desc}</div>
+                  <div className="dd-res-used" onClick={e => e.stopPropagation()}>
+                    <span className="dd-res-usedk">used by</span>
+                    {users.length ? users.map(u => <TRef id={u} key={u} />) : <span className="dd-res-unused">⚠ nothing links here</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      {unused.length > 0 && <div className="dd-res-drift">Drift check: {unused.length} resource{unused.length > 1 ? 's' : ''} with no component using {unused.length > 1 ? 'them' : 'it'} — {unused.map(r => r.name).join(', ')}.</div>}
+    </DSec>
+  );
+}
+
+/* ---- Architecture page · APIs & contracts (+ schema alignment) ---- */
+function ArchApisContracts({ A, open }) {
+  return (
+    <DSec icon="link" title="APIs & contracts" sub="The surface area — endpoints, and the schema registry every boundary shares">
+      <div className="asc-panel dd-apis">
+        {(A.apis || []).map(a => (
+          <div className="dd-api dd-clickable" key={a.id} onClick={() => open(a.id)}>
+            <code className="dd-api-ep"><b>{a.method}</b> {a.path}</code>
+            <span className="dd-api-purpose">{a.purpose}</span>
+            <span className="dd-api-realizes" onClick={e => e.stopPropagation()}>{(a.realizes || []).map(r => <TRef id={r} key={r} />)}</span>
+          </div>
+        ))}
+      </div>
+      {(A.schemas || []).length > 0 && <>
+        <div className="dd-sub-h">Schema registry <span className="dd-sub-sub">producer → consumer alignment per contract</span></div>
+        <div className="asc-panel dd-schemas">
+          <div className="dd-schema dd-schema-head">
+            <span>Contract</span><span>Kind</span><span>Version</span><span>Producers</span><span>Consumers</span>
+          </div>
+          {(A.schemas || []).map(s => (
+            <div className="dd-schema dd-clickable" key={s.id} onClick={() => open(s.id)}>
+              <span className="dd-schema-name">{s.name}</span>
+              <span className="dd-schema-kind">{s.kind}</span>
+              <span className="dd-schema-ver">v{s.version}</span>
+              <span className="dd-schema-refs" onClick={e => e.stopPropagation()}>{(s.producers || []).map(p => <TRef id={p} key={p} />)}</span>
+              <span className="dd-schema-refs" onClick={e => e.stopPropagation()}>{(s.consumers || []).length ? (s.consumers || []).map(c => <TRef id={c} key={c} />) : <span className="dd-res-unused">⚠ none</span>}</span>
+            </div>
+          ))}
+        </div>
+      </>}
+    </DSec>
+  );
+}
+
+/* ---- Architecture page · Security & secrets ---- */
+function ArchSecuritySecrets({ A, open }) {
+  return (
+    <DSec icon="policy" title="Security & secrets" sub="Controls, and the credential inventory under management">
+      <div className="dd-secs">
+        {(A.security || []).map(s => (
+          <div className="dd-sec dd-clickable" key={s.id} onClick={() => open(s.id)}>
+            <div className="dd-sec-h">{s.control}</div>
+            <div className="dd-sec-ap">{s.approach}</div>
+            <div className="dd-sec-addr" onClick={e => e.stopPropagation()}>{(s.addresses || []).map(a => <TRef id={a} key={a} />)}</div>
+          </div>
+        ))}
+      </div>
+      {(A.secrets || []).length > 0 && <>
+        <div className="dd-sub-h">Secret management <span className="dd-sub-sub">every credential, its manager, rotation and users</span></div>
+        <div className="asc-panel dd-secrets">
+          {(A.secrets || []).map(s => (
+            <div className="dd-secret dd-clickable" key={s.id} onClick={() => open(s.id)}>
+              <span className="dd-secret-name">🔑 {s.name}</span>
+              <span className="dd-secret-kind">{s.kind}</span>
+              <span className="dd-secret-mgr">{s.manager}<span className="dd-secret-rot"> · rotates {s.rotation}</span></span>
+              <span className="dd-secret-used" onClick={e => e.stopPropagation()}>{(s.usedBy || []).map(u => <TRef id={u} key={u} />)}</span>
+            </div>
+          ))}
+        </div>
+      </>}
+    </DSec>
+  );
+}
+
+/* ---- Architecture page · Infrastructure & environments ---- */
+function ArchInfraEnvironments({ A, open }) {
+  const inf = A.infra;
+  if (!inf) return null;
+  const resIn = (envId) => (A.resources || []).filter(r => (r.environments || []).includes(envId));
+  return (
+    <DSec icon="arch" title="Infrastructure & environments" sub={`${inf.cloud} · ${inf.platform} — what runs where`}>
+      <p className="dd-infra-sum">{inf.summary} <span onClick={e => e.stopPropagation()}>{(inf.adrs || []).map(a => <TRef id={a} key={a} />)}{(inf.meets || []).map(m => <TRef id={m} key={m} />)}</span></p>
+      <div className="dd-envs">
+        {(inf.environments || []).map(env => (
+          <div className="dd-env" key={env.id}>
+            <div className="dd-env-h"><span className="dd-env-name">{env.name}</span><span className="dd-env-cluster">{env.cluster}</span><span className="dd-env-region">{env.region}</span></div>
+            <div className="dd-env-notes">{env.notes}</div>
+            <div className="dd-env-row"><span className="dd-env-k">services</span>{(env.services || []).map((s, i) => <span className="dd-env-chip" key={i}>{s.name}</span>)}</div>
+            <div className="dd-env-row"><span className="dd-env-k">resources</span>{resIn(env.id).map(r => <button type="button" className="dd-env-res" key={r.id} onClick={() => open(r.id)}>{r.name}</button>)}</div>
+            <div className="dd-env-row"><span className="dd-env-k">dashboards</span>{(env.dashboards || []).map((dsh, i) => <span className="dd-env-chip" key={i}>{dsh.name}</span>)}</div>
+          </div>
+        ))}
+      </div>
+    </DSec>
   );
 }
 
