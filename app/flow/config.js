@@ -32,15 +32,9 @@ export const flowConfig = {
   },
   lanes: { show: false },
   map: {
-    // one tab per section; className/selectedCls are hooks the Ascent CSS themes
+    // Single board view (header + all sections as columns); the tab nav is hidden.
     properties: [
-      { tab: "OverviewTab", title: "Overview", icon: "mdi:flash-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
-      { tab: "TriggerTab", title: "Trigger", icon: "mdi:ray-start-arrow", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
-      { tab: "CommandsTab", title: "Commands", icon: "mdi:play-circle-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
-      { tab: "RulesTab", title: "Business rules", icon: "mdi:scale-balance", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
-      { tab: "ReadModelsTab", title: "Read models", icon: "mdi:eye-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
-      { tab: "ReactionsTab", title: "Reactions", icon: "mdi:arrow-decision-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
-      { tab: "HotspotsTab", title: "Hotspots", icon: "mdi:alert-outline", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
+      { tab: "NodeBoard", title: "Details", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
     ],
   },
 };

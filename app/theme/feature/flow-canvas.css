@@ -104,33 +104,98 @@
 .cyn-flow-embed [data-testid="properties-resize-handle"] {
   background: var(--line);
 }
-/* tab bar — underline tabs like the Ascent .ddd-tabs */
-.cyn-flow-embed [data-testid="properties-nav"] {
-  gap: 2px;
-  border-bottom: 1px solid var(--line);
-}
-.cyn-flow-embed .cyn-ptab {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 550;
-  color: var(--ink-3);
-  background: transparent !important;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  height: auto;
-  padding: 8px 12px;
-  box-shadow: none;
-  transition: color .12s, border-color .12s;
-}
-.cyn-flow-embed .cyn-ptab:hover { color: var(--ink); }
-.cyn-flow-embed .cyn-ptab.cyn-ptab-on {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-.cyn-flow-embed .cyn-ptab svg { opacity: .8; }
-/* content box under the tabs */
+/* Single board view: hide the (now single-entry) tab nav entirely. */
+.cyn-flow-embed [data-testid="properties-nav"] { display: none; }
+/* content box that holds the board */
 .cyn-flow-embed [data-testid="properties-panel"] .bg-primary-foreground {
   background: var(--panel);
   border-color: var(--line);
+  padding: 0;
+}
+
+/* ── Node board (properties panel) ─────────────────────────────────────────── */
+.cyn-flow-embed .cyn-board {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--font-display);
+}
+/* header */
+.cyn-flow-embed .cyn-board-head {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.cyn-flow-embed .cyn-board-eyebrow { display: flex; align-items: center; gap: 8px; }
+.cyn-flow-embed .cyn-board-kind {
+  font-size: 11px; font-weight: 600; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.cyn-flow-embed .cyn-risk {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 99px;
+}
+.cyn-flow-embed .cyn-risk-low { background: #dcfce7; color: #15803d; }
+.cyn-flow-embed .cyn-risk-med { background: #fef3c7; color: #b45309; }
+.cyn-flow-embed .cyn-risk-high { background: #fee2e2; color: #b91c1c; }
+.cyn-flow-embed .cyn-pivotal {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+  background: #f97316; color: #fff;
+}
+.cyn-flow-embed .cyn-board-titlerow {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-top: 8px;
+}
+.cyn-flow-embed .cyn-board-title {
+  font-size: 20px; font-weight: 650; letter-spacing: -.01em; color: var(--ink);
+}
+.cyn-flow-embed .cyn-board-desc {
+  font-size: 14px; line-height: 1.4; color: var(--ink-2); max-width: 70ch;
+}
+.cyn-flow-embed .cyn-board-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* columns */
+.cyn-flow-embed .cyn-board-cols {
+  display: flex; flex: 1; min-height: 0;
+  overflow-x: auto; overflow-y: hidden;
+}
+.cyn-flow-embed .cyn-col {
+  flex: 0 0 clamp(210px, 24%, 264px);
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px 18px;
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+.cyn-flow-embed .cyn-col:last-child { border-right: 0; }
+.cyn-flow-embed .cyn-col-head { display: flex; align-items: center; gap: 8px; }
+.cyn-flow-embed .cyn-col-dot { width: 9px; height: 9px; border-radius: 99px; flex: none; }
+.cyn-flow-embed .cyn-col-title { font-size: 14px; font-weight: 650; color: var(--ink); }
+.cyn-flow-embed .cyn-col-body {
+  display: flex; flex-direction: column; gap: 16px;
+  overflow-y: auto; min-height: 0;
+}
+.cyn-flow-embed .cyn-dot-amber { background: #f59e0b; }
+.cyn-flow-embed .cyn-dot-blue { background: #3b82f6; }
+.cyn-flow-embed .cyn-dot-slate { background: #475569; }
+.cyn-flow-embed .cyn-dot-green { background: #10b981; }
+.cyn-flow-embed .cyn-dot-purple { background: #a855f7; }
+.cyn-flow-embed .cyn-dot-red { background: #ef4444; }
+
+/* item */
+.cyn-flow-embed .cyn-bi {
+  border-left: 2px solid var(--line); padding-left: 12px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.cyn-flow-embed .cyn-bi-title { font-size: 13.5px; font-weight: 600; line-height: 1.3; color: var(--ink); }
+.cyn-flow-embed .cyn-bi-desc { font-size: 12.5px; line-height: 1.45; color: var(--ink-3); }
+.cyn-flow-embed .cyn-bi-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 1px; }
+
+/* small info chips reused in the board */
+.cyn-flow-embed .cyn-agg-chip {
+  font-family: ui-monospace, monospace; font-size: 10px; color: var(--ink-3);
+  background: var(--panel-3); border-radius: 4px; padding: 1px 5px;
+}
+.cyn-flow-embed .cyn-crosses {
+  display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
+  font-family: ui-monospace, monospace; font-size: 9.5px;
+  color: #b45309; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 4px; padding: 1px 5px;
 }

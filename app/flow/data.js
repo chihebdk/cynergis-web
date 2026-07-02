@@ -56,11 +56,16 @@ export const decisioningFlow = {
 
     { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["FR7"],
       description: "Medium risk — the customer is challenged to prove it's them, and the authorization is held pending the outcome.",
-      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = medium (POL-1)",
-        label: "A medium band never auto-approves; POL-1 routes it to a step-up challenge automatically.", grounds: ["POL-1", "FR7"] },
-      policies: [{ label: "When scored = medium → issue step-up", desc: "POL-1: medium risk is neither approved nor blocked; it must be challenged first.", on: "POL-1", grounds: ["POL-1", "FR7"] }],
-      commands: [{ label: "Issue step-up challenge", on: "AGG-STEPUP", desc: "Start a step-up (e.g. OTP or in-app approval) and await the result.", grounds: ["FR7"] }],
-      hotspots: [{ label: "Step-up UX and timeout", desc: "How long do we wait, and what happens on no response? Undecided — a saga / timeout policy is implied.", grounds: [] }] },
+      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = medium",
+        label: "A medium band never auto-approves; it routes to a step-up challenge automatically.", grounds: ["POL-1", "FR7"] },
+      commands: [{ label: "Issue step-up challenge", on: "AGG-STEPUP", desc: "Challenge the customer (OTP or passkey) and hold the authorization pending the outcome.", grounds: ["FR7"] }],
+      businessRules: [{ label: "A held authorization must resolve within the SLA window", desc: "A step-up cannot hold indefinitely; it either resolves or expires.", grounds: ["FR7"] }],
+      readModels: [{ label: "Challenge status", desc: "Tracks pending / passed / failed for the held authorization.", grounds: ["FR7"] }],
+      policies: [
+        { label: "When step-up passed → resume decision", desc: "A passed challenge releases the hold and re-decides the authorization as low risk.", crosses: "BC-DEC", grounds: ["FR7"] },
+        { label: "When step-up expired → block", desc: "An unanswered challenge falls through to a block at SLA expiry.", crosses: "BC-DEC", grounds: ["FR7"] },
+      ],
+      hotspots: [{ label: "Step-up UX + timeout policy", desc: "How long do we wait, and what happens on no response? A saga / timeout policy is implied.", grounds: [] }] },
 
     { id: "e-stepup-pass", type: "SimpleNode", parentId: "e-stepup", branch: "passed", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"],
       description: "The customer cleared the step-up challenge, so the held authorization is approved.",
