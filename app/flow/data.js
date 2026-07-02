@@ -16,8 +16,6 @@ export const GROUNDING = {
   FR7: { id: "FR7", kind: "FunctionalRequirement", title: "Issue a step-up challenge on medium-risk decisions", evidencedBy: ["S2"] },
   FR10: { id: "FR10", kind: "FunctionalRequirement", title: "Record every decision as a tamper-evident audit entry", evidencedBy: ["S1"] },
   "NFR1": { id: "NFR1", kind: "NonFunctionalRequirement", title: "p95 scoring latency under 300 ms at 3,000 TPS sustained", evidencedBy: ["S2"] },
-  "POL-1": { id: "POL-1", kind: "Policy", title: "Medium risk → issue step-up", evidencedBy: ["S2"] },
-  "POL-2": { id: "POL-2", kind: "Policy", title: "Blocked → open case", evidencedBy: ["S3"] },
   "POL1": { id: "POL1", kind: "Policy", title: "Notify on block", evidencedBy: ["S1"] },
 };
 export const resolveGround = (id) => GROUNDING[id];
@@ -35,7 +33,7 @@ export const decisioningFlow = {
   signals: [
     { from: "AGG-AUTH decided exactly once + single command→event", reveals: "strong consistency boundary", pattern: "Transactional aggregate, in-context" },
     { from: "p95 < 300 ms on the sync path (NFR)", reveals: "latency budget", pattern: "Co-located synchronous scoring — no chatty hops" },
-    { from: "POL-2 / POL1 fire after commit, cross a seam", reveals: "fire-and-forget reactions", pattern: "Event-driven pub/sub across seams" },
+    { from: "Block → case + notify reactions fire after commit, cross a seam", reveals: "fire-and-forget reactions", pattern: "Event-driven pub/sub across seams" },
     { from: "Step-up: issue → await passed / failed / timeout", reveals: "short-lived stateful wait", pattern: "Process manager / saga with a timeout policy" },
     { from: "Fallback when model / features unavailable (FR8)", reveals: "degradation path", pattern: "Circuit-breaker / graceful degradation" },
   ],
@@ -57,7 +55,7 @@ export const decisioningFlow = {
     { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["FR7"],
       description: "Medium risk — the customer is challenged to prove it's them, and the authorization is held pending the outcome.",
       trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = medium",
-        label: "A medium band never auto-approves; it routes to a step-up challenge automatically.", grounds: ["POL-1", "FR7"] },
+        label: "A medium band never auto-approves; it routes to a step-up challenge automatically.", grounds: ["FR7"] },
       commands: [{ label: "Issue step-up challenge", on: "AGG-STEPUP", desc: "Challenge the customer (OTP or passkey) and hold the authorization pending the outcome.", grounds: ["FR7"] }],
       businessRules: [{ label: "A held authorization must resolve within the SLA window", desc: "A step-up cannot hold indefinitely; it either resolves or expires.", grounds: ["FR7"] }],
       readModels: [{ label: "Challenge status", desc: "Tracks pending / passed / failed for the held authorization.", grounds: ["FR7"] }],
@@ -87,7 +85,7 @@ export const decisioningFlow = {
       businessRules: [{ label: "An authorization cannot be both approved and blocked", desc: "AGG-AUTH is decided exactly once; approve and block are mutually exclusive terminal states.", grounds: ["FR3"] }],
       readModels: [{ label: "Decision + explanation (audit record)", desc: "The immutable decision, its band and reason are projected for audit and dispute handling.", grounds: ["FR10"] }],
       policies: [
-        { label: "When blocked → open case", desc: "POL-2: every block is queued as an analyst case in Case Management so it can be worked to a disposition.", crosses: "BC-CASE", grounds: ["POL-2", "FR5"] },
+        { label: "When blocked → open case", desc: "Every block is queued as an analyst case in Case Management so it can be worked to a disposition.", crosses: "BC-CASE", grounds: ["FR5"] },
         { label: "When blocked → notify customer", desc: "POL1: the customer is alerted of the block within 60s with a confirm / deny action.", crosses: "BC-NOTIFY", grounds: ["POL1", "FR4"] },
       ] },
   ],
@@ -107,8 +105,8 @@ export const caseMgmtFlow = {
   nodes: [
     { id: "c-opened", type: "SimpleNode", parentId: "start", kind: "event", summary: "Case opened", isPivotal: true, aggregate: "AGG-CASE", grounds: ["UC3", "FR5"],
       description: "A block from Decisioning is queued as a fraud case for an analyst to work, linked to the triggering authorization.",
-      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event (POL-2)",
-        label: "An inbound domain event from another context — Decisioning's block is picked up here as a fire-and-forget reaction across the seam.", crosses: "BC-DEC", grounds: ["POL-2", "FR5"] },
+      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event",
+        label: "An inbound domain event from another context — Decisioning's block is picked up here as a fire-and-forget reaction across the seam.", crosses: "BC-DEC", grounds: ["FR5"] },
       commands: [{ label: "Open case", on: "AGG-CASE", grounds: ["FR5"] }],
       businessRules: [{ label: "A case must reference the triggering authorization", desc: "No orphan cases — every case links back to the exact authorization that was blocked, for traceability.", grounds: ["FR5"] }] },
 
