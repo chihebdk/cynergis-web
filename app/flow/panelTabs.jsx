@@ -97,21 +97,19 @@ export function NodeBoard() {
 
   return (
     <div className="cyn-board">
-      {/* header */}
+      {/* header — title + short description on the left, all labels top-right */}
       <div className="cyn-board-head">
-        <div className="cyn-board-eyebrow">
-          <span className="cyn-board-kind">{(node.kind || "event").toUpperCase()}</span>
-          {risk && <span className={`cyn-risk cyn-risk-${risk.tone}`}>{risk.label}</span>}
-          {node.isPivotal && <span className="cyn-pivotal">pivotal</span>}
-        </div>
-        <div className="cyn-board-titlerow">
+        <div className="cyn-board-headrow">
           <h2 className="cyn-board-title">{node.summary}</h2>
-          {node.description && <p className="cyn-board-desc">{node.description}</p>}
+          <div className="cyn-board-labels">
+            <span className="cyn-board-kind">{(node.kind || "event").toUpperCase()}</span>
+            {risk && <span className={`cyn-risk cyn-risk-${risk.tone}`}>{risk.label}</span>}
+            {node.isPivotal && <span className="cyn-pivotal">pivotal</span>}
+            {node.aggregate && <AggChip on={node.aggregate} />}
+            {(node.grounds || []).map((g) => <GroundChip key={g} id={g} />)}
+          </div>
         </div>
-        <div className="cyn-board-chips">
-          {node.aggregate && <AggChip on={node.aggregate} />}
-          {(node.grounds || []).map((g) => <GroundChip key={g} id={g} />)}
-        </div>
+        {node.description && <p className="cyn-board-desc">{node.description}</p>}
       </div>
 
       {/* columns */}
