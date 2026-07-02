@@ -3,6 +3,34 @@
 import { useNodeCache } from "@flowai/canvas";
 import { resolveGround } from "./data";
 
+/* ── reference → "where it's defined" navigation ──
+   Chips resolve to a view in the host app and navigate via the global router
+   (window.cynPushUrl). FR/UC/NFR/POL live in Discover; aggregates in the context's
+   Domain model; bounded contexts are their own detail page. */
+const KIND_TO_TARGET = {
+  UseCase: { phase: "Discover", entry: "usecases" },
+  FunctionalRequirement: { phase: "Discover", entry: "fr" },
+  NonFunctionalRequirement: { phase: "Discover", entry: "nfr" },
+  Policy: { phase: "Discover", entry: "policies" },
+};
+function navTargetFor(id) {
+  const nav = (typeof window !== "undefined" && window.__cynNav) || {};
+  const base = { v: "prod", pf: nav.pf, prod: nav.prod, sub: "dashboard" };
+  if (/^AGG/i.test(id)) return { ...base, phase: "Design", entry: "contexts", ctx: nav.ctx, tab: "model" };
+  if (/^BC-/i.test(id)) return { ...base, phase: "Design", entry: "contexts", ctx: id, tab: "rels" };
+  const g = resolveGround(id);
+  const t = g && KIND_TO_TARGET[g.kind];
+  return t ? { ...base, ...t } : null;
+}
+function navRef(id) {
+  const t = navTargetFor(id);
+  if (!t || typeof window === "undefined") return;
+  // cynPushUrl writes the URL; __cynApplyProd switches the in-product view state
+  // (phase / entry / ctx / tab). Both are needed for a real redirect.
+  if (typeof window.cynPushUrl === "function") window.cynPushUrl(t);
+  if (typeof window.__cynApplyProd === "function") window.__cynApplyProd(t);
+}
+
 /* ── shared chips ── */
 const KIND_STYLE = {
   UseCase: "bg-blue-50 text-blue-700 border-blue-200",
@@ -13,18 +41,31 @@ const KIND_STYLE = {
 function GroundChip({ id }) {
   const node = resolveGround(id);
   const style = node ? KIND_STYLE[node.kind] : "bg-gray-50 text-gray-500 border-gray-200";
+  const target = navTargetFor(id);
   return (
-    <span title={node ? `${node.kind}: ${node.title}` : id}
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-mono font-medium ${style}`}>
+    <button type="button" disabled={!target}
+      onClick={(e) => { e.stopPropagation(); navRef(id); }}
+      title={node ? `${node.kind}: ${node.title}${target ? " — open its definition" : ""}` : id}
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-mono font-medium ${style} ${target ? "cursor-pointer hover:brightness-95" : ""}`}>
       {id}
-    </span>
+    </button>
   );
 }
 const AssumedChip = () => (
   <span className="inline-flex items-center rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-mono font-medium text-red-700">⚠ assumed</span>
 );
-const CrossesBadge = ({ to }) => <span className="cyn-crosses" title={`Crosses into ${to}`}>→ {to}</span>;
-const AggChip = ({ on }) => <span className="cyn-agg-chip">{on}</span>;
+const CrossesBadge = ({ to }) => (
+  <button type="button" className="cyn-crosses cyn-clickable" title={`Open ${to}`}
+    onClick={(e) => { e.stopPropagation(); navRef(to); }}>→ {to}</button>
+);
+const AggChip = ({ on }) => {
+  const target = navTargetFor(on);
+  return (
+    <button type="button" disabled={!target}
+      className={`cyn-agg-chip${target ? " cyn-clickable" : ""}`} title={target ? `${on} — open in Domain model` : on}
+      onClick={(e) => { e.stopPropagation(); navRef(on); }}>{on}</button>
+  );
+};
 
 // "What set this event off" — actor kind → label + one-line blurb.
 const TRIGGER_META = {

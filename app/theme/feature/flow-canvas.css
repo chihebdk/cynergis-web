@@ -192,10 +192,14 @@
 /* small info chips reused in the board */
 .cyn-flow-embed .cyn-agg-chip {
   font-family: ui-monospace, monospace; font-size: 10px; color: var(--ink-3);
-  background: var(--panel-3); border-radius: 4px; padding: 1px 5px;
+  background: var(--panel-3); border: 0; border-radius: 4px; padding: 1px 5px;
 }
 .cyn-flow-embed .cyn-crosses {
   display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
   font-family: ui-monospace, monospace; font-size: 9.5px;
   color: #b45309; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 4px; padding: 1px 5px;
 }
+/* clickable reference chips → jump to their definition */
+.cyn-flow-embed .cyn-clickable { cursor: pointer; transition: filter .12s, background .12s; }
+.cyn-flow-embed .cyn-agg-chip.cyn-clickable:hover { background: var(--panel-2, var(--line)); }
+.cyn-flow-embed .cyn-crosses.cyn-clickable:hover { background: #ffedd5; }
