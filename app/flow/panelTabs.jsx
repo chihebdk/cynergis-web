@@ -29,6 +29,12 @@ function navRef(id) {
   // (phase / entry / ctx / tab). Both are needed for a real redirect.
   if (typeof window.cynPushUrl === "function") window.cynPushUrl(t);
   if (typeof window.__cynApplyProd === "function") window.__cynApplyProd(t);
+  // Trace-indexed refs (FR/UC/NFR/POL live in Discover) also open the item's detail
+  // modal, focused on it — after the flow unmounts so the modal isn't hidden behind
+  // the fullscreen overlay. No-ops if the id isn't in the trace index.
+  if (t.phase === "Discover" && typeof window.cynTraceOpen === "function") {
+    setTimeout(() => window.cynTraceOpen(id), 60);
+  }
 }
 
 /* ── shared chips ── */

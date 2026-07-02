@@ -162,6 +162,12 @@ function TraceProvider({ prd, arch, goTo, children }) {
   const idx = React.useMemo(() => buildTraceIndex(prd, arch), [prd, arch]);
   const [stack, setStack] = useTS([]);          // back-stack of ids
   const open = id => { if (idx.has(id)) setStack(s => (s[s.length - 1] === id ? s : [...s, id])); };
+  // Global bridge so surfaces outside this React tree (e.g. the embedded event-flow
+  // board) can open an entity's detail modal by id. No-ops for unindexed ids.
+  useTE(() => {
+    window.cynTraceOpen = id => { if (idx.has(id)) setStack(s => (s[s.length - 1] === id ? s : [...s, id])); };
+    return () => { if (window.cynTraceOpen) delete window.cynTraceOpen; };
+  }, [idx]);
   const back = () => setStack(s => s.slice(0, -1));
   const close = () => setStack([]);
   const jump = (phase, entry) => { close(); if (goTo) goTo(phase, entry); };
