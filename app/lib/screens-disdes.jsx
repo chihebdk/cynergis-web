@@ -249,56 +249,23 @@ function DiscoverScope({ prd }) {
 /* ===================== DESIGN · Use cases (flows + workflow) ===================== */
 function DesignUseCases({ prd }) {
   const ucs = prd.usecases || [];
-  const [open, setOpen] = React.useState(ucs.length ? ucs[0].id : null);
   const openEntity = useOpen();
   return (
     <>
-      <p className="dd-lead">The solution as use cases — each realizing a journey. Open one for its flow, branches, terminal states and a workflow diagram. Every requirement and journey chip is a live trace link.</p>
-      <div className="dd-ucstack">
-        {ucs.map(u => {
-          const isOpen = open === u.id;
-          return (
-            <div className={'dd-uccard' + (isOpen ? ' open' : '')} key={u.id}>
-              <button className="dd-uccard-h" onClick={() => setOpen(isOpen ? null : u.id)}>
-                <span className="dd-uc-id">{u.id}</span>
-                <span className="dd-uc-title">{u.title}</span>
-                <span className="dd-uc-chev"><DIco k="chevd" w={13} /></span>
-              </button>
-              {isOpen && (
-                <div className="dd-uccard-body">
-                  <div className="dd-uc-trace" onClick={e => e.stopPropagation()}>
-                    <span className="dd-uc-trace-l">Actor</span><TRef id={u.primaryActor} />
-                    <span className="dd-uc-trace-l">Realizes</span><TRef id={u.journeyId} />
-                    <span className="dd-uc-trace-l">Requirements</span>{(u.frs || []).map(f => <TRef id={f} key={f} />)}
-                    <button className="dd-uc-full" onClick={() => openEntity(u.id)}>Full trace →</button>
-                  </div>
-                  <div className="dd-uc-meta">
-                    <div><span className="k">Trigger</span>{u.trigger}</div>
-                    <div><span className="k">Outcome</span>{u.postconditions}</div>
-                  </div>
-                  <div className="dd-flow">
-                    <div className="dd-flow-main">
-                      <div className="dd-flow-side-h">Main success scenario</div>
-                      {(u.mainFlow || []).map((s, i) => (
-                        <div className="dd-step" key={i}><span className="dd-step-n">{i + 1}</span><span className="dd-step-t">{s}</span></div>
-                      ))}
-                    </div>
-                    <div className="dd-flow-side">
-                      {(u.extensions && u.extensions.length > 0) && <>
-                        <div className="dd-flow-side-h">Branches</div>
-                        {u.extensions.map((e, i) => <div className="dd-ext" key={i}><span className="dd-ext-at">{e.at}</span>{e.text}</div>)}
-                      </>}
-                      {(u.terminalStates || []).map((t, i) => (
-                        <div className={'dd-term ' + t.type.toLowerCase()} key={'t' + i}><span className="dd-term-k">{t.type}</span>{t.text}</div>
-                      ))}
-                    </div>
-                  </div>
-                  {u.workflow && <div className="dd-uc-wf"><div className="dd-flow-side-h">Workflow</div><TMermaid code={u.workflow} /></div>}
-                </div>
-              )}
+      <p className="dd-lead">The solution as use cases — each realizing a journey. Click a card for the full detail: scenario, branches, terminal states, workflow and acceptance, with every chip a live trace link.</p>
+      <div className="dd-ucgrid">
+        {ucs.map(u => (
+          <div className="dd-ucc dd-clickable" key={u.id} onClick={() => openEntity(u.id)}
+            role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEntity(u.id); } }}>
+            <div className="dd-ucc-top"><span className="dd-uc-id">{u.id}</span><span className="dd-ucc-title">{u.title}</span></div>
+            <p className="dd-ucc-desc">{u.postconditions || u.trigger}</p>
+            <div className="dd-ucc-foot" onClick={e => e.stopPropagation()}>
+              <TRef id={u.primaryActor} />
+              <TRef id={u.journeyId} />
+              {(u.frs || []).map(f => <TRef id={f} key={f} />)}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </>
   );
