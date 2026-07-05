@@ -21,6 +21,9 @@ export const flowConfig = {
       decorators: ["Grounding"],
       showEndMarker: true,
     },
+    // view-only: no hover add-toolbar on the expanded submap's End marker (it reserves
+    // vertical space and would render the marker lower than the member nodes)
+    SubmapEndNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: false },
   },
   edgeTypes: {
     WorkflowEdge: {
@@ -48,6 +51,7 @@ export const contextMapConfig = {
   nodeTypes: {
     SimpleNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },
     SubmapNode: { toolbar: [], contextMenu: ["submapExpand"], decorators: [], showEndMarker: true },
+    SubmapEndNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: false },
     ReferenceNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },
   },
   edgeTypes: {
