@@ -213,7 +213,7 @@ export const embeddedEntities = {
     fields: [
       "id", "name", "summary", "parentId", "type", "isEndNode", "submapId", "refNodeId", "domainId", "submapInstanceParentId",
       // event-flow extras (D-031 grounding + event-centric grammar)
-      "kind", "isPivotal", "aggregate", "branch", "grounds", "description", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots", "arch",
+      "kind", "isPivotal", "aggregate", "branch", "grounds", "description", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots", "arch", "bc",
     ],
   },
 };

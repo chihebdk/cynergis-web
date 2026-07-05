@@ -1,6 +1,7 @@
 "use client";
 
 import { seedFlows } from "./data";
+import { contextMap, contextSubmaps } from "./contextmap-data";
 
 // In-memory store (mapper starter pattern), seeded with our flows as `map` docs.
 const collections = new Map();
@@ -11,7 +12,8 @@ const getCollection = (name) => {
 
 // seed once
 for (const flow of seedFlows) getCollection("map").set(flow.id, structuredClone(flow));
-getCollection("submap"); // ensure the collection exists (empty for now)
+getCollection("map").set(contextMap.id, structuredClone(contextMap));
+for (const sm of contextSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 
 export function createMemoryAdapter(databaseName) {
   const prefix = databaseName ? `${databaseName}:` : "";

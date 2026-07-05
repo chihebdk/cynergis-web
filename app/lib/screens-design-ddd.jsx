@@ -629,16 +629,20 @@ function DesignContextMap({ product, prd }) {
       <div className="ddd-intro">
         <div className="ddd-eyebrow"><DDPico d={DDI.flow} w={12} /> DESIGN · CONTEXT MAP</div>
         <p className="ddd-lead">
-          How the bounded contexts relate — <b>one map per product</b>. <b>Solid</b> = a relationship between contexts
-          you own; <b>dashed</b> = an external context reached through an anti-corruption layer (ACL).
+          How the bounded contexts relate — <b>one map per product</b>. Each coloured box is a bounded context:
+          <b> select it and hit the expand arrow</b> to see its components in place. The small nodes between
+          boxes are the <b>published events crossing each seam</b>; externals are reached through an
+          anti-corruption layer (ACL).
         </p>
       </div>
       <div className="asc-section ddd-sec">
         <div className="asc-sec-head">
           <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Context map</div>
-          <div className="asc-sec-sub">Solid = relationship · dashed = external (ACL) · one map per product</div>
+          <div className="asc-sec-sub">Bounded contexts as expandable containers · seam nodes = the published-language contracts</div>
         </div>
-        {DDMermaid && <DDMermaid code={contextMapMermaid(D)} caption="Context map — published language / anti-corruption layer at the boundaries" />}
+        <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+          <FlowEmbed flowId="contextmap" variant="contextmap" />
+        </div>
       </div>
     </div>
   );

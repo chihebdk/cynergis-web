@@ -301,5 +301,38 @@ export function NodeBoard() {
   );
 }
 
-// Single board view replaces the per-section tabs.
-export const panelTabComponents = { NodeBoard };
+/* ── context-map panel: a simple detail card (no lenses, no event clusters) ── */
+const CM_KIND = {
+  component: { label: "Component", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  seam: { label: "Published event (seam)", cls: "bg-purple-50 text-purple-700 border-purple-200" },
+  external: { label: "External system · ACL", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+};
+export function ContextMapCard() {
+  const { selected: node } = useNodeCache();
+  if (!node) return null;
+  const k = CM_KIND[node.kind] || CM_KIND.component;
+  return (
+    <div className="cyn-board">
+      <div className="cyn-board-head" style={{ borderBottom: 0 }}>
+        <div className="cyn-board-headrow">
+          <h2 className="cyn-board-title">{node.summary}</h2>
+          <div className="cyn-board-labels">
+            <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium ${k.cls}`}>{k.label}</span>
+          </div>
+        </div>
+        <div className="cyn-board-subrow">
+          {node.description ? <p className="cyn-board-desc" style={{ WebkitLineClamp: 4 }}>{node.description}</p> : <span />}
+          {node.bc && (
+            <button type="button" className="cyn-crosses cyn-clickable" title={`Open ${node.bc}`}
+              onClick={(e) => { e.stopPropagation(); navRef(node.bc); }}>
+              Open {node.bc} →
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Event-flow board + the context-map card.
+export const panelTabComponents = { NodeBoard, ContextMapCard };

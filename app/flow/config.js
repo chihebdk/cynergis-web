@@ -38,3 +38,30 @@ export const flowConfig = {
     ],
   },
 };
+
+// CanvasConfig for the CONTEXT MAP (bounded contexts as expandable submaps).
+// Same visual language as the event flow; nodes are components/seams/externals, so
+// the panel is a simple detail card instead of the event board.
+export const contextMapConfig = {
+  fitView: true,
+  layout: { available: ["org", "htree"], default: "htree" },
+  nodeTypes: {
+    SimpleNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },
+    SubmapNode: { toolbar: [], contextMenu: ["submapExpand"], decorators: [], showEndMarker: true },
+    ReferenceNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },
+  },
+  edgeTypes: {
+    WorkflowEdge: {
+      stroke: "#9ca3af", strokeWidth: 2, opacity: 0.9, markerEnd: false,
+      borderRadius: 14,
+      focusedStyle: "solid", unfocusedStyle: "dashed",
+      toolbar: [],
+    },
+  },
+  lanes: { show: false },
+  map: {
+    properties: [
+      { tab: "ContextMapCard", title: "Details", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
+    ],
+  },
+};

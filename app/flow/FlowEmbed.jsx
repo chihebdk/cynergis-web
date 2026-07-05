@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { MapStateProvider } from "./providers.jsx";
-import { flowConfig } from "./config";
+import { flowConfig, contextMapConfig } from "./config";
 import { panelTabComponents } from "./panelTabs.jsx";
 import { registerGroundingDecorator } from "./GroundingDecorator.jsx";
 import { LensContext } from "./lens";
@@ -26,7 +26,10 @@ const IconCollapse = () => (
 // Self-contained embed: mount anywhere with a flowId (= mapId). Sets up the state
 // provider, the self-wired canvas, our Grounding decorator + board panel, the
 // Spec|Architecture lens toggle (D-034), and a top-right expand/collapse control.
-export default function FlowEmbed({ flowId = "decisioning" }) {
+// variant="contextmap" renders the context map (bounded contexts as submaps) with
+// its simpler detail-card panel instead of the event board.
+export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) {
+  const config = variant === "contextmap" ? contextMapConfig : flowConfig;
   const [expanded, setExpanded] = useState(false);
   const [lens, setLens] = useState("spec");
   const lensCtx = useMemo(() => ({ lens, setLens }), [lens]);
@@ -58,7 +61,7 @@ export default function FlowEmbed({ flowId = "decisioning" }) {
             {expanded ? <IconCollapse /> : <IconExpand />}
           </button>
           <div className="w-full h-full min-h-[500px]">
-            <FlowMapSelfWired mapId={flowId} config={flowConfig} tabComponents={tabComponents} />
+            <FlowMapSelfWired mapId={flowId} config={config} tabComponents={tabComponents} />
           </div>
         </div>
       </LensContext.Provider>
