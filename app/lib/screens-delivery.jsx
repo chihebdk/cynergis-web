@@ -97,17 +97,12 @@ function ItemCard({ it, team, blocker }) {
   );
 }
 
+/* Renders inside the Build › Delivery backlog entry (D-050) — the PhaseEntry
+   chrome provides the title/status, so this is the body only. */
 function ProductDelivery({ product, prd }) {
   const D = (window.__DELIVERY__ && window.__DELIVERY__.byProduct[product.id]) || null;
   if (!prd || !D) {
-    return (
-      <div className="asc-page">
-        <div className="asc-section">
-          <div className="asc-sec-head"><div className="asc-sec-title">Delivery</div></div>
-          <div className="dlv-empty">No delivery plan yet. The Manage board appears once a product enters Build planning.</div>
-        </div>
-      </div>
-    );
+    return <div className="env-empty"><div className="env-empty-ic"><DPico d={DI.board} w={20} /></div><div className="env-empty-t">Delivery backlog</div><div className="env-empty-s">No delivery plan yet. The board appears once a product enters Build planning.</div></div>;
   }
   const asOf = window.__DELIVERY__.asOf;
   const teamById = id => D.teams.find(t => t.id === id);
@@ -115,14 +110,10 @@ function ProductDelivery({ product, prd }) {
   const count = stage => D.items.filter(i => i.stage === stage).length;
 
   return (
-    <div className="asc-page dlv-wrap">
-      {/* header + live status summary */}
+    <div className="dlv-wrap">
+      {/* lead + live status summary */}
       <div className="dlv-head">
-        <div>
-          <div className="dlv-eyebrow"><DPico d={DI.board} w={12} /> MANAGE · DELIVERY BOARD</div>
-          <h2 className="dlv-title">Where everything is, right now</h2>
-          <p className="dlv-sub">Execution across phases — teams, schedule, milestones, and what’s blocked. A live query over the product graph.</p>
-        </div>
+        <p className="dlv-sub">The execution of the build — every use case by stage, who is on it, the program checkpoints, and what’s blocked (captured as first-class waiting-on edges). A live query over the product graph.</p>
         <div className="dlv-asof"><DPico d={DI.clock} w={12} /> as of {fmtDate(asOf)}</div>
       </div>
       <div className="dlv-stats">

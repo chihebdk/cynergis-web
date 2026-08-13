@@ -600,6 +600,36 @@ button{ font-family:inherit; }
 .env-railgroup-st.issue{ color:var(--err); } .env-railgroup-st.commands{ color:var(--info); }
 .env-navitem{ display:flex; align-items:center; gap:9px; }
 .env-navlabel{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---- Resources flyout (D-048) — GCP-console-style submenu off the rail entry.
+   position:fixed (anchored from JS) because .asc-rail scrolls and would clip an
+   absolute child. ---- */
+.env-nav-chev{ display:flex; color:var(--ink-4); }
+.env-navitem.has-sub:hover .env-nav-chev{ color:var(--accent-ink); }
+.env-flyout{
+  position:fixed; z-index:80; width:216px; padding:6px;
+  background:var(--panel); border:1px solid var(--line-strong); border-radius:var(--r-lg);
+  box-shadow:0 16px 44px -12px oklch(0.3 0.04 var(--accent-h) / .35);
+  display:flex; flex-direction:column; gap:1px; cursor:default;
+}
+.env-flyout-h{
+  font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.1em;
+  color:var(--ink-4); padding:5px 9px 6px;
+}
+.env-flyout-item{
+  display:flex; align-items:center; gap:8px; width:100%; text-align:left; cursor:pointer;
+  padding:6px 9px; border:0; background:transparent; border-radius:var(--r-md);
+  font-size:12.5px; color:var(--ink-2);
+}
+.env-flyout-item:hover{ background:var(--panel-3); color:var(--ink); }
+.env-flyout-item.on{ background:var(--accent-soft); color:var(--accent-ink); font-weight:500; }
+.env-flyout-item.empty{ color:var(--ink-4); }
+.env-flyout-item .ct{
+  margin-left:auto; font-family:var(--font-mono); font-size:10px; color:var(--ink-4);
+  min-width:14px; text-align:right;
+}
+.env-flyout-item.on .ct{ color:var(--accent-ink); }
+.env-flyout-div{ height:1px; background:var(--line); margin:4px 2px; }
 .env-railgroup.muted{ margin-top:16px; padding-top:12px; border-top:1px solid var(--line); }
 .env-futurephase{
   display:flex; align-items:center; justify-content:space-between; gap:8px;

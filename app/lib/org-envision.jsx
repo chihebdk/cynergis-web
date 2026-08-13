@@ -3,9 +3,11 @@ import './trace-core';
 import './screens-evidence';
 import './screens-disdes';
 import './screens-delivery';
+import './screens-operate';
+import './screens-realize';
 import './screens-design-ddd';
 import './org-data';
-const { ProductSources, ProductGraph, DisDesContent, ProductDelivery, DesignDomainModel, DesignContexts, DesignContextMap, DesignRealization, ORG } = window;
+const { ProductSources, ProductGraph, DisDesContent, ProductDelivery, DesignContexts, DesignContextMap, DesignSystemMap, DesignRealization, ORG } = window;
 /* ============================================================
    Cynergis — Product page (Dashboard + Envision surface).
    The lifecycle now renders HORIZONTALLY inside the main page as
@@ -87,15 +89,19 @@ const PHASE_ENTRIES = {
   Design: [
     { key: 'contexts',    label: 'Bounded contexts',           ico: 'product' },
     { key: 'contextmap',  label: 'Context map',                ico: 'flow' },
-    { key: 'model',       label: 'Domain model',               ico: 'spark' },
-    { key: 'arch',        label: 'Architecture',               ico: 'tree' },
+    // D-045: renamed from Architecture — Design designs, Build architects. Key stays
+    // 'arch' for deep links; the System map lives as this page's first tab.
+    { key: 'arch',        label: 'System design',              ico: 'tree' },
   ],
   Build: [
-    { key: 'infra',    label: 'Infrastructure & environments', ico: 'tree' },   // as-built actuals (D-035)
+    { key: 'infra',    label: 'Resources', ico: 'tree' },   // as-built cloud resources & environments (D-035/D-039); key stays 'infra' for deep links
+    { key: 'integ',    label: 'Integrations',         ico: 'link' },   // D-040: below Resources — the surfaces others integrate with
     { key: 'backlog',  label: 'Delivery backlog',     ico: 'board' },
-    { key: 'agents',   label: 'Agents & skills',      ico: 'spark' },
-    { key: 'integ',    label: 'Integrations',         ico: 'link' },
-    { key: 'eval',     label: 'Test & eval',          ico: 'gauge' },
+    { key: 'agents',   label: 'Agents',               ico: 'spark' },   // D-051: skills live inside each agent
+    // D-053: Test & eval split by plane — Tests verify the deterministic workflow
+    // (acceptance by use case), Evals measure the agents (transcripts + judgments)
+    { key: 'tests',    label: 'Tests',                ico: 'check' },
+    { key: 'evals',    label: 'Evals',                ico: 'gauge' },
   ],
   Operate: [
     { key: 'fleet',     label: 'Fleet & SLAs',        ico: 'gauge' },
@@ -110,6 +116,9 @@ const PHASE_ENTRIES = {
   ],
 };
 function entriesFor(phase) { return PHASE_ENTRIES[phase] || []; }
+// A phase's default landing entry (first in its rail). Replaces the old shared
+// "overview" dashboard, which now lives cross-phase in the More menu as xbrief.
+function firstEntry(phase) { const es = entriesFor(phase); return (es[0] && es[0].key) || 'xbrief'; }
 function phaseEntryStatus(phase, key, product, prd) {
   if (phase === 'Envision') return entryStatus(key, product, prd);
   return phaseStatus(product, phase);
@@ -182,14 +191,22 @@ function LifeBar({ product, active, onSelect }) {
    The "More" menu opens UPWARD, so the last item renders nearest the trigger —
    which conveniently puts the most operational surface (Delivery) closest to the cursor. */
 const XCUT_ENTRIES = [
+  { key: 'xbrief',    label: 'Product brief',      ico: 'product' },   // identity + prioritization — cross-phase, was the shared "Dashboard"
   { key: 'xsources',  label: 'Sources & Evidence', ico: 'compass' },
   { key: 'xgraph',    label: 'Knowledge graph',    ico: 'tree' },
-  { key: 'xdelivery', label: 'Delivery',           ico: 'board' },
+  // Delivery re-homed into Build › Delivery backlog (D-050) — one door, one room
   { key: 'xglossary', label: 'Glossary',           ico: 'spark' },
   { key: 'xdeps',     label: 'Dependencies',       ico: 'link' },
   { key: 'xrisk',     label: 'Risk register',      ico: 'alert' },
   { key: 'xgov',      label: 'Governance',         ico: 'lock' },
 ];
+
+/* Rail entries that carry a flyout submenu (D-048). The list functions live on
+   window because the screens file owns the derivation; `slot` is the window
+   variable the mounted page reads its section from, `evt` the event it hears. */
+const RAIL_FLYOUTS = {
+  infra: { list: () => (window.cynResCats ? window.cynResCats() : []), slot: '__cynResCat', evt: 'cyn-rescat' },
+};
 
 function PhaseRail({ product, portfolio, prd, phase, entry, setEntry }) {
   const st = phaseStatus(product, phase);
@@ -200,25 +217,67 @@ function PhaseRail({ product, portfolio, prd, phase, entry, setEntry }) {
   // auto-open when navigating into a cross-cutting entry (e.g. via a trace jump),
   // but the header toggle can always close it afterwards.
   useEffectE(() => { if (xcutActive) setXcutShown(true); }, [xcutActive]);
+
+  // Flyout submenus (D-048): section pickers live on the rail entry, GCP-console
+  // style, so the pages render the picked section full-width. `flyout` holds the
+  // key of the open entry (or null).
+  const [flyout, setFlyout] = useStateE(null);
+  // fixed-position anchor, captured on open — the rail scrolls, so an absolute
+  // child would be clipped by its overflow
+  const [flyPos, setFlyPos] = useStateE({ top: 0, left: 0 });
+  useEffectE(() => {
+    if (!flyout) return;
+    const close = () => setFlyout(null);
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('click', close);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('click', close); window.removeEventListener('keydown', onKey); };
+  }, [flyout]);
+  const pickSub = (f, entryKey, k) => {
+    window[f.slot] = k;
+    window.dispatchEvent(new CustomEvent(f.evt, { detail: k }));
+    setEntry(entryKey);
+    setFlyout(null);
+  };
   return (
     <aside className="asc-rail">
-      <div className="asc-rail-sect">Overview</div>
-      <div className={'asc-nav' + (entry === 'overview' ? ' on' : '')} onClick={() => setEntry('overview')}>
-        <EIco k="dash" w={15} /> Dashboard
-      </div>
-
       <div className="env-railgroup">
         <div className="env-railgroup-h">
           <span>{phase}</span>
           <span className={'env-railgroup-st ' + st}><StatusDot st={st} /> {ESTAT[st].label}</span>
         </div>
         {items.map(e => {
-          const est = phaseEntryStatus(phase, e.key, product, prd);
+          const fly = phase === 'Build' ? RAIL_FLYOUTS[e.key] : null;
           return (
-            <div key={e.key} className={'asc-nav env-navitem' + (entry === e.key ? ' on' : '')} onClick={() => setEntry(e.key)}>
+            <div key={e.key} className={'asc-nav env-navitem' + (entry === e.key ? ' on' : '') + (fly ? ' has-sub' : '')}
+              onClick={(ev) => {
+                if (!fly) { setFlyout(null); setEntry(e.key); return; }
+                ev.stopPropagation();
+                const r = ev.currentTarget.getBoundingClientRect();
+                setFlyPos({ top: r.top - 6, left: r.right + 10 });
+                setFlyout(o => (o === e.key ? null : e.key));
+              }}>
               <EIco k={e.ico} w={15} />
               <span className="env-navlabel">{e.label}</span>
-              <StatusDot st={est} />
+              {fly && <span className="env-nav-chev"><EIco k="arrow" w={11} /></span>}
+              {fly && flyout === e.key && (() => {
+                const list = fly.list();
+                const cur = window[fly.slot] || list[0]?.key;
+                return (
+                  <div className="env-flyout" style={{ top: flyPos.top, left: flyPos.left }} onClick={(ev) => ev.stopPropagation()}>
+                    <div className="env-flyout-h">{e.label}</div>
+                    {list.map(c => (
+                      <React.Fragment key={c.key}>
+                        {c.sep && <div className="env-flyout-div" />}
+                        <button type="button" className={'env-flyout-item' + (entry === e.key && cur === c.key ? ' on' : '') + (c.count ? '' : ' empty')}
+                          onClick={() => pickSub(fly, e.key, c.key)}>
+                          {c.label}<span className="ct">{c.count || ''}</span>
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
@@ -232,7 +291,6 @@ function PhaseRail({ product, portfolio, prd, phase, entry, setEntry }) {
               <div key={e.key} className={'asc-nav env-navitem' + (entry === e.key ? ' on' : '')} onClick={() => setEntry(e.key)}>
                 <EIco k={e.ico} w={15} />
                 <span className="env-navlabel">{e.label}</span>
-                <StatusDot st={xcutStat} />
               </div>
             ))}
           </div>
@@ -570,9 +628,9 @@ function XSurface({ phase, entry, prd }) {
 
 /* ---- non-Envision phase entry (section authored in Studio) ---- */
 function PhaseEntry({ phase, entry, product, prd }) {
-  const def = entriesFor(phase).find(e => e.key === entry);
+  const def = entriesFor(phase).find(e => e.key === entry) || { key: entry, label: 'Retired surface', ico: 'arrow' };  // stale deep links land softly
   const status = phaseEntryStatus(phase, entry, product, prd);
-  const designMap = { contexts: DesignContexts, contextmap: DesignContextMap, model: DesignDomainModel };  // realization folded into the context drill-in
+  const designMap = { contexts: DesignContexts, contextmap: DesignContextMap };  // realization folded into the drill-in; the Domain model page retired into the BC tabs
   const DesignCmp = phase === 'Design' ? designMap[entry] : null;
   const content = DesignCmp
     ? <DesignCmp product={product} prd={prd} />
@@ -594,7 +652,9 @@ function PhaseEntry({ phase, entry, product, prd }) {
 }
 
 /* ============================================================
-   Dashboard — product header + full prioritization
+   Product brief — product header + full prioritization.
+   Cross-phase surface, reached via the More menu (xbrief); no longer the
+   per-phase default landing.
    ============================================================ */
 function PhaseOverview({ product, portfolio, prd }) {
   return (
@@ -645,12 +705,15 @@ function PhaseOverview({ product, portfolio, prd }) {
    ProductPage — persistent lifecycle band + (rail + main)
    ============================================================ */
 function ProductPage({ product, portfolio }) {
-  // boot phase/entry from the URL nav state (deep link), defaulting to the product's phase
+  // boot phase/entry from the URL nav state (deep link), defaulting to Envision
   const boot = React.useMemo(() => {
     const n = (window.__cynNav && window.__cynNav.prod === product.id) ? window.__cynNav : null;
     window.__cynCtxSel = (n && n.entry === 'contexts') ? (n.ctx || null) : null;
-    window.__cynCtxTab = (n && n.tab) || 'rels';
-    return { phase: (n && n.phase) || product.phase || 'Envision', entry: (n && n.entry) || 'overview' };
+    window.__cynCtxTab = (n && n.tab && n.tab !== 'rels') ? n.tab : 'flow';   // 'rels' tab retired — legacy states land on Event flow
+    const ph = (n && n.phase) || 'Envision';
+    // legacy ?entry=overview links resolve to the phase's first entry (the brief moved to More)
+    const en = (n && n.entry && n.entry !== 'overview') ? n.entry : firstEntry(ph);
+    return { phase: ph, entry: en };
   }, [product]);
   const [phase, setPhase] = useStateE(boot.phase);
   const [entry, setEntry] = useStateE(boot.entry);
@@ -664,23 +727,23 @@ function ProductPage({ product, portfolio }) {
     if (n.entry !== 'contexts') n.ctx = null;
     window.cynPushUrl(n);
   };
-  const selectPhase = (ph) => { setPhase(ph); setEntry('overview'); window.__cynCtxSel = null; pushUrl({ phase: ph, entry: 'overview' }); scrollTop(); };
+  const selectPhase = (ph) => { const en = firstEntry(ph); setPhase(ph); setEntry(en); window.__cynCtxSel = null; pushUrl({ phase: ph, entry: en }); scrollTop(); };
   const goTo = (ph, en) => { setPhase(ph); setEntry(en); if (en !== 'contexts') window.__cynCtxSel = null; pushUrl({ phase: ph, entry: en }); scrollTop(); };
   const navEntry = (en) => { setEntry(en); if (en !== 'contexts') window.__cynCtxSel = null; pushUrl({ entry: en }); scrollTop(); };
   // browser Back/Forward lands here for product-internal moves (phase / entry / ctx / tab)
   useEffectE(() => {
     window.__cynApplyProd = (n) => {
-      setPhase(n.phase || 'Envision'); setEntry(n.entry || 'overview');
+      const ph = n.phase || 'Envision';
+      setPhase(ph); setEntry(n.entry && n.entry !== 'overview' ? n.entry : firstEntry(ph));
       window.__cynCtxSel = n.entry === 'contexts' ? (n.ctx || null) : null;
-      window.__cynCtxTab = n.tab || 'rels';
+      window.__cynCtxTab = (n.tab && n.tab !== 'rels') ? n.tab : 'flow';
       if (window.__cynSetSel) window.__cynSetSel(window.__cynCtxSel);
       if (window.__cynSetTab) window.__cynSetTab(window.__cynCtxTab);
       scrollTop();
     };
     window.__cynPushProd = () => pushUrl({});   // design surfaces push after changing ctx/tab
-    window.__cynGoContexts = () => goTo('Design', 'contexts');
     window.__cynGoSources = () => navEntry('xsources');
-    return () => { delete window.__cynApplyProd; delete window.__cynPushProd; delete window.__cynGoContexts; delete window.__cynGoSources; };
+    return () => { delete window.__cynApplyProd; delete window.__cynPushProd; delete window.__cynGoSources; };
   }, [phase, entry]);
   const TP = window.TraceProvider;
   const inner = (
@@ -689,10 +752,11 @@ function ProductPage({ product, portfolio }) {
       <div className="asc-body">
         <PhaseRail product={product} portfolio={portfolio} prd={prd} phase={phase} entry={entry} setEntry={navEntry} />
         <main className="asc-main">
-          {entry === 'overview'
+          {entry === 'xbrief' || entry === 'overview'
             ? <PhaseOverview product={product} portfolio={portfolio} prd={prd} />
             : entry === 'xdelivery'
-              ? <ProductDelivery product={product} prd={prd} />
+              // legacy deep links — Delivery now lives in Build › Delivery backlog (D-050)
+              ? <PhaseEntry phase="Build" entry="backlog" product={product} prd={prd} />
             : entry === 'xsources'
               ? <ProductSources product={product} prd={prd} />
               : entry === 'xgraph'

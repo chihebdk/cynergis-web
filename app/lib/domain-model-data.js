@@ -14,23 +14,28 @@
 window.__DOMAIN__ = {
   byProduct: {
     fraud: {
-      // aggregates (consistency boundaries) — grouped by the context they seed
+      // aggregates (consistency boundaries) — grouped by the context they seed.
+      // archRef joins the BEHAVIORAL half here (commands/events/invariants) to the
+      // STRUCTURAL half in __ARCH__ (store + entity tables): a domain-level
+      // aggregate ({domain}) or a component-owned one ({component}, e.g. the saga).
       aggregates: [
         {
           id: 'AGG-AUTH', name: 'Authorization', context: 'BC-DEC', ucs: ['UC1', 'UC2'],
-          commands: ['Score authorization', 'Apply decision'],
+          archRef: { domain: 'dec' },
+          commands: ['Score authorization', 'Apply decision', 'Reverse hold'],
           events: ['Authorization scored', 'Authorization blocked', 'Authorization approved'],
           // each invariant traces to the functional requirement that mandates it (D-031)
           invariants: [
-            { text: 'An authorization is decided exactly once', fr: 'FR1' },
+            { text: 'An authorization has exactly one effective decision at any time — reversals append a superseding decision, never mutate', fr: 'FR1' },
             { text: 'A decision cannot be both approved and blocked', fr: 'FR3' },
-            { text: 'Every decision carries a risk band + an explanation', fr: 'FR2' },
+            { text: 'Every decision carries an outcome, a risk band and an explanation', fr: 'FR2' },
           ],
         },
         {
           id: 'AGG-STEPUP', name: 'Step-up Challenge', context: 'BC-DEC', ucs: ['UC4'],
-          commands: ['Issue step-up challenge', 'Resolve challenge'],
-          events: ['Step-up issued', 'Step-up passed', 'Step-up failed'],
+          archRef: { component: 'C6' },
+          commands: ['Issue challenge', 'Resolve challenge'],
+          events: ['Step-up issued', 'Step-up passed', 'Step-up failed', 'Step-up expired'],
           invariants: [
             { text: 'Step-up is issued only on a medium risk band', fr: 'FR7' },
             { text: 'A challenge expires after its timeout' },   // no requirement captured → surfaces as a gap
@@ -38,8 +43,9 @@ window.__DOMAIN__ = {
         },
         {
           id: 'AGG-CASE', name: 'Case', context: 'BC-CASE', ucs: ['UC3'],
+          archRef: { domain: 'case' },
           commands: ['Open case', 'Assign analyst', 'Record disposition'],
-          events: ['Case opened', 'Case assigned', 'Case disposed'],
+          events: ['Case opened', 'Case assigned', 'Case disposed', 'Outcome labelled'],
           invariants: [
             { text: 'A case must reference the triggering authorization', fr: 'FR5' },
             { text: 'A disposition requires a recorded rationale', fr: 'FR6' },
@@ -48,22 +54,11 @@ window.__DOMAIN__ = {
         },
       ],
 
-      // policies: reactions — "when EVENT → issue COMMAND" (often cross contexts → the seams); each traces to its FR
-      policies: [
-        { id: 'POL-1', when: 'Authorization scored = medium', then: 'Issue step-up challenge', context: 'BC-DEC', fr: 'FR7',
-          note: 'Medium risk triggers a step-up rather than a hard block.' },
-        { id: 'POL-2', when: 'Authorization blocked', then: 'Open case', context: 'BC-CASE', fr: 'FR5',
-          note: 'Blocked / escalated authorizations become analyst cases (crosses Decisioning → Case Management).' },
-        { id: 'POL-3', when: 'Authorization blocked', then: 'Notify customer', context: 'BC-NOTIFY', fr: 'FR4',
-          note: 'Customer is notified on a block (crosses into the generic Notification context).' },
-      ],
+      // Policies are no longer authored here: they are DERIVED from the storming
+      // flows (flow/data.js node.policies — single source of truth), rolled up by
+      // derivedPolicies() in screens-design-ddd.jsx for the bounded-context
+      // Policies tab and the knowledge pack.
 
-      // how the model produced the three contexts (the seams)
-      seams: [
-        { context: 'BC-DEC', name: 'Decisioning', rationale: 'Authorization + Step-up share scoring/decision language and a tight consistency boundary.' },
-        { context: 'BC-CASE', name: 'Case Management', rationale: 'Case has its own lifecycle and language (triage / disposition); it reacts to block events.' },
-        { context: 'BC-NOTIFY', name: 'Customer Notification', rationale: 'Notification is a pure reaction with no domain state of its own → generic, off-the-shelf.' },
-      ],
     },
   },
 };

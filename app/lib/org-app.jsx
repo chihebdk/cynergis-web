@@ -22,10 +22,12 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
   const ping = () => window.__cynRouter.subs.forEach(f => f());
   window.cynParseUrl = () => {
     const q = new URLSearchParams(location.search);
+    const tab = q.get('tab');
     return {
       v: q.get('v') || 'org', pf: q.get('pf') || null, prod: q.get('prod') || null,
       sub: q.get('sub') || 'dashboard', phase: q.get('phase') || 'Envision',
-      entry: q.get('entry') || 'overview', ctx: q.get('ctx') || null, tab: q.get('tab') || 'rels',
+      entry: q.get('entry') || 'overview', ctx: q.get('ctx') || null,
+      tab: (tab && tab !== 'rels') ? tab : 'flow',   // legacy ?tab=rels links land on Event flow
     };
   };
   window.cynBuildUrl = (n) => {
@@ -37,7 +39,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       if (n.pf) q.set('pf', n.pf);
       if (n.prod) q.set('prod', n.prod);
       q.set('phase', n.phase || 'Envision'); q.set('entry', n.entry || 'overview');
-      if (n.entry === 'contexts' && n.ctx) { q.set('ctx', n.ctx); if (n.tab && n.tab !== 'rels') q.set('tab', n.tab); }
+      if (n.entry === 'contexts' && n.ctx) { q.set('ctx', n.ctx); if (n.tab && n.tab !== 'flow') q.set('tab', n.tab); }
     }
     return location.pathname + '?' + q.toString();
   };
@@ -315,7 +317,7 @@ function OrgApp() {
 
   const pf = pid ? ORG.portfolio(pid) : null;
   const scrollTop = () => document.querySelector('.asc-main')?.scrollTo(0, 0);
-  const RESET = { phase: 'Envision', entry: 'overview', ctx: null, tab: 'rels' };
+  const RESET = { phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' };
 
   const openPortfolio = useCallback((id) => {
     setPid(id); setSub('dashboard'); setView('portfolio');
@@ -330,8 +332,8 @@ function OrgApp() {
   const openProduct = useCallback((p) => {
     const r = cynResolveProduct(p.id);
     setProd(p); if (r) setPid(r.pid); setSub('dashboard'); setView('product');
-    window.__cynCtxSel = null; window.__cynCtxTab = 'rels';
-    window.cynPushUrl({ v: 'prod', pf: r ? r.pid : pid, prod: p.id, sub: 'dashboard', ...RESET, phase: p.phase });
+    window.__cynCtxSel = null; window.__cynCtxTab = 'flow';
+    window.cynPushUrl({ v: 'prod', pf: r ? r.pid : pid, prod: p.id, sub: 'dashboard', ...RESET });   // always land on Envision — the lifecycle reads left→right
     setTimeout(scrollTop, 0);
   }, [pid]);
   const navSub = (s) => {
@@ -345,8 +347,8 @@ function OrgApp() {
   };
   const goProductView = () => {
     if (!prod) return; setSub('dashboard'); setView('product');
-    window.__cynCtxSel = null; window.__cynCtxTab = 'rels';
-    window.cynPushUrl({ v: 'prod', pf: pid, prod: prod.id, sub: 'dashboard', ...RESET, phase: prod.phase });
+    window.__cynCtxSel = null; window.__cynCtxTab = 'flow';
+    window.cynPushUrl({ v: 'prod', pf: pid, prod: prod.id, sub: 'dashboard', ...RESET });
     setTimeout(scrollTop, 0);
   };
 

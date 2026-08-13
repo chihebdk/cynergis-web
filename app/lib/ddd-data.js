@@ -25,7 +25,7 @@ window.__DDD__ = {
             { term: 'step-up', def: 'An extra verification challenge issued on medium risk instead of a hard block.' },
           ],
           capabilities: ['UC1', 'UC2', 'UC4'],
-          note: 'The scoring/block/step-up brain — the differentiating core. Spend the agentic budget here.',
+          note: 'Decides every card authorization in real time — scores the risk, then approves, blocks, or issues a step-up within the network timeout, with an explanation for every decision. The Core subdomain: the scoring model, thresholds and step-up logic live here, and everything downstream reacts to its decisions.',
           summary: 'Decisioning is the real-time brain of fraud control: for every card authorization it scores risk, then approves, blocks, or steps-up within the network timeout — and emits the decision with an explanation. As the Core subdomain it owns the scoring model, the thresholds, and the step-up logic, and earns the deepest investment. Everything downstream — cases, customer alerts — is a reaction to a decision made here.',
           // inbound data this context needs (its own — not the product-wide list)
           needs: [
@@ -39,11 +39,11 @@ window.__DDD__ = {
             name: 'Decisioning Context Owner',
             tier: 'Supervised',
             charter: 'I own the real-time fraud Decisioning context — scoring, the block/approve decision, and step-up. I keep its model consistent, enforce its invariants, and drive its development.',
-            does: 'It scores every card authorization in real time, decides to approve, block, or step it up — within the network timeout — and emits the decision with a human-readable explanation. High-risk transactions are blocked and the customer is notified; medium-risk ones get a step-up challenge instead of a hard block.',
+            does: 'It scores every card authorization in real time, decides to approve, block, or step it up — within the network timeout — and emits the decision with a human-readable explanation. High-risk transactions are blocked and the customer is notified; medium-risk ones get a step-up challenge instead of a hard block. A customer “it was me” releases the hold, and analyst dispositions flow back as labelled outcomes that keep the model honest.',
             value: ['Cut fraud losses ~55% (18 → 7 bps)', 'Halve false declines (6.2% → 2.5%)', 'Decide within the network timeout (p95 < 300 ms)'],
             skill: { id: 'decisioning-analyst', marketplace: 'https://marketplace.cynergis.ai/skills/decisioning-analyst', repo: 'https://github.com/cynergis/subdomain-analyst' },
             owns: ['Authorization', 'Step-up Challenge'],
-            slice: { aggregates: 2, invariants: 5, events: 6, policies: 2 },
+            slice: { aggregates: 2, invariants: 5, events: 7, policies: 4 },
             sources: [
               { label: 'Fraud strategy memo', type: 'doc', href: 'https://docs.cynergis.ai/wealthgrow/fraud-strategy-memo' },
               { label: 'Auth-switch API spec', type: 'spec', href: 'https://docs.cynergis.ai/wealthgrow/auth-switch-api' },
@@ -53,10 +53,31 @@ window.__DDD__ = {
               { kind: 'skill',  name: 'decisioning.skill.md',   note: 'Charter · language · procedures' },
               { kind: 'script', name: 'score_transaction.py',   note: 'Realizes UC1 — LLM-function workflow' },
               { kind: 'script', name: 'apply_decision.py',      note: 'Realizes UC2 — deterministic' },
+              { kind: 'script', name: 'stepup_saga.py',         note: 'Realizes UC4 — the Step-up Process Manager (C6)' },
               { kind: 'ref',    name: 'ACL · Auth Vendor',      note: 'Published-language contract at the boundary' },
             ],
             drives: ['Extend scoring features', 'Tune thresholds (gated)', 'Propose new capabilities in this context'],
             guardrails: ['Cannot redraw its own boundary — that is a system-level call', 'Model / invariant changes need a human gate', 'Reads neighbouring contexts only via published language'],
+          },
+          /* The subdomain's second agent (D-065): the OPERATIONS agent — used by
+             humans in live operation. Defined here in Design; its as-built form
+             (MCP toolset, evals, trust ladder) is the Build › Agents register. */
+          opsAgent: {
+            name: 'Decisioning Agent',
+            asBuilt: 'AGT-DEC',
+            charter: 'Used by the fraud-ops humans in live operation — it assists, executes reversible actions, investigates, and responds, always through the product\u2019s own role-scoped surfaces.',
+            permissions: [
+              'Role-scoped production MCP only — acts + observes, never the event path',
+              'No repository or code access — building belongs to the domain agent',
+              'Governance acts stay human (D-056)',
+            ],
+            skills: [
+              { name: 'Answer subdomain questions, grounded in the KG', tier: 'Autonomous', shared: true },
+              { name: 'Explain a decision', tier: 'Autonomous' },
+              { name: 'Release a soft-hold', tier: 'Supervised' },
+              { name: 'Propose a threshold change', tier: 'Suggest' },
+              { name: 'Run a shadow evaluation', tier: 'Suggest', planned: true },
+            ],
           } },
         { id: 'BC-CASE', name: 'Case Management', classification: 'supporting',
           language: [
@@ -67,7 +88,7 @@ window.__DDD__ = {
             { term: 'evidence', def: 'The score explanation + linked transactions assembled for the case.' },
           ],
           capabilities: ['UC3'],
-          note: 'Analyst workflow over flagged cases. Important but not the differentiator.',
+          note: 'Runs the analyst workflow over the authorizations Decisioning flags — each case is opened, triaged and dispositioned, and the labelled outcome feeds back to improve the model. A Supporting subdomain: essential to close the loop, but not the differentiator.',
           summary: 'Case Management runs the analyst workflow over the authorizations Decisioning flags or blocks. It owns the case lifecycle — open, assign, triage, dispose — and the evidence assembled for each case, and feeds labelled outcomes back to the model. A Supporting subdomain: essential to closing the loop, but not the differentiator, so it gets solid tooling rather than the deepest agentic investment.',
           // inbound data this context needs (its own — different from Decisioning's)
           needs: [
@@ -83,7 +104,7 @@ window.__DDD__ = {
             value: ['Higher confirmed-fraud rate', 'Fewer false referrals', 'Defensible, audited dispositions'],
             skill: { id: 'case-management-analyst', marketplace: 'https://marketplace.cynergis.ai/skills/case-management-analyst', repo: 'https://github.com/cynergis/subdomain-analyst' },
             owns: ['Case'],
-            slice: { aggregates: 1, invariants: 3, events: 3, policies: 1 },
+            slice: { aggregates: 1, invariants: 3, events: 4, policies: 1 },
             sources: [
               { label: 'Analyst ops runbook', type: 'doc', href: 'https://docs.cynergis.ai/wealthgrow/analyst-ops-runbook' },
               { label: 'Case Manager API v2 (pending)', type: 'spec', href: 'https://docs.cynergis.ai/wealthgrow/case-manager-api-v2' },
@@ -95,6 +116,21 @@ window.__DDD__ = {
             ],
             drives: ['Improve triage assist', 'Propose disposition policies (gated)'],
             guardrails: ['Boundary owned at the system level', 'Disposition logic changes need a human gate'],
+          },
+          opsAgent: {
+            name: 'Case Agent',
+            asBuilt: 'AGT-CASE',
+            charter: 'Used by the analysts in live operation — it assembles evidence, drafts dispositions for human confirmation, and answers case questions.',
+            permissions: [
+              'Role-scoped production MCP only — the analyst console\u2019s own surfaces',
+              'No repository or code access — building belongs to the domain agent',
+              'Governance acts stay human (D-056)',
+            ],
+            skills: [
+              { name: 'Answer subdomain questions, grounded in the KG', tier: 'Supervised', shared: true },
+              { name: 'Assemble case evidence', tier: 'Supervised' },
+              { name: 'Draft a disposition', tier: 'Suggest' },
+            ],
           } },
         { id: 'BC-NOTIFY', name: 'Customer Notification', classification: 'generic',
           language: [
@@ -103,7 +139,7 @@ window.__DDD__ = {
             { term: 'template', def: 'The reusable message format for a notification type.' },
           ],
           capabilities: [],
-          note: 'Generic — use an off-the-shelf notification service; no bespoke build.',
+          note: 'Turns a block into a customer-facing alert — push, SMS or in-app, with a confirm-or-deny action — and relays the customer’s response back. A Generic subdomain: it owns nothing of the fraud domain, so buy an off-the-shelf service behind a thin adapter.',
           summary: 'Customer Notification turns a decision into a customer-facing alert across push, SMS, and in-app. It owns nothing of the fraud domain — no scoring, no cases — only the delivery of a message. A Generic subdomain: an off-the-shelf notification service behind a thin adapter, driven entirely by Decisioning’s published alert contract.',
           // Generic context → no bespoke owner agent (scale richness with coreness)
           agent: null },
@@ -123,13 +159,13 @@ window.__DDD__ = {
 
       // ---- per-capability realization decisions (form × composition × surface) ----
       realizations: [
-        { ucId: 'UC1', context: 'BC-DEC', form: 'llm-function', composition: 'workflow', surface: 'verb', agency: 'automated',
+        { ucId: 'UC1', context: 'BC-DEC', components: ['C1', 'C2', 'C5'], form: 'llm-function', composition: 'workflow', surface: 'verb', agency: 'automated',
           trigger: 'An authorization arrives on the card-auth bus (real-time stream) — synchronous, within the network timeout.',
           nodes: ['code · fetch features', 'llm-function · risk band', 'code · threshold gate'],
           testStrategy: 'Eval set of labelled transactions + p95<300ms latency regression; unit tests on the threshold gate.',
           rationale: 'Repeatable shape, bounded judgment per transaction, tight latency → a typed workflow, not an agent. Least-agentic that fits.',
           enforces: [{ inv: 'Every decision carries a risk band + explanation', by: 'typed output schema + eval assertion' }] },
-        { ucId: 'UC2', context: 'BC-DEC', form: 'code', composition: 'workflow', surface: 'verb', agency: 'automated',
+        { ucId: 'UC2', context: 'BC-DEC', components: ['C1', 'C4'], form: 'code', composition: 'workflow', surface: 'verb', agency: 'automated',
           trigger: 'Domain event "Authorization scored = high" — fired by UC1 within the same decision flow.',
           nodes: ['code · apply block', 'llm-function · customer explanation', 'service · notification (generic)'],
           testStrategy: 'Unit tests on block rules; contract test against the Notification service; small eval on explanation text.',
@@ -138,7 +174,7 @@ window.__DDD__ = {
             { inv: 'A decision cannot be both approved and blocked', by: 'aggregate validation (code)' },
             { inv: 'An authorization is decided exactly once', by: 'idempotent command handler (code)' },
           ] },
-        { ucId: 'UC3', context: 'BC-CASE', form: 'agent', composition: 'workflow', surface: 'cowork', agency: 'human-in-loop',
+        { ucId: 'UC3', context: 'BC-CASE', components: ['C3'], form: 'agent', composition: 'workflow', surface: 'cowork', agency: 'human-in-loop',
           trigger: 'Policy POL-2: "Authorization blocked" → a case is opened on the analyst queue (cross-context, from Decisioning).',
           nodes: ['agent · assemble case + evidence', 'human · disposition decision', 'code · record disposition'],
           testStrategy: 'Trajectory/guardrail harness for the assist agent; decision-quality review on dispositions; audit-completeness checks.',
@@ -147,11 +183,11 @@ window.__DDD__ = {
             { inv: 'A disposition requires a recorded rationale', by: 'human checklist + required UI field' },
             { inv: 'Only the assigned analyst can dispose a case', by: 'authz policy + agent guardrail' },
           ] },
-        { ucId: 'UC4', context: 'BC-DEC', form: 'code', composition: 'workflow', surface: 'verb', agency: 'automated', provisional: true,
-          trigger: 'Policy POL-1: "Authorization scored = medium" → issue a step-up challenge (in the same decision flow).',
-          nodes: ['code · risk-band gate', 'service · step-up auth (external vendor, ACL)', 'code · record outcome'],
-          testStrategy: 'Integration/contract tests against the auth vendor sandbox; unit tests on the gate.',
-          rationale: 'Deterministic integration with a generic external provider — no bespoke app, no agent. (Provisional: gated on the vendor contract — see Delivery board blocker.)',
+        { ucId: 'UC4', context: 'BC-DEC', components: ['C6'], form: 'code', composition: 'workflow', surface: 'verb', agency: 'automated', provisional: true,
+          trigger: 'Event stepup.requested — the Decision Service hands a medium-risk hold to the Step-up Process Manager (saga).',
+          nodes: ['code · risk-band gate', 'saga · Step-up Process Manager (owns AGG-STEPUP)', 'service · step-up auth vendor (ACL)', 'code · record outcome'],
+          testStrategy: 'Integration/contract tests against the auth vendor sandbox; saga timeout tests (resolve vs expire); unit tests on the gate.',
+          rationale: 'Deterministic integration behind an ACL, coordinated by a small process manager that owns the challenge lifecycle — no bespoke app, no agent. (Provisional: gated on the vendor contract — see Delivery board blocker.)',
           enforces: [
             { inv: 'Step-up is issued only on a medium risk band', by: 'risk-band gate (code)' },
             { inv: 'A challenge expires after its timeout', by: 'workflow timer (code)' },

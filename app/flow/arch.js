@@ -13,6 +13,63 @@ function allComponents(ARCH) {
   return (ARCH?.domains || []).flatMap((dm) => dm.components || []);
 }
 
+// Full __ARCH__ component record by id (C1, C2, …) — the deployable component that a
+// context-map node points at via `componentId`. Used by the context-map property panel.
+export function componentById(id) {
+  if (typeof window === "undefined" || !window.__ARCH__ || !id) return null;
+  return allComponents(window.__ARCH__).find((c) => c.id === id) || null;
+}
+
+// All deployable components of a bounded context (comp.bc is authored — the arch
+// domain `case` spans two BCs, so domain membership alone is ambiguous).
+export function componentsForBC(bc) {
+  if (typeof window === "undefined" || !window.__ARCH__ || !bc) return [];
+  return allComponents(window.__ARCH__).filter((c) => c.bc === bc);
+}
+
+// Resolve a context-map node to its component: by componentId when present, else by
+// exact name match on the node's summary (belt-and-braces vs a stale canvas store
+// seeded before componentId links existed).
+export function componentForNode(node) {
+  if (!node || node.kind !== "component") return null;
+  return componentById(node.componentId)
+    || ((typeof window !== "undefined" && window.__ARCH__)
+      ? allComponents(window.__ARCH__).find((c) => c.name === node.summary) || null
+      : null);
+}
+
+/* ── component archetypes (derive-first, like deriveArch) ──
+   The property-tab taxonomy is FlowAI's event-storming model — it describes an
+   event-triggered serverless function doing CQRS/DDD against bound resources.
+   Not every deployable component is that shape (the Rules Engine is invoked
+   inline; the Feature Store is a data store), so derive an archetype from the
+   component's data shape and let it drive the panel: `tabs` lists the CORE tabs
+   that always render (their empty states stay prescriptive); non-core tabs
+   render only when populated. 'aggregate' is core-only — the domain aggregate
+   is domain-level data, and showing it on a store/module would misattribute it. */
+const ALL_TABS = ["details", "trigger", "rules", "commands", "read", "policies", "aggregate", "contracts", "write", "resources", "deps", "code", "hotspots"];
+export const ARCHETYPES = {
+  service:   { key: "service",   label: "Event-driven service",  tabs: ALL_TABS },
+  api:       { key: "api",       label: "API service",           tabs: ALL_TABS },
+  job:       { key: "job",       label: "Scheduled job",         tabs: ALL_TABS },
+  workspace: { key: "workspace", label: "Interactive workspace", tabs: ALL_TABS },
+  inline:    { key: "inline",    label: "Inline module",         tabs: ["details", "rules", "commands", "deps", "code", "hotspots"] },
+  store:     { key: "store",     label: "Data store",            tabs: ["details", "read", "write", "resources", "code", "hotspots"] },
+  generic:   { key: "generic",   label: "Component",             tabs: ["details", "code"] },
+};
+
+export function componentArchetype(comp) {
+  const trig = comp?.trigger || [];
+  const has = (k) => (comp?.[k] || []).length > 0;
+  if (trig.some((t) => t.type === "User"))     return ARCHETYPES.workspace; // a human acts on it — before Event: C3 has both
+  if (trig.some((t) => t.type === "Event"))    return ARCHETYPES.service;
+  if (trig.some((t) => t.type === "API"))      return ARCHETYPES.api;
+  if (trig.some((t) => t.type === "Schedule")) return ARCHETYPES.job;
+  if (has("command") || has("businessRules"))  return ARCHETYPES.inline;    // behaviour but no entry point → invoked in-process
+  if (has("readModel") || has("writeModel") || has("resource")) return ARCHETYPES.store;
+  return ARCHETYPES.generic;
+}
+
 export function deriveArch(node) {
   if (typeof window === "undefined" || !window.__ARCH__) return null;
   const ARCH = window.__ARCH__;

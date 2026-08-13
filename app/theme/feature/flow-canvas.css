@@ -57,16 +57,8 @@
   height: 14px;
 }
 
-/* Spec | Architecture lens toggle (D-034) — an Ascent-styled segmented control
-   sitting top-centre of the board panel's header row. */
-.cyn-flow-embed .cyn-lens-toggle {
-  display: inline-flex;
-  align-items: center;
-  flex: none;
-}
-.cyn-flow-embed .cyn-lens-toggle .flowai-seg-btn {
-  cursor: pointer;
-}
+/* (D-036) The Spec|Architecture lens toggle is retired — the event-card panel's
+   tabs subsume both lenses. */
 
 /* Start box (view-only): drop the add-node button, keep just a centered, slightly
    larger "Start" label. (Overrides the built-in StartNode's Tailwind classes.) */
@@ -76,6 +68,10 @@
    re-measures via ResizeObserver and re-routes the edge flush to the box. */
 .cyn-flow-embed .react-flow__node[data-id="start"] {
   width: max-content !important;
+  /* The outgoing edge lives in the edge layer (z-index 2), above the node layer
+     (z-index 1), so in Tree view it draws across the Start box. Lift the Start node
+     above the edges so it stays clean — the edge tucks behind its right border. */
+  z-index: 5 !important;
 }
 .cyn-flow-embed .react-flow__node[data-id="start"] .rounded-full {
   display: none;
@@ -122,6 +118,43 @@
   background: var(--panel);
   border-color: var(--line);
   padding: 0;
+}
+
+/* Context map: the property panel shows the deployable-component board (Spec |
+   Architecture) on node click — same fullscreen-only behaviour as the event flow
+   (hidden inline by the rule above, so it never covers the short inline canvas).
+   The under-node ContextKind label stays for at-a-glance classification. */
+.cyn-flow-contextmap.cyn-flow-expanded [data-testid="properties-panel"] {
+  display: flex !important;
+}
+/* Expanded submaps expose a hardcoded Collapse + Ungroup control. We don't ungroup
+   bounded contexts, so hide the Ungroup button (keep Collapse). */
+.cyn-flow-contextmap button[title="Ungroup Submap"] {
+  display: none !important;
+}
+/* The submap expand/collapse toggle above each box is an unstyled <button>, so it
+   shows the browser's default grey background + outset border. Strip that chrome and
+   lift it a little higher so it clears the box instead of overlapping it. */
+.cyn-flow-contextmap button[title="Expand Submap"],
+.cyn-flow-contextmap button[title="Collapse Submap"] {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  top: -1.85rem !important;
+}
+/* Context-map node kind label, shown under the box. */
+.cyn-ctxkind {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2, #4b5563);
+  background: var(--panel, #fff);
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 6px;
+  padding: 1px 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Node board (properties panel) ─────────────────────────────────────────── */
@@ -201,6 +234,107 @@
 .cyn-flow-embed .cyn-dot-purple { background: #a855f7; }
 .cyn-flow-embed .cyn-dot-red { background: #ef4444; }
 
+/* ── deployable-component board (context map): FlowAI structure, Ascent skin ──
+   The tab set + icons + list/detail two-column layout follow FlowAI's properties
+   panel (tabs-config.tsx / PanelManyToOne); the skin is native — underline tabs
+   like .ddd-tab, tokens for all chrome. The per-tab hue survives only in the 14px
+   tab icon, the same intensity rule as .cyn-col-dot. These rules are unlayered,
+   so they win over the layer(utilities) Tailwind classes that lay the panel out. */
+.cyn-flow-embed .cyn-cmp-empty {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--ink-3); font-style: italic; padding: 32px;
+}
+
+/* tab row — underline idiom (.ddd-tab); the row's rule replaces the head's divider */
+.cyn-flow-embed .cyn-cmp .cyn-board-head { border-bottom: 0; padding-bottom: 0; }
+.cyn-flow-embed .cyn-cmptabs {
+  display: flex; flex-wrap: wrap; gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-top: 8px;
+}
+.cyn-flow-embed .cyn-cmptab {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: none;
+  font-family: var(--font-display); font-size: 12.5px; font-weight: 550;
+  color: var(--ink-3);
+  padding: 8px 11px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  cursor: pointer; transition: color .12s, border-color .12s;
+}
+.cyn-flow-embed .cyn-cmptab:hover { color: var(--ink); }
+.cyn-flow-embed .cyn-cmptab.on { color: var(--accent-ink); border-bottom-color: var(--accent); }
+
+/* panel chrome — tokens instead of FlowAI's hardcoded Tailwind grays */
+.cyn-flow-embed .cyn-cmp-wrap {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+/* micro-label: the app's mono uppercase eyebrow (cf. .ddd-eyebrow, .nav-sect) */
+.cyn-flow-embed .cyn-cmp-k {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4);
+}
+.cyn-flow-embed .cyn-cmp-list {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.cyn-flow-embed .cyn-cmp-row {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-2); cursor: pointer;
+}
+.cyn-flow-embed .cyn-cmp-row:last-child { border-bottom: 0; }
+.cyn-flow-embed .cyn-cmp-row:hover { background: var(--panel-2); }
+.cyn-flow-embed .cyn-cmp-row.on { background: var(--accent-soft); color: var(--accent-ink); }
+.cyn-flow-embed .cyn-cmp-detail {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
+  font-size: 13px; color: var(--ink-2); line-height: 1.55;
+}
+.cyn-flow-embed .cyn-cmp-table {
+  width: 100%; font-size: 11.5px; border: 1px solid var(--line);
+  border-collapse: collapse; margin-top: 4px;
+}
+.cyn-flow-embed .cyn-cmp-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.cyn-flow-embed .cyn-cmp-table tr:last-child td { border-bottom: 0; }
+.cyn-flow-embed .cyn-cmp-table td.mono { font-family: var(--font-mono); color: var(--ink-2); white-space: nowrap; }
+.cyn-flow-embed .cyn-cmp-table td.muted { font-family: var(--font-mono); color: var(--ink-4); white-space: nowrap; }
+/* code/link chips — match .cyn-agg-chip */
+.cyn-flow-embed .cyn-cmp-link,
+.cyn-flow-embed .cyn-cmp-code {
+  display: inline-flex; align-items: center;
+  background: var(--panel-3); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--ink-3); font-family: var(--font-mono); font-size: 10px;
+  padding: 1px 6px; text-decoration: none;
+}
+.cyn-flow-embed .cyn-cmp-link:hover { color: var(--ink); border-color: var(--line-strong); }
+/* Generate — the native ink-fill pill (.pill idiom) */
+.cyn-flow-embed .cyn-cmp-btn {
+  border: 0; border-radius: var(--r-md); padding: 6px 16px;
+  font-family: var(--font-display); font-size: 12.5px; font-weight: 550;
+  background: var(--ink); color: var(--bg); cursor: pointer;
+}
+.cyn-flow-embed .cyn-cmp-btn:disabled { background: var(--panel-3); color: var(--ink-4); cursor: not-allowed; }
+/* secondary text inside detail boxes */
+.cyn-flow-embed .cyn-cmp-sub { font-size: 11.5px; color: var(--ink-3); }
+.cyn-flow-embed .cyn-cmp-note { font-size: 13px; font-style: italic; color: var(--ink-4); }
+/* read-only banner — BC-level cards (Aggregate, Contracts) are edited on the
+   bounded-context page; here they are context, not workspace. */
+.cyn-flow-embed .cyn-cmp-ro {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 10px 16px 0;
+  padding: 5px 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-4);
+}
+.cyn-flow-embed .cyn-cmp-ro button {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; letter-spacing: inherit; text-transform: inherit;
+  color: var(--accent); white-space: nowrap;
+}
+.cyn-flow-embed .cyn-cmp-ro button:hover { color: var(--accent-ink); }
+
 /* item */
 .cyn-flow-embed .cyn-bi {
   border-left: 2px solid var(--line); padding-left: 12px;
@@ -224,3 +358,61 @@
 .cyn-flow-embed .cyn-clickable { cursor: pointer; transition: filter .12s, background .12s; }
 .cyn-flow-embed .cyn-agg-chip.cyn-clickable:hover { background: var(--panel-2, var(--line)); }
 .cyn-flow-embed .cyn-crosses.cyn-clickable:hover { background: #ffedd5; }
+
+/* Kind colours for the under-node chips — the same soft-tint language as the
+   panel badges, so actor / external / context / seam read apart at a glance. */
+.cyn-ck-actor     { background: #f0fdfa; color: #0f766e; border-color: #99f6e4; }
+.cyn-ck-external  { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.cyn-ck-context   { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.cyn-ck-seam      { background: #faf5ff; color: #7e22ce; border-color: #e9d5ff; }
+.cyn-ck-component { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+.cyn-ck-event     { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+
+/* ── System map (D-046): no properties panel — a node modal instead ── */
+.cyn-flow-systemmap [data-testid="properties-panel"],
+.cyn-flow-systemmap [data-testid="properties-resize-handle"] {
+  display: none !important;
+}
+.cyn-smm-backdrop {
+  position: fixed; inset: 0; z-index: 10000;
+  background: oklch(0.2 0.02 265 / 0.35);
+  display: grid; place-items: center;
+}
+.cyn-smm {
+  width: min(480px, calc(100vw - 48px));
+  background: var(--panel); border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg); padding: 18px 20px;
+  box-shadow: 0 18px 50px oklch(0.2 0.03 265 / 0.25);
+  font-family: var(--font-display);
+}
+.cyn-smm-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cyn-smm-x { border: 0; background: none; color: var(--ink-4); font-size: 13px; cursor: pointer; padding: 2px 4px; }
+.cyn-smm-x:hover { color: var(--ink); }
+.cyn-smm-title { margin: 0 0 6px; font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); }
+.cyn-smm-desc { margin: 0 0 8px; font-size: 13px; line-height: 1.55; color: var(--ink-2); font-family: var(--font-sans); }
+.cyn-smm-meta { margin: 0 0 4px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-4); }
+.cyn-smm-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.cyn-smm-primary {
+  border: 0; border-radius: var(--r-md); padding: 6px 14px; cursor: pointer;
+  font-family: var(--font-display); font-size: 12.5px; font-weight: 550;
+  background: var(--ink); color: var(--bg);
+}
+.cyn-smm-link {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font-family: var(--font-display); font-size: 12.5px; font-weight: 550; color: var(--accent);
+}
+.cyn-smm-link:hover { color: var(--accent-ink); }
+
+/* ── Org-view Start node: match the card-to-card edge length ──
+   orgLayout places children at the Start node's REGISTERED width (165px) + 150px,
+   but the wrapper above is shrunk to the label (the htree fix) — so in Org view
+   the start→child edge ran ~65px longer than every other edge. In org mode only:
+   give the wrapper its layout width back and right-align the pill inside it, so
+   the edge starts flush at the pill and spans the same 150px as card gaps.
+   (React Flow re-measures on the class flip and re-routes the edge.) */
+.cyn-layout-org .react-flow__node[data-id="start"] {
+  width: 165px !important;
+}
+.cyn-layout-org .react-flow__node[data-id="start"] > div {
+  justify-content: flex-end;
+}

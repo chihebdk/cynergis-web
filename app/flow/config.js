@@ -35,9 +35,9 @@ export const flowConfig = {
   },
   lanes: { show: false },
   map: {
-    // Single board view (header + all sections as columns); the tab nav is hidden.
+    // One property system everywhere (D-036): the event-card panel.
     properties: [
-      { tab: "NodeBoard", title: "Details", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
+      { tab: "EventCards", title: "Details", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
     ],
   },
 };
@@ -49,7 +49,9 @@ export const contextMapConfig = {
   fitView: true,
   layout: { available: ["org", "htree"], default: "htree" },
   nodeTypes: {
-    SimpleNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },
+    // ContextKind decorator renders the node's classifying label (component / seam /
+    // external) under the box — the context map has no property panel.
+    SimpleNode: { toolbar: [], contextMenu: [], decorators: ["ContextKind"], showEndMarker: true },
     SubmapNode: { toolbar: [], contextMenu: ["submapExpand"], decorators: [], showEndMarker: true },
     SubmapEndNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: false },
     ReferenceNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },
@@ -64,8 +66,10 @@ export const contextMapConfig = {
   },
   lanes: { show: false },
   map: {
+    // Same panel as the event flows — EventCards branches internally:
+    // event nodes → card tabs; seams/externals → simple detail card.
     properties: [
-      { tab: "ContextMapCard", title: "Details", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
+      { tab: "EventCards", title: "Details", className: "cyn-ptab", selectedCls: "cyn-ptab cyn-ptab-on" },
     ],
   },
 };

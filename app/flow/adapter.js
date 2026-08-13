@@ -2,6 +2,7 @@
 
 import { seedFlows } from "./data";
 import { contextMap, contextSubmaps } from "./contextmap-data";
+import { systemMap, systemSubmaps } from "./systemmap-data";
 
 // In-memory store (mapper starter pattern), seeded with our flows as `map` docs.
 const collections = new Map();
@@ -14,6 +15,8 @@ const getCollection = (name) => {
 for (const flow of seedFlows) getCollection("map").set(flow.id, structuredClone(flow));
 getCollection("map").set(contextMap.id, structuredClone(contextMap));
 for (const sm of contextSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
+getCollection("map").set(systemMap.id, structuredClone(systemMap));
+for (const sm of systemSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 
 export function createMemoryAdapter(databaseName) {
   const prefix = databaseName ? `${databaseName}:` : "";

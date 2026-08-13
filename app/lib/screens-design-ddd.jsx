@@ -3,7 +3,9 @@ import dynamic from 'next/dynamic';
 import './trace-core';
 import './ddd-data';
 import './domain-model-data';
-const { Ref: DDRef, MermaidView: DDMermaid } = window;
+import { seedFlows } from '../flow/data';
+import { componentById, componentsForBC, deriveArch } from '../flow/arch';
+const { Ref: DDRef } = window;
 
 // the event-flow canvas (embedded @flowai/canvas) — client-only, heavy, load on demand
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
@@ -12,10 +14,8 @@ const FLOW_BY_CONTEXT = { 'BC-DEC': 'decisioning', 'BC-CASE': 'casemgmt', 'BC-NO
 
 /* ============================================================
    Cynergis — Design surfaces (D-026 / D-027), in method order:
-     1. DesignDomainModel  — EventStorming: events·commands·aggregates·policies
-                             (the seams produce the contexts)
-     2. DesignContexts     — bounded contexts + context map (distillation)
-     3. DesignRealization  — per-capability realization (form×composition×surface)
+     1. DesignContexts     — bounded contexts + context map (distillation)
+     2. DesignRealization  — per-capability realization (form×composition×surface)
                              + how each invariant is enforced per form
    Use-case ids render as <Ref> chips, wiring everything into the graph.
    ============================================================ */
@@ -50,24 +50,25 @@ const TIER_ORDER = ['Shadow', 'Assisted', 'Supervised', 'Autonomous'];
 const ASSET_LABEL = { skill: 'SKILL', script: 'SCRIPT', ref: 'REF' };
 const SRC_LABEL = { doc: 'DOC', spec: 'SPEC', policy: 'POLICY', transcript: 'TRANSCRIPT', interview: 'INTERVIEW', telemetry: 'TELEMETRY', regulatory: 'REGULATORY', capture: 'CAPTURED' };
 
-function ContextOwnerAgent({ c, D, M, prd }) {
+function ContextOwnerAgent({ c, D, M, prd, onOpenKg }) {
   const [showHelp, setShowHelp] = React.useState(false);
   const [showPack, setShowPack] = React.useState(false);
   const a = c.agent;
   if (!a) {
     return (
       <div className="coa coa-none">
-        <div className="coa-none-h"><DDPico d={DDI.owner} w={14} /> No bespoke subdomain agent</div>
+        <div className="coa-none-h"><DDPico d={DDI.owner} w={14} /> No bespoke subdomain agents</div>
         <div className="coa-none-t">This is a <b>generic</b> context — reuse an off-the-shelf service behind a thin adapter, governed by the neighbouring agent. No expert to install.</div>
       </div>
     );
   }
   const aggregates = ((M && M.aggregates) || []).filter(x => x.context === c.id);
-  const policies = ((M && M.policies) || []).filter(x => x.context === c.id);
+  // policies are derived from the flows (single source of truth — D-037)
+  const policies = derivedPolicies().filter(p => p.owner === c.id);
   const needs = c.needs || [];
   const ruleList = [
     ...aggregates.flatMap(x => (x.invariants || []).map(iv => ({ text: iv.text, fr: iv.fr }))),
-    ...policies.map(p => ({ text: `When ${p.when} → ${p.then.toLowerCase()}`, fr: p.fr })),
+    ...policies.map(p => ({ text: `When ${p.when} → ${p.then.toLowerCase()}`, fr: (p.grounds || [])[0] })),
   ];
   const manages = aggregates.map(x => x.name);
   const grounding = groundingFor(c, prd);
@@ -78,9 +79,9 @@ function ContextOwnerAgent({ c, D, M, prd }) {
       <div className="coa-head">
         <span className="coa-ico"><DDPico d={DDI.owner} w={16} /></span>
         <div className="coa-id">
-          <div className="coa-eyebrow">SUBDOMAIN AGENT</div>
+          <div className="coa-eyebrow">DOMAIN AGENT</div>
           <div className="coa-name">{a.name}</div>
-          <div className="coa-tagline">A subdomain expert you install in Claude Code or Cowork</div>
+          <div className="coa-tagline">The domain expert — install it in Claude Code or Cowork; it knows this subdomain and helps build it</div>
         </div>
         <button type="button" className="coa-help-btn" onClick={() => setShowHelp(s => !s)} title="What is a subdomain agent?">?</button>
       </div>
@@ -89,16 +90,19 @@ function ContextOwnerAgent({ c, D, M, prd }) {
         <div className="coa-help">
           <b>What is a subdomain agent?</b> Every subdomain ships an agent that owns its knowledge — a grounded expert
           you install in <b>Claude Code</b> (as a developer) or <b>Cowork</b> (as a business analyst) to understand and
-          work with it. Under the hood it's a generic <b>skill</b> plus this subdomain's <b>knowledge pack</b> — its
-          facts, projected live from the model. Together they answer anything about the subdomain and always cite their
-          sources. Ask it how something works, what a rule means, what data it needs, or what would break if you changed it.
+          work with it. Under the hood it's a generic <b>skill</b> connected to this subdomain's <b>knowledge graph</b> —
+          the typed facts of the model, projected live and queried over MCP. The <b>knowledge pack</b> is the same
+          projection bundled for offline install. Every answer is grounded in the graph and cites its sources — ask it
+          how something works, what a rule means, what data it needs, or what would break if you changed it.
         </div>
       )}
 
       <p className="coa-intro">
-        This agent is the resident expert on the <b>{c.name}</b> subdomain — it knows what it does, the rules it
-        follows, the data it needs, and the value it delivers, and can explain or analyse any of it. Ask it
-        anything, as a developer or an analyst.
+        This agent is the resident expert on the <b>{c.name}</b> subdomain, and it does two jobs:
+        it <b>answers questions</b> about the subdomain — asked directly by a person, or by another agent when it
+        takes part in an orchestration — and it answers them by <b>querying this subdomain's knowledge graph</b>,
+        so every reply is grounded in the model, never improvised.
+        {onOpenKg && <> {' '}<button type="button" className="coa-kg-link" onClick={onOpenKg}>View its knowledge graph →</button></>}
       </p>
 
       {a.does && (
@@ -183,17 +187,79 @@ function ContextOwnerAgent({ c, D, M, prd }) {
   );
 }
 
-const CLASS_TONE = { core: 'core', supporting: 'supporting', generic: 'generic' };
+/* The subdomain's OPERATIONS agent, as designed (D-065). The domain agent above
+   knows and builds the subdomain; this one is used by humans in live operation.
+   Skills can be shared between the two. Its as-built form is Build › Agents. */
+function OpsAgentCard({ c }) {
+  const o = c.opsAgent;
+  if (!o) return null;
+  const goBuilt = () => {
+    window.__cynAgentOpen = { id: o.asBuilt, tab: 'knowledge' };
+    const nav = window.__cynNav || {};
+    const t = { v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Build', entry: 'agents' };
+    window.cynPushUrl?.(t); window.__cynApplyProd?.(t);
+  };
+  return (
+    <div className={'coa coa-ops ' + c.classification}>
+      <div className="coa-head">
+        <span className="coa-ico"><DDPico d={DDI.owner} w={16} /></span>
+        <div className="coa-id">
+          <div className="coa-eyebrow">OPERATIONS AGENT</div>
+          <div className="coa-name">{o.name}</div>
+          <div className="coa-tagline">Used by humans in operation — it assists, executes, investigates, and responds</div>
+        </div>
+      </div>
 
-/* DDD context-map integration patterns — label + one-line meaning */
-const PATTERN = {
-  'customer-supplier':     { label: 'Customer–Supplier',    hint: 'upstream commits to the downstream’s needs' },
-  'open-host-service':     { label: 'Open-Host Service',    hint: 'a stable, published interface any consumer can use' },
-  'published-language':    { label: 'Published Language',   hint: 'a shared, documented contract' },
-  'anti-corruption-layer': { label: 'Anti-Corruption Layer', hint: 'downstream translates to protect its own model' },
-  'conformist':            { label: 'Conformist',           hint: 'downstream adopts the upstream model as-is' },
-  'shared-kernel':         { label: 'Shared Kernel',        hint: 'a jointly-owned subset of the model' },
-};
+      <p className="coa-intro">{o.charter}</p>
+
+      <div className="coa-block">
+        <div className="coa-blk-h">Skills, as designed <span className="coa-blk-sub">the trust tier is the intent — earned and governed once deployed · shared skills are carried by both agents</span></div>
+        <div className="coa-opskills">
+          {o.skills.map((sk, i) => (
+            <div className={'coa-opskill' + (sk.planned ? ' planned' : '')} key={i}>
+              <span className={'agb-tier ' + sk.tier.toLowerCase()}>{sk.tier}</span>
+              <span className="coa-opskill-nm">{sk.name}</span>
+              {sk.shared && <span className="coa-shared" title="Shared with the domain agent">shared</span>}
+              {sk.planned && <span className="coa-shared planned">planned</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="coa-block">
+        <div className="coa-blk-h">Permission boundary</div>
+        <ul className="coa-rules">{o.permissions.map((p, i) => <li key={i}>{p}</li>)}</ul>
+      </div>
+
+      <div className="coa-install-note">
+        Defined here in Design; deployed and governed in Build/Operate —
+        <button type="button" className="coa-kg-link" onClick={goBuilt}> as built: MCP toolset · evals · trust ladder →</button>
+      </div>
+    </div>
+  );
+}
+
+/* The Agents tab (D-065): a segmented switch between the subdomain's two
+   agents — one card at a time instead of a scroll. Hidden when a context has
+   no ops agent (or no agents at all — the generic-context card covers that). */
+function AgentsTab({ c, D, M, prd, onOpenKg }) {
+  const [which, setWhich] = React.useState('domain');
+  const hasBoth = !!(c.agent && c.opsAgent);
+  return (
+    <>
+      {hasBoth && (
+        <div className="dd-iseg coa-switch" role="group" aria-label="Agent">
+          <button type="button" className={'dd-iseg-btn' + (which === 'domain' ? ' on' : '')} aria-pressed={which === 'domain'} onClick={() => setWhich('domain')}>Domain agent</button>
+          <button type="button" className={'dd-iseg-btn' + (which === 'ops' ? ' on' : '')} aria-pressed={which === 'ops'} onClick={() => setWhich('ops')}>Operations agent</button>
+        </div>
+      )}
+      {(which === 'domain' || !hasBoth) && <ContextOwnerAgent c={c} D={D} M={M} prd={prd} onOpenKg={onOpenKg} />}
+      {which === 'ops' && hasBoth && <OpsAgentCard c={c} />}
+    </>
+  );
+}
+
+const CLASS_TONE = { core: 'core', supporting: 'supporting', generic: 'generic' };
 
 const FORM = {
   'code':         { label: 'Deterministic code', tone: 'code' },
@@ -207,45 +273,28 @@ const AGENCY = {
   'human-in-loop': { label: 'Human in the loop',             tone: 'warn' },
 };
 
-function contextMapMermaid(D, highlightId) {
-  const safe = id => id.replace(/[^A-Za-z0-9]/g, '_');
-  const lbl = s => (s || '').replace(/[()|"]/g, '').replace(/\s+/g, ' ').trim();
-  const lines = ['graph LR'];
-  D.contexts.forEach(c => {
-    lines.push(`  ${safe(c.id)}["${c.name} · ${c.classification}"]`);
-    // clickable node → open the context; tooltip shows on hover
-    lines.push(`  click ${safe(c.id)} call cynOpenCtx("${c.id}") "${lbl(c.name + ' — ' + c.classification + ' subdomain · click to open')}"`);
-  });
-  (D.externals || []).forEach(e => {
-    lines.push(`  ${safe(e.id)}["${e.name} · external"]:::ext`);
-    lines.push(`  click ${safe(e.id)} call cynNoop() "External — reached via an anti-corruption layer (not owned here)"`);
-  });
-  const isExt = id => (D.externals || []).some(e => e.id === id);
-  D.relations.forEach(r => {
-    const arrow = (isExt(r.from) || isExt(r.to)) ? '-.->' : '-->';
-    lines.push(`  ${safe(r.from)} ${arrow}|${lbl(r.label)}| ${safe(r.to)}`);
-  });
-  lines.push('  classDef ext stroke-dasharray:4 3;');
-  if (highlightId) {
-    lines.push('  classDef hl fill:#ece7ff,stroke:#6645c9,stroke-width:2.5px,color:#241d3d;');
-    lines.push(`  class ${safe(highlightId)} hl;`);
-  }
-  return lines.join('\n');
-}
-
-/* context-map node click handler (wired into Mermaid via `click ... call cynOpenCtx`).
-   If the Bounded-contexts surface is mounted, select directly; otherwise stash the
-   id and route there (used when clicking from the standalone Context map page). */
-if (typeof window !== 'undefined') {
-  window.cynOpenCtx = function (id) {
-    if (window.__cynSelectCtx) window.__cynSelectCtx(id);
-    else { window.__cynPendingCtx = id; if (window.__cynGoContexts) window.__cynGoContexts(); }
-  };
-  window.cynNoop = function () {};
-}
-
 const dddData = product => (window.__DDD__ && window.__DDD__.byProduct[product.id]) || null;
 const domainData = product => (window.__DOMAIN__ && window.__DOMAIN__.byProduct[product.id]) || null;
+
+/* Policies are DERIVED from the storming flows (flow/data.js — single source of
+   truth): every node.policies entry reads "When X → Y". The OWNER (the context
+   that executes the THEN) is the crosses target, or the flow's own context when
+   the reaction stays inside. Consumed by the bounded context's
+   Policies tab and the knowledge pack. */
+const derivedPolicies = () => seedFlows.flatMap(f =>
+  f.nodes.flatMap(n => (n.policies || []).map((p, i) => {
+    const [whenRaw, then] = (p.label || '').split('→').map(s => s.trim());
+    return {
+      id: `${n.id}-pol-${i}`,
+      when: (whenRaw || '').replace(/^When\s+/i, ''),
+      then: then || '',
+      note: p.desc,
+      grounds: p.grounds || [],
+      event: n.summary,
+      from: f.contextId,
+      owner: p.crosses || f.contextId,
+    };
+  })));
 
 /* Grounding (provenance / addressability) — the agent grounds ONLY in captured evidence.
    Derive the context's sources from the citation map (window.prdEvidence.cites): the Sources
@@ -273,7 +322,7 @@ function groundingFor(c, prd) {
 function buildKnowledgePack(c, D, M, prd) {
   const inCtx = arr => (arr || []).filter(x => x.context === c.id);
   const aggregates = inCtx(M && M.aggregates);
-  const policies = inCtx(M && M.policies);
+  const policies = derivedPolicies().filter(p => p.owner === c.id);   // the reactions this context owns
   const reals = (D.realizations || []).filter(r => r.context === c.id);
   const rels = (D.relations || []).filter(r => r.from === c.id || r.to === c.id);
   const ucTitle = id => { const u = ((prd && prd.usecases) || []).find(x => x.id === id); return u ? u.title : id; };
@@ -303,89 +352,75 @@ function buildKnowledgePack(c, D, M, prd) {
   };
 }
 
-/* ====================== 1 · DOMAIN MODEL ====================== */
-function AggregateCard({ a }) {
+/* ── Unified aggregate card (D-043) — the modern-DDD minimal capture ──
+   One structure per aggregate: identity + STATE SHAPE with three markers
+   (id / ref / fk·owned; an unmarked field is a value object) + invariants +
+   commands in / events out + the store. The logical schema IS this shape —
+   values → columns, owned children → child tables with in-aggregate FKs,
+   refs → identity columns that are never joined — so nothing is authored twice. */
+function AggregateUnit({ a }) {
+  const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
+  const ref = a.archRef || {};
+  const agg = ref.component ? (componentById(ref.component) || {}).aggregate
+    : ref.domain ? ((A.domains || []).find(d => d.id === ref.domain) || {}).aggregate
+    : null;
+  const tables = (agg && agg.tables) || [];
+  const root = tables.find(t => !t.owned) || tables[0];
+  const owned = tables.filter(t => t.owned);
+  const refs = tables.flatMap(t => (t.columns || []).filter(col => col.role === 'ref').map(col => ({ ...col, table: t.name })));
+  const Badge = ({ col }) => col.role === 'id' ? <span className="agu-badge id">id</span>
+    : col.role === 'ref' ? <span className="agu-badge ref">ref → {col.refTo}</span>
+    : col.role === 'fk' ? <span className="agu-badge fk">fk → {col.refTo}</span>
+    : null;
+  const Tbl = ({ t, tag }) => (
+    <div className="agu-tbl">
+      <div className="agu-tbl-h">{t.name}<span className="agu-tbl-tag">{tag}</span><span className="agu-tbl-p">{t.purpose}</span></div>
+      {(t.columns || []).map(col => (
+        <div className="agu-row" key={col.name}>
+          <span className="agu-f">{col.name}</span>
+          <Badge col={col} />
+          <span className="agu-ty">{col.type}</span>
+          <span className="agu-d">{col.desc}</span>
+        </div>
+      ))}
+    </div>
+  );
   return (
-    <div className="dm-agg">
-      <div className="dm-agg-h">
+    <div className="agu">
+      <div className="agu-h">
         <span className="dm-agg-ico"><DDPico d={DDI.agg} w={15} /></span>
-        <span className="dm-agg-nm">{a.name}</span>
-        <span className="dm-agg-ucs">{a.ucs.map(id => <DDRef id={id} key={id} />)}</span>
+        <span className="agu-nm">{a.name}</span>
+        <span className="agu-aid">{a.id}</span>
+        {agg && <span className="agu-store">{agg.store}</span>}
+        <span className="agu-ucs" onClick={e => e.stopPropagation()}>{a.ucs.map(id => <DDRef id={id} key={id} />)}</span>
       </div>
-      <div className="dm-row"><span className="dm-k command"><DDPico d={DDI.command} w={11} /> commands</span>
-        <span className="dm-chips">{a.commands.map(c => <span key={c} className="dm-chip command">{c}</span>)}</span></div>
-      <div className="dm-row"><span className="dm-k event"><DDPico d={DDI.event} w={11} /> events</span>
-        <span className="dm-chips">{a.events.map(c => <span key={c} className="dm-chip event">{c}</span>)}</span></div>
+      {agg && <div className="agu-about">{agg.description}</div>}
+
+      <div className="agu-sec">state shape <span className="agu-sec-sub">unmarked fields are values · this shape is the logical schema</span></div>
+      {root && <Tbl t={root} tag="root entity" />}
+      {owned.map(t => <Tbl t={t} key={t.name} tag="owned · child entity" />)}
+      {refs.length > 0 && (
+        <div className="agu-refs"><DDPico d={DDI.arrow} w={11} /> <b>References by identity</b> — {refs.map((r, i) => (
+          <span key={i}>{i > 0 && ' · '}<code>{r.table}.{r.name}</code> → {r.refTo}</span>
+        ))} — carried by events, never joined.</div>
+      )}
+
+      <div className="agu-sec">rules & behavior</div>
       <div className="dm-row"><span className="dm-k inv"><DDPico d={DDI.shield} w={11} /> invariants</span>
-        <ul className="dm-invs">{a.invariants.map((iv, i) => <li key={i}>{iv.text} {iv.fr && <DDRef id={iv.fr} />}</li>)}</ul></div>
+        <ul className="dm-invs">{a.invariants.map((iv, i) => (
+          <li key={i}>{iv.text} {iv.fr ? <DDRef id={iv.fr} /> : <span className="coa-rule-gap">no requirement captured</span>}</li>
+        ))}</ul></div>
+      <div className="dm-row"><span className="dm-k command"><DDPico d={DDI.command} w={11} /> in</span>
+        <span className="dm-chips">{a.commands.map(x => <span key={x} className="dm-chip command">{x}</span>)}</span></div>
+      <div className="dm-row"><span className="dm-k event"><DDPico d={DDI.event} w={11} /> out</span>
+        <span className="dm-chips">{a.events.map(x => <span key={x} className="dm-chip event">{x}</span>)}</span></div>
     </div>
   );
 }
 
-function DesignDomainModel({ product, prd }) {
-  const M = domainData(product);
-  if (!prd || !M) return <div className="ddd-empty">No domain model yet. Modeling opens once Discover is complete.</div>;
-  const byCtx = ctx => M.aggregates.filter(a => a.context === ctx);
-  return (
-    <div className="ddd-wrap">
-      <div className="ddd-intro">
-        <div className="ddd-eyebrow"><DDPico d={DDI.flow} w={12} /> DESIGN · DOMAIN MODEL (EVENTSTORMING)</div>
-        <p className="ddd-lead">
-          Design <b>opens by modeling</b> — turning Discover's journeys, use cases and business rules into
-          <b> domain events · commands · aggregates · policies</b>. The ubiquitous language converges here, and the
-          <b> seams reveal the bounded contexts</b> (so the contexts are an output of this model, not an input).
-        </p>
-        <div className="dm-legend">
-          <span className="dm-chip command">command</span>
-          <span className="dm-chip event">event</span>
-          <span className="dm-chip agg">aggregate</span>
-          <span className="dm-chip policy">policy</span>
-          <span className="dm-chip inv">invariant</span>
-        </div>
-      </div>
-
-      <div className="asc-section ddd-sec">
-        <div className="asc-sec-head">
-          <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> Aggregates & invariants</div>
-          <div className="asc-sec-sub">Consistency boundaries · commands in, events out · grouped by the context they seed</div>
-        </div>
-        {M.seams.map(s => (
-          <div className="dm-group" key={s.context}>
-            <div className="dm-group-h">{s.name}</div>
-            <div className="dm-agg-list">{byCtx(s.context).map(a => <AggregateCard a={a} key={a.id} />)}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="asc-section ddd-sec">
-        <div className="asc-sec-head">
-          <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Policies (reactions)</div>
-          <div className="asc-sec-sub">When an event happens → issue a command · cross-context policies reveal the seams</div>
-        </div>
-        <div className="dm-pol-list">
-          {M.policies.map(p => (
-            <div className="dm-pol" key={p.id}>
-              <span className="dm-chip event">{p.when}</span>
-              <span className="dm-pol-arrow"><DDPico d={DDI.arrow} w={14} /></span>
-              <span className="dm-chip command">{p.then}</span>
-              <span className="dm-pol-note">{p.note}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="dm-seams">
-        <div className="dm-seams-h"><DDPico d={DDI.ctx} w={13} /> Seams → bounded contexts</div>
-        {M.seams.map(s => (
-          <div className="dm-seam" key={s.context}><b>{s.name}</b> — {s.rationale}</div>
-        ))}
-        <div className="dm-seams-foot">These three contexts carry into <b>Bounded contexts &amp; context map</b>.</div>
-      </div>
-    </div>
-  );
-}
-
-/* ====================== 2 · BOUNDED CONTEXTS (hub + drill-in) ====================== */
+/* ====================== BOUNDED CONTEXTS (hub + drill-in) ======================
+   (The standalone “Domain model” page was retired — its aggregate and policy
+   views live in the per-context Aggregates / Policies tabs, which are richer.) */
 function ContextCard({ c, onSelect }) {
   const drill = () => onSelect && onSelect(c.id);
   return (
@@ -395,63 +430,188 @@ function ContextCard({ c, onSelect }) {
         <span className="ddd-ctx-nm">{c.name}</span>
         <span className={'ddd-class ' + c.classification}>{c.classification}</span>
       </div>
-      <div className="ddd-lang">{c.language.map(l => <span key={l.term} className="ddd-term">{l.term}</span>)}</div>
+      {/* Kept lean (D-041): the ubiquitous-language terms live in the drill-in's
+          Language tab; the card carries only identity, note, and the UC chips
+          (traceability). The whole card is clickable — no explicit drill affordance. */}
       <div className="ddd-ctx-note">{c.note}</div>
       <div className="ddd-ctx-caps">
         {c.capabilities.length
           ? c.capabilities.map(id => <span key={id} onClick={e => e.stopPropagation()}><DDRef id={id} /></span>)
           : <span className="ddd-nocap">no bespoke capability — reuse</span>}
       </div>
-      <div className="ddd-ctx-drill">Open context <DDPico d={DDI.arrow} w={13} /></div>
     </div>
   );
 }
 
-/* per-context detail: language · relationships · domain model · realization */
+/* ── Subdomain knowledge graph (D-042) ──
+   The queryable graph behind the context agent: typed nodes + labelled edges,
+   DERIVED live from the storming flows, the domain model, the components and
+   the contract registry — never hand-authored, so it cannot drift. Deployed
+   with the agent as its MCP knowledge source; the knowledge pack is the same
+   projection bundled for offline install. */
+function contextGraph(c, D, M) {
+  const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
+  const nodes = []; const edges = []; const seen = new Set();
+  // `code` is the short tag the explorer node shows; real ids (UC1, C1, AGG-*)
+  // display themselves, synthetic nodes get a type tag.
+  const addN = (id, type, label, code) => { if (!seen.has(id)) { seen.add(id); nodes.push({ id, type, label: label || id, code }); } return id; };
+  const addE = (from, rel, to) => { if (from && to) edges.push({ from, rel, to }); };
+
+  addN(c.id, 'context', c.name);
+  if (c.agent) { addN('agent', 'agent', c.agent.name, 'AGENT'); addE('agent', 'answers for', c.id); }
+
+  // aggregates → invariants → mandating requirements
+  const aggs = ((M && M.aggregates) || []).filter(x => x.context === c.id);
+  aggs.forEach(a => {
+    addN(a.id, 'aggregate', a.name); addE(c.id, 'contains', a.id);
+    (a.invariants || []).forEach((iv, i) => {
+      const id = `${a.id}-inv-${i}`; addN(id, 'invariant', iv.text, 'INV'); addE(a.id, 'holds', id);
+      if (iv.fr) { addN(iv.fr, 'requirement', iv.fr); addE(id, 'mandated by', iv.fr); }
+    });
+  });
+
+  // the storming flow: events · commands · handling components · policies
+  const flow = seedFlows.find(f => f.contextId === c.id);
+  (flow?.nodes || []).forEach(n => {
+    addN(n.id, 'event', n.summary, 'EVENT');
+    if (n.aggregate) { addN(n.aggregate, 'aggregate', n.aggregate); addE(n.aggregate, 'emits', n.id); }
+    (n.commands || []).forEach((cmd, i) => {
+      const id = `${n.id}-cmd-${i}`; addN(id, 'command', cmd.label, 'CMD');
+      addE(id, 'produces', n.id);
+      if (cmd.on) { addN(cmd.on, 'aggregate', cmd.on); addE(id, 'targets', cmd.on); }
+    });
+    const comp = (n.arch || deriveArch(n) || {}).component;
+    if (comp) { addN(comp, 'component', (componentById(comp) || {}).name || comp); addE(comp, 'handles', n.id); }
+    (n.policies || []).forEach((p, i) => {
+      const id = `${n.id}-pol-${i}`; addN(id, 'policy', p.label, 'POLICY');
+      addE(id, 'reacts to', n.id);
+      if (p.crosses && p.crosses !== c.id) { addN(p.crosses, 'context', p.crosses); addE(id, 'fires into', p.crosses); }
+      (p.grounds || []).forEach(g => { addN(g, 'requirement', g); addE(id, 'grounded by', g); });
+    });
+  });
+
+  // event functions of the context + the contracts they publish / consume
+  const comps = componentsForBC(c.id);
+  comps.forEach(comp => { addN(comp.id, 'component', comp.name); addE(c.id, 'contains', comp.id); });
+  const ids = new Set(comps.map(x => x.id));
+  (A.schemas || []).forEach(s => {
+    const prod = (s.producers || []).filter(p => ids.has(p));
+    const cons = (s.consumers || []).filter(x => ids.has(x));
+    if (!prod.length && !cons.length) return;
+    addN(s.id, 'contract', `${s.name} v${s.version}`);
+    prod.forEach(p => addE(p, 'publishes', s.id));
+    cons.forEach(x => addE(x, 'consumes', s.id));
+  });
+
+  // capabilities and the event functions realizing them
+  (c.capabilities || []).forEach(uc => { addN(uc, 'capability', uc); addE(c.id, 'groups', uc); });
+  ((D && D.realizations) || []).filter(r => r.context === c.id).forEach(r =>
+    (r.components || []).forEach(cp => { addN(cp, 'component', (componentById(cp) || {}).name || cp); addE(r.ucId, 'realized by', cp); }));
+
+  return { nodes, edges };
+}
+
+/* The explorer's vocabulary for subdomain graphs — columns read left→right as
+   the model was built: agent/context → capabilities & requirements → the
+   aggregate model → behavior → realization → contracts. */
+const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['command'], ['event'], ['policy'], ['component'], ['contract']];
+const KG_VTYPE = {
+  context:     { label: 'Bounded context', ico: 'graph',   c: 'oklch(0.50 0.13 275)' },
+  agent:       { label: 'Agent',           ico: 'user',    c: 'oklch(0.55 0.09 200)' },
+  capability:  { label: 'Capability',      ico: 'usecase', c: 'oklch(0.52 0.15 255)' },
+  requirement: { label: 'Requirement',     ico: 'req',     c: 'oklch(0.58 0.12 75)'  },
+  aggregate:   { label: 'Aggregate',       ico: 'doc',     c: 'oklch(0.60 0.11 95)'  },
+  invariant:   { label: 'Invariant',       ico: 'lock',    c: 'oklch(0.50 0.05 260)' },
+  command:     { label: 'Command',         ico: 'export',  c: 'oklch(0.55 0.12 250)' },
+  event:       { label: 'Domain event',    ico: 'metric',  c: 'oklch(0.60 0.14 40)'  },
+  policy:      { label: 'Policy',          ico: 'policy',  c: 'oklch(0.55 0.12 295)' },
+  component:   { label: 'Event function',  ico: 'graph',   c: 'oklch(0.52 0.13 268)' },
+  contract:    { label: 'Contract',        ico: 'link',    c: 'oklch(0.55 0.10 215)' },
+};
+
+const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'event', 'command', 'policy', 'invariant', 'component', 'contract', 'capability', 'requirement'];
+function ContextKnowledgeGraph({ c, D, M }) {
+  const raw = React.useMemo(() => contextGraph(c, D, M), [c]);
+  // the explorer's shape: byId map + fwd/rev edge labels for the neighbour panel
+  const g = React.useMemo(() => ({
+    nodes: raw.nodes,
+    edges: raw.edges.map(e => ({ from: e.from, to: e.to, fwd: e.rel, rev: e.rel })),
+    byId: Object.fromEntries(raw.nodes.map(n => [n.id, n])),
+  }), [raw]);
+  const Explorer = typeof window !== 'undefined' ? window.GraphExplorer : null;
+  const label = id => (g.byId[id] || {}).label || id;
+  const isRef = id => /^(UC\d|FR\d|NFR\d|POL\d|SCH-|C\d|AGG)/.test(id);
+  const byType = KG_TYPE_ORDER.map(t => [t, g.nodes.filter(n => n.type === t).length]).filter(([, n]) => n > 0);
+  const byRel = {};
+  g.edges.forEach(e => { (byRel[e.fwd] = byRel[e.fwd] || []).push(e); });
+  return (
+    <>
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Knowledge graph — what the agent queries</div>
+          <div className="asc-sec-sub">Typed nodes + labelled edges, derived live from the flows, domain model, components and contracts — deployed with the agent as its MCP knowledge source. Every answer the agent gives resolves to a path in this graph. Click a node to walk it; hover to light up its neighbourhood.</div>
+        </div>
+        <div className="kg-stats">
+          {byType.map(([t, n]) => <span key={t} className={'kg-stat kg-' + t}><b>{n}</b> {n > 1 ? (t === 'policy' ? 'policies' : t === 'capability' ? 'capabilities' : t + 's') : t}</span>)}
+          <span className="kg-stat"><b>{g.edges.length}</b> facts</span>
+        </div>
+        {Explorer && <Explorer g={g} cols={KG_COLS} typeMeta={KG_VTYPE}
+          emptyHint={`Click any node to see what it is and everything it connects to — the columns read left→right as the model was built: agent → capabilities & requirements → aggregates & invariants → commands → events → policies → event functions → contracts.`} />}
+      </div>
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.doc} w={14} /> The facts</div>
+          <div className="asc-sec-sub">Every edge as a subject — relation — object triple; ids are clickable into the trace</div>
+        </div>
+        {Object.entries(byRel).map(([rel, list]) => (
+          <div className="kg-relgroup" key={rel}>
+            <div className="kg-rel-h">{rel} <span className="kg-rel-n">{list.length}</span></div>
+            {list.map((e, i) => (
+              <div className="kg-triple" key={i}>
+                <span className="kg-sub">{isRef(e.from) ? <DDRef id={e.from} /> : <b>{label(e.from)}</b>}</span>
+                <span className="kg-rel">{rel}</span>
+                <span className="kg-obj">{isRef(e.to) ? <DDRef id={e.to} /> : label(e.to)}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* per-context detail: event flow · agent · domain model · language */
 function ContextDetail({ c, D, M, prd, onBack }) {
   const aggregates = (M ? M.aggregates : []).filter(a => a.context === c.id);
-  const policies = (M ? M.policies : []).filter(p => p.context === c.id);
+  const policies = derivedPolicies().filter(p => p.owner === c.id);   // the reactions this context owns (derived from the flows)
   const reals = D.realizations.filter(r => r.context === c.id);
-  const rels = D.relations.filter(r => r.from === c.id || r.to === c.id);
-  const nameOf = id => {
-    const ctx = D.contexts.find(x => x.id === id); if (ctx) return ctx.name;
-    const ext = (D.externals || []).find(x => x.id === id); return ext ? ext.name + ' · external' : id;
-  };
   const ucTitle = id => { const u = (prd.usecases || []).find(x => x.id === id); return u ? u.title : id; };
-  const [tab, setTab] = React.useState(() => window.__cynCtxTab || 'rels');   // restore on remount (Back / deep link)
+  // legacy deep links / cached tab state from the pre-split page (D-037)
+  const LEGACY_TAB = { model: 'aggregates', rels: 'contracts' };
+  const normTab = t => (t && (LEGACY_TAB[t] || t)) || 'flow';
+  const [tab, setTab] = React.useState(() => normTab(window.__cynCtxTab));   // restore on remount (Back / deep link)
   // navTab writes the active tab to the URL so Back/Forward + sharing work
   const navTab = (t) => {
     window.__cynCtxTab = t; setTab(t);
     window.__cynPushProd?.();
   };
   React.useEffect(() => {
-    window.__cynSetTab = t => { window.__cynCtxTab = t; setTab(t); };          // raw apply for Back/Forward (no URL push)
+    window.__cynSetTab = t => { const v = normTab(t); window.__cynCtxTab = v; setTab(v); };  // raw apply for Back/Forward (no URL push)
     return () => { delete window.__cynSetTab; };
   });
+  // BC-level tabs mirror the event-card panel's ownership levels (D-037): the
+  // read-only Aggregate / Contracts cards on events point HERE as the edit home.
   const TABS = [
-    { key: 'rels',  label: 'Relationships' },
-    { key: 'agent', label: 'Agent' },
-    { key: 'model', label: 'Model & capabilities' },
-    { key: 'flow',  label: 'Event flow' },
-    { key: 'lang',  label: 'Ubiquitous Language' },
+    { key: 'flow',         label: 'Event flow' },
+    { key: 'agent',        label: 'Agents' },
+    { key: 'kg',           label: 'Knowledge graph' },
+    { key: 'aggregates',   label: 'Aggregates' },
+    { key: 'policies',     label: 'Policies' },
+    { key: 'capabilities', label: 'Capabilities' },
+    { key: 'contracts',    label: 'Contracts' },
+    { key: 'lang',         label: 'Ubiquitous Language' },
   ];
-
-  const RelCard = ({ r, i }) => {
-    const p = PATTERN[r.pattern] || { label: r.pattern, hint: '' };
-    const downId = r.from === r.upstream ? r.to : r.from;
-    const role = r.upstream === c.id ? 'upstream' : 'downstream';
-    return (
-      <div className="ddd-relc" key={i}>
-        <div className="ddd-relc-top">
-          <span className="ddd-relc-route"><b>{nameOf(r.upstream)}</b> <span className="ddd-relc-arr">→</span> <b>{nameOf(downId)}</b></span>
-          <span className="ddd-relc-pat">{p.label}</span>
-          <span className={'ddd-relc-role ' + role}>this context is {role}</span>
-        </div>
-        <div className="ddd-relc-meta"><span className="ddd-relc-k">carries</span> {r.label}{p.hint && <> · <span className="ddd-relc-hint">{p.hint}</span></>}</div>
-        <p className="ddd-relc-flow">{r.flow}</p>
-      </div>
-    );
-  };
 
   return (
     <div className="ddd-wrap">
@@ -488,30 +648,9 @@ function ContextDetail({ c, D, M, prd, onBack }) {
         </div>
       )}
 
-      {tab === 'rels' && (
-        <>
-          <div className="asc-section ddd-sec">
-            <div className="asc-sec-head">
-              <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> On the context map</div>
-              <div className="asc-sec-sub"><b>{c.name}</b> highlighted · dashed = external (ACL)</div>
-            </div>
-            {DDMermaid && <DDMermaid code={contextMapMermaid(D, c.id)} caption={c.name + ' and its neighbours on the map'} />}
-          </div>
-          {rels.length > 0 && (
-            <div className="asc-section ddd-sec">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> How the flow works</div>
-                <div className="asc-sec-sub">Each edge: the integration pattern, who's upstream, and how the integration actually runs</div>
-              </div>
-              <div className="ddd-relc-list">
-                {[...rels].sort((a, b) => (a.upstream === c.id ? 1 : 0) - (b.upstream === c.id ? 1 : 0)).map((r, i) => <RelCard r={r} i={i} key={i} />)}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+      {tab === 'agent' && <AgentsTab key={c.id} c={c} D={D} M={M} prd={prd} onOpenKg={() => navTab('kg')} />}
 
-      {tab === 'agent' && <ContextOwnerAgent c={c} D={D} M={M} prd={prd} />}
+      {tab === 'kg' && <ContextKnowledgeGraph c={c} D={D} M={M} />}
 
       {tab === 'flow' && (
         FLOW_BY_CONTEXT[c.id]
@@ -528,54 +667,178 @@ function ContextDetail({ c, D, M, prd, onBack }) {
           : <div className="ddd-empty-inline">No event flow modelled for this context yet.</div>
       )}
 
-      {tab === 'model' && (
-        <>
+      {tab === 'aggregates' && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The subdomain model — {aggregates.length || 'no'} aggregate{aggregates.length === 1 ? '' : 's'}</div>
+            <div className="asc-sec-sub">Each aggregate is a consistency boundary: its state shape (id · ref · owned markers; unmarked = value) IS the logical schema, guarded by its invariants. Relationships live inside an aggregate; between aggregates, identity references + events; between contexts, contracts.</div>
+          </div>
+          {aggregates.length
+            ? <div className="agu-list">{aggregates.map(a => <AggregateUnit a={a} key={a.id} />)}</div>
+            : <div className="ddd-empty-inline">No domain state of its own — a pure reaction (generic). Nothing to model here.</div>}
+        </div>
+      )}
+
+      {tab === 'policies' && (() => {
+        const all = derivedPolicies();
+        const outbound = all.filter(p => p.from === c.id && p.owner !== c.id);
+        const polRow = p => (
+          <div className="dm-pol" key={p.id}>
+            <span className="dm-chip event">{p.when}</span>
+            <span className="dm-pol-arrow"><DDPico d={DDI.arrow} w={14} /></span>
+            <span className="dm-chip command">{p.then}</span>
+            <span className="dm-pol-note">{p.note} {p.grounds.map(g => <DDRef id={g} key={g} />)}
+              <span className="dm-pol-src">on “{p.event}”{p.owner !== p.from ? ` · ${p.from} → ${p.owner}` : ''}</span></span>
+          </div>
+        );
+        return (<>
           <div className="asc-section ddd-sec">
             <div className="asc-sec-head">
-              <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> Domain model — aggregates & invariants</div>
-              <div className="asc-sec-sub">This context's slice of the model · commands in, events out</div>
+              <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Reacts to</div>
+              <div className="asc-sec-sub">The reactions this context owns — whenever the event fires, this context executes the command (derived live from the event flows)</div>
             </div>
-            {aggregates.length
-              ? <div className="dm-agg-list">{aggregates.map(a => <AggregateCard a={a} key={a.id} />)}</div>
-              : <div className="ddd-empty-inline">No domain state of its own — a pure reaction (generic). Nothing to model here.</div>}
+            {policies.length ? <div className="dm-pol-list">{policies.map(polRow)}</div>
+              : <div className="ddd-empty-inline">No inbound reactions — nothing wakes this context via a policy.</div>}
           </div>
-
-          {policies.length > 0 && (
+          {outbound.length > 0 && (
             <div className="asc-section ddd-sec">
               <div className="asc-sec-head">
-                <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Policies (reactions)</div>
-                <div className="asc-sec-sub">When an event happens → issue a command</div>
+                <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Its events fire</div>
+                <div className="asc-sec-sub">Downstream reactions to this context's published events — owned by the consuming contexts</div>
               </div>
-              <div className="dm-pol-list">
-                {policies.map(p => (
-                  <div className="dm-pol" key={p.id}>
-                    <span className="dm-chip event">{p.when}</span>
-                    <span className="dm-pol-arrow"><DDPico d={DDI.arrow} w={14} /></span>
-                    <span className="dm-chip command">{p.then}</span>
-                    <span className="dm-pol-note">{p.note}</span>
-                  </div>
-                ))}
-              </div>
+              <div className="dm-pol-list">{outbound.map(polRow)}</div>
             </div>
           )}
+        </>);
+      })()}
 
+      {tab === 'capabilities' && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Capabilities & realization</div>
+            <div className="asc-sec-sub">How each capability is built — least-agentic that fits · realized by this context's event functions</div>
+          </div>
+          {reals.length
+            ? <div className="ddd-real-list">{reals.map(r => (
+                <div key={r.ucId}>
+                  <div className="ddd-uc-title">{ucTitle(r.ucId)}
+                    {(r.components || []).map(id => { const cp = componentById(id); return (
+                      <span key={id} className="dm-chip comp" title={id}>{cp ? cp.name : id}</span>
+                    ); })}
+                  </div>
+                  <RealizationCard r={r} />
+                </div>
+              ))}</div>
+            : <div className="ddd-empty-inline">No bespoke capability — reuse an off-the-shelf service for this context.</div>}
+        </div>
+      )}
+
+      {tab === 'contracts' && (() => {
+        const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
+        const ids = new Set(componentsForBC(c.id).map(x => x.id));
+        const schemas = (A.schemas || []).filter(s =>
+          ids.has(s.ownedBy) || (s.producers || []).some(p => ids.has(p)) || (s.consumers || []).some(x => ids.has(x)));
+        const rels = (D.relations || []).filter(r => r.from === c.id || r.to === c.id);
+        const partyName = id => (componentById(id) || {}).name
+          || ((A.integrations || []).find(i => i.id === id) || {}).system || id;
+        return (<>
+          {rels.length > 0 && (
+            <div className="asc-section ddd-sec">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title"><DDPico d={DDI.ctx} w={14} /> Relationships</div>
+                <div className="asc-sec-sub">How this context relates across each seam — pattern · upstream end · what crosses</div>
+              </div>
+              {rels.map((r, i) => (
+                <div className="dm-rel" key={i}>
+                  <div className="dm-rel-h">
+                    <span className="dm-chip event">{r.from}</span>
+                    <span className="dm-pol-arrow"><DDPico d={DDI.arrow} w={14} /></span>
+                    <span className="dm-chip event">{r.to}</span>
+                    <span className="dm-chip policy">{r.pattern}</span>
+                    <span className="dm-rel-carries">carries: {r.label} · upstream: {r.upstream}</span>
+                  </div>
+                  <p className="dm-rel-flow">{r.flow}</p>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="asc-section ddd-sec">
             <div className="asc-sec-head">
-              <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Capabilities & realization</div>
-              <div className="asc-sec-sub">How each capability is built — least-agentic that fits · invariants enforced per form</div>
+              <div className="asc-sec-title"><DDPico d={DDI.doc} w={14} /> Published language — contract registry</div>
+              <div className="asc-sec-sub">Every event / table / API this context's event functions own, produce or consume — versioned. Click a contract to open its schema: the fields ARE the published language.</div>
             </div>
-            {reals.length
-              ? <div className="ddd-real-list">{reals.map(r => (
-                  <div key={r.ucId}>
-                    <div className="ddd-uc-title">{ucTitle(r.ucId)}</div>
-                    <RealizationCard r={r} />
-                  </div>
-                ))}</div>
-              : <div className="ddd-empty-inline">No bespoke capability — reuse an off-the-shelf service for this context.</div>}
+            <ContractRegistry schemas={schemas} partyName={partyName} />
           </div>
-        </>
-      )}
+        </>);
+      })()}
     </div>
+  );
+}
+
+/* Contract registry with expandable schema rows (D-062): the published
+   language IS the fields — click a contract to see its payload/columns,
+   the carrier, and (for API contracts) the endpoint. */
+function ContractRegistry({ schemas, partyName }) {
+  const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
+  const [openId, setOpenId] = React.useState(null);
+  const resName = id => { const r = (A.resources || []).find(x => x.id === id); return r ? `${r.name} (${r.engine})` : id; };
+  const apiOf = id => (A.apis || []).find(a => a.id === id);
+  return (
+    <table className="dm-tbl dm-contracts"><thead>
+      <tr><th className="dm-col-chev"></th><th>contract</th><th>kind</th><th>v</th><th>owned by</th><th>producers</th><th>consumers</th></tr>
+    </thead><tbody>
+      {schemas.map(s => (
+        <React.Fragment key={s.id}>
+          <tr className={'dm-crow' + (openId === s.id ? ' open' : '')} onClick={() => setOpenId(openId === s.id ? null : s.id)}
+            title="Click to see the schema">
+            <td className="dm-col-chev">{openId === s.id ? '▾' : '▸'}</td>
+            <td className="dm-col-nm">{s.name}</td>
+            <td className="dm-col-ty">{s.kind}</td>
+            <td className="dm-col-ty">v{s.version}</td>
+            <td className="dm-col-d">{partyName(s.ownedBy)}</td>
+            <td className="dm-col-d">{(s.producers || []).map(partyName).join(', ')}</td>
+            <td className="dm-col-d">{(s.consumers || []).map(partyName).join(', ')}</td>
+          </tr>
+          {openId === s.id && (
+            <tr className="dm-cschema-row"><td className="dm-col-chev" /><td colSpan={6}>
+              <div className="dm-cschema">
+                <div className="dm-cschema-h">
+                  <span className="dm-cschema-k">{s.kind === 'table' ? 'columns' : 'payload'} · {(s.fields || []).length}</span>
+                  {s.via && <span className="dm-cschema-via">carried by <b>{resName(s.via)}</b></span>}
+                  {s.api && apiOf(s.api) && <span className="dm-cschema-via">endpoint <code>{apiOf(s.api).method} {apiOf(s.api).path}</code></span>}
+                  <span onClick={e => e.stopPropagation()}><DDRef id={s.id} /></span>
+                </div>
+                {s.kind === 'table' ? (
+                  <div className="dm-fields">
+                    {(s.fields || []).map((f, i) => (
+                      <div className="dm-field" key={i}><span className="dm-field-nm">{f.name}</span><span className="dm-field-ty">{f.type}</span></div>
+                    ))}
+                    {!(s.fields || []).length && <span className="dm-cschema-none">No columns recorded for this contract.</span>}
+                  </div>
+                ) : (
+                  /* events and API payloads are JSON on the wire — show them as JSON */
+                  <pre className="dm-json">
+                    <div>{'{'}</div>
+                    {(s.fields || []).map((f, i) => {
+                      const t = f.type || '';
+                      const last = i === (s.fields.length - 1);
+                      let v;
+                      if (/^enum\(/.test(t)) v = <span className="v">{t.slice(5, -1).split('|').map(x => '"' + x.trim() + '"').join(' | ')}</span>;
+                      else if (/json/.test(t)) v = <span className="p">{'{ … }'}</span>;
+                      else if (/number|numeric/.test(t)) v = <span className="n">{t}</span>;
+                      else v = <span className="v">"{t}"</span>;
+                      return <div className="dm-json-line" key={i}><span className="k">"{f.name}"</span><span className="p">: </span>{v}<span className="p">{last ? '' : ','}</span></div>;
+                    })}
+                    <div>{'}'}</div>
+                    {!(s.fields || []).length && <span className="dm-cschema-none">No fields recorded for this contract.</span>}
+                  </pre>
+                )}
+              </div>
+            </td></tr>
+          )}
+        </React.Fragment>
+      ))}
+    </tbody></table>
   );
 }
 
@@ -585,13 +848,12 @@ function DesignContexts({ product, prd }) {
   const [sel, setSel] = React.useState(() => window.__cynCtxSel || null);   // restore on remount (Back / deep link)
   // navSel writes the selection to the URL so Back/Forward + sharing work
   const navSel = (id) => {
-    window.__cynCtxSel = id; window.__cynCtxTab = 'rels'; setSel(id);        // a freshly opened context starts on Relationships
+    window.__cynCtxSel = id; window.__cynCtxTab = 'flow'; setSel(id);        // a freshly opened context starts on its Event flow
     window.__cynPushProd?.();
   };
   React.useEffect(() => {
     window.__cynSelectCtx = navSel;                                          // map clicks select a context (pushes URL)
     window.__cynSetSel = id => { window.__cynCtxSel = id; setSel(id); };      // raw apply for Back/Forward (no URL push)
-    if (window.__cynPendingCtx) { navSel(window.__cynPendingCtx); window.__cynPendingCtx = null; }  // consume a click from the standalone map
     return () => { delete window.__cynSelectCtx; delete window.__cynSetSel; };
   });
   if (!prd || !D) return <div className="ddd-empty">No bounded contexts yet — they emerge from the domain model.</div>;
@@ -630,7 +892,7 @@ function DesignContextMap({ product, prd }) {
         <div className="ddd-eyebrow"><DDPico d={DDI.flow} w={12} /> DESIGN · CONTEXT MAP</div>
         <p className="ddd-lead">
           How the bounded contexts relate — <b>one map per product</b>. Each coloured box is a bounded context:
-          <b> select it and hit the expand arrow</b> to see its components in place. The small nodes between
+          <b> select it and hit the expand arrow</b> to see its event flow in place. The small nodes between
           boxes are the <b>published events crossing each seam</b>; externals are reached through an
           anti-corruption layer (ACL).
         </p>
@@ -642,6 +904,37 @@ function DesignContextMap({ product, prd }) {
         </div>
         <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
           <FlowEmbed flowId="contextmap" variant="contextmap" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── System map (D-044) — the C4 system-context level, same canvas framework ──
+   The product as an expandable box (its bounded contexts inside), surrounded by
+   the external systems and the human actors. One zoom level above the context
+   map: System map → product → contexts → (Context map) → event flows → cards. */
+function DesignSystemMap({ product, prd }) {
+  const D = dddData(product);
+  if (!prd || !D) return <div className="ddd-empty">No system map yet — it appears once the architecture is authored.</div>;
+  return (
+    <div className="ddd-wrap">
+      <div className="ddd-intro">
+        <div className="ddd-eyebrow"><DDPico d={DDI.flow} w={12} /> DESIGN · SYSTEM MAP</div>
+        <p className="ddd-lead">
+          The product in its world — <b>who acts on it, and which external systems feed and consume it</b>.
+          The box is the product: <b>select it and hit the expand arrow</b> to see its bounded contexts in
+          place; each external card states what crosses that boundary and over which integration. The
+          <b> Context map</b> is the next zoom level down.
+        </p>
+      </div>
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> System map</div>
+          <div className="asc-sec-sub">Actors · the product (expandable to its contexts) · external systems, in the same visual language as the flows</div>
+        </div>
+        <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+          <FlowEmbed flowId="systemmap" variant="systemmap" />
         </div>
       </div>
     </div>
@@ -731,7 +1024,7 @@ function DesignRealization({ product, prd }) {
   );
 }
 
-window.DesignDomainModel = DesignDomainModel;
 window.DesignContexts = DesignContexts;
 window.DesignContextMap = DesignContextMap;
+window.DesignSystemMap = DesignSystemMap;
 window.DesignRealization = DesignRealization;

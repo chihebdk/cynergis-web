@@ -14,6 +14,8 @@ export const GROUNDING = {
   FR5: { id: "FR5", kind: "FunctionalRequirement", title: "Queue blocked / escalated transactions as cases", evidencedBy: ["S3"] },
   FR6: { id: "FR6", kind: "FunctionalRequirement", title: "Let analysts hold / release and record a disposition", evidencedBy: ["S3"] },
   FR7: { id: "FR7", kind: "FunctionalRequirement", title: "Issue a step-up challenge on medium-risk decisions", evidencedBy: ["S2"] },
+  FR8: { id: "FR8", kind: "FunctionalRequirement", title: "Deterministic rules can override the model score; rules-only fallback within budget", evidencedBy: ["S2"] },
+  FR9: { id: "FR9", kind: "FunctionalRequirement", title: "A customer “it was me” auto-releases the hold", evidencedBy: ["S1"] },
   FR10: { id: "FR10", kind: "FunctionalRequirement", title: "Record every decision as a tamper-evident audit entry", evidencedBy: ["S1"] },
   "NFR1": { id: "NFR1", kind: "NonFunctionalRequirement", title: "p95 scoring latency under 300 ms at 3,000 TPS sustained", evidencedBy: ["S2"] },
   "POL1": { id: "POL1", kind: "Policy", title: "Notify on block", evidencedBy: ["S1"] },
@@ -43,7 +45,11 @@ export const decisioningFlow = {
       trigger: { kind: "external", actor: "Card network / acquirer", mechanism: "Inbound authorization request (sync path)",
         label: "An authorization request arrives from the card network and must be scored inside the network timeout — no human, no queue.", grounds: ["UC1", "NFR1"] },
       commands: [{ label: "Score authorization", on: "AGG-AUTH", desc: "Run the transaction through the live risk model to produce a band and an explanation.", grounds: ["UC1", "FR1"] }],
-      businessRules: [{ label: "A score must carry a risk band and an explanation", desc: "A bare probability is not a valid decision — every score returns one of the defined bands together with a human-readable reason.", grounds: ["FR2"] }],
+      businessRules: [
+        { label: "A score must carry a risk band and an explanation", desc: "A bare probability is not a valid decision — every score returns one of the defined bands together with a human-readable reason.", grounds: ["FR2"] },
+        { label: "Hard blocklist and velocity rules override a low model score", desc: "The Rules Engine's deterministic guardrails run inside the same decision transaction — a listed card never rides through on a good score.", grounds: ["FR8"] },
+        { label: "Rules-only fallback when the model is unavailable", desc: "If the model or features are down, the guardrails alone produce a decision within budget — degrade, don't time out.", grounds: ["FR8", "NFR1"] },
+      ],
       hotspots: [{ label: "Decide within the network timeout (p95 < 300 ms)", desc: "The scoring path is synchronous and co-located; blow the latency budget and the network times the auth out.", grounds: ["NFR1"] }],
       arch: {
         component: "C1",
@@ -68,7 +74,7 @@ export const decisioningFlow = {
         slo: ["NFR1"],
       } },
 
-    { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["FR7"],
+    { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["UC4", "FR7"],
       description: "Medium risk — the customer is challenged to prove it's them, and the authorization is held pending the outcome.",
       trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = medium",
         label: "A medium band never auto-approves; it routes to a step-up challenge automatically.", grounds: ["FR7"] },
@@ -81,11 +87,11 @@ export const decisioningFlow = {
       ],
       hotspots: [{ label: "Step-up UX + timeout policy", desc: "How long do we wait, and what happens on no response? A saga / timeout policy is implied.", grounds: [] }],
       arch: {
-        component: "C1",
-        entry: { type: "sequentialFlowTrigger", label: "continues from Authorization scored" },
-        emits: { via: "res-bus", topic: "stepup.challenge", schema: null },   // contract not designed yet → assumed
-        writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
-        slo: ["NFR1"],
+        component: "C6",
+        entry: { type: "messageTrigger", ref: "res-bus", topic: "stepup.requested", schema: "SCH-stepup-requested" },
+        reads: [{ ref: "INT-stepup", label: "challenge via the vendor ACL" }],
+        writes: [{ resource: "res-decisiondb", label: "stepup_challenge saga state" }],
+        secrets: ["SCRT-stepup-token"],
       } },
 
     { id: "e-stepup-pass", type: "SimpleNode", parentId: "e-stepup", branch: "passed", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR7"],
@@ -95,7 +101,7 @@ export const decisioningFlow = {
       commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR7"] }],
       arch: {
         component: "C1",
-        entry: { type: "userTrigger", ref: "API-2", label: "cardholder confirm releases the hold" },
+        entry: { type: "messageTrigger", ref: "res-bus", topic: "stepup.passed", schema: "SCH-stepup-resolved" },
         emits: { via: "res-bus", topic: "decision-events", schema: "SCH-decision" },
         writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
       } },
@@ -107,17 +113,17 @@ export const decisioningFlow = {
       commands: [{ label: "Apply decision (block)", on: "AGG-AUTH", grounds: ["FR7"] }],
       arch: {
         component: "C1",
-        entry: { type: "userTrigger", ref: "INT-notify", label: "challenge failed / declined / timed out" },
+        entry: { type: "messageTrigger", ref: "res-bus", topic: "stepup.failed", schema: "SCH-stepup-resolved" },
         emits: { via: "res-bus", topic: "transaction.blocked", schema: "SCH-blocked" },
         writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }],
       } },
 
-    { id: "e-blocked", type: "SimpleNode", parentId: "e-scored", branch: "risk = high", kind: "event", summary: "Authorization blocked", isPivotal: true, aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR3"],
+    { id: "e-blocked", type: "SimpleNode", parentId: "e-scored", branch: "risk = high", kind: "event", summary: "Authorization blocked", isPivotal: true, aggregate: "AGG-AUTH", isEndNode: true, grounds: ["UC2", "FR3"],
       description: "High risk — a reversible soft-hold is placed, and the block fans out: a case is opened and the customer is alerted.",
       trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = high",
         label: "A high band triggers an immediate reversible soft-hold — automatic, with no human in the loop.", grounds: ["FR3"] },
       commands: [{ label: "Apply decision (soft-hold)", on: "AGG-AUTH", desc: "Place a reversible hold rather than a hard decline, so a false positive can still be released.", grounds: ["FR3"] }],
-      businessRules: [{ label: "An authorization cannot be both approved and blocked", desc: "AGG-AUTH is decided exactly once; approve and block are mutually exclusive terminal states.", grounds: ["FR3"] }],
+      businessRules: [{ label: "An authorization cannot be both approved and blocked", desc: "AGG-AUTH holds exactly one effective decision; approve and block are mutually exclusive, and a reversal appends a superseding decision rather than mutating the log.", grounds: ["FR3"] }],
       readModels: [{ label: "Decision + explanation (audit record)", desc: "The immutable decision, its band and reason are projected for audit and dispute handling.", grounds: ["FR10"] }],
       policies: [
         { label: "When blocked → open case", desc: "Every block is queued as an analyst case in Case Management so it can be worked to a disposition.", crosses: "BC-CASE", grounds: ["FR5"] },
@@ -130,7 +136,7 @@ export const decisioningFlow = {
         writes: [{ resource: "res-decisiondb", schema: "SCH-decision-row" }, { resource: "res-audit" }],
         reactions: [
           { via: "res-bus", topic: "transaction.blocked", consumer: "C3" },
-          { via: "res-notify", topic: "block.placed", consumer: "C4" },
+          { via: "res-bus", topic: "block.placed", consumer: "C4" },
         ],
         secrets: ["SCRT-pan-key"],
         slo: ["NFR3"],
@@ -163,16 +169,29 @@ export const caseMgmtFlow = {
         label: "A person takes ownership from the worklist — assignment is analyst-driven, not automatic.", grounds: ["FR6"] },
       commands: [{ label: "Assign analyst", on: "AGG-CASE", grounds: ["FR6"] }] },
 
-    { id: "c-disposed", type: "SimpleNode", parentId: "c-assigned", kind: "event", summary: "Case disposed", isPivotal: true, aggregate: "AGG-CASE", isEndNode: true, grounds: ["FR6"],
+    { id: "c-disposed", type: "SimpleNode", parentId: "c-assigned", kind: "event", summary: "Case disposed", isPivotal: true, aggregate: "AGG-CASE", grounds: ["FR6"],
       description: "The analyst recorded a verdict with a rationale, closing the case; the disposition is kept for audit.",
       trigger: { kind: "human", actor: "Assigned analyst", mechanism: "Records a disposition",
         label: "The owning analyst decides the outcome and records why — a deliberate human judgement, not a system reaction.", grounds: ["FR6"] },
-      commands: [{ label: "Record disposition", on: "AGG-CASE", grounds: ["FR6"] }],
+      commands: [{ label: "Resolve case (record disposition)", on: "AGG-CASE", grounds: ["FR6"] }],
       businessRules: [
         { label: "A disposition requires a recorded rationale", desc: "You cannot close a case with a bare outcome — the reason is mandatory for audit and learning.", grounds: ["FR6"] },
         { label: "Only the assigned analyst can dispose a case", desc: "Ownership matters — disposition is restricted to whoever the case is assigned to.", grounds: ["FR6"] },
       ],
       readModels: [{ label: "Case + disposition (audit)", desc: "The full case history and its final disposition are projected for audit and QA.", grounds: ["FR10"] }] },
+
+    { id: "c-labelled", type: "SimpleNode", parentId: "c-disposed", kind: "event", summary: "Outcome labelled", aggregate: "AGG-CASE", isEndNode: true, grounds: ["FR6"],
+      description: "The disposition is published as a labelled outcome — the ground truth that feeds model training and closes the decisioning loop.",
+      trigger: { kind: "policy", actor: "Case Management (automatic)", mechanism: "Case disposed",
+        label: "A recorded disposition automatically publishes the labelled outcome — no extra human step.", grounds: ["FR6"] },
+      commands: [{ label: "Publish outcome label", on: "AGG-CASE", grounds: ["FR6"] }],
+      policies: [{ label: "When labelled → feed model training", desc: "The Feature Pipeline ingests the label so training data stays fresh — the loop from decision to disposition back into the model.", crosses: "BC-DEC", grounds: ["FR6"] }],
+      arch: {
+        component: "C3",
+        entry: { type: "sequentialFlowTrigger", label: "continues from Case disposed" },
+        emits: { via: "res-bus", topic: "outcome.labelled", schema: "SCH-outcome-label" },
+        reactions: [{ via: "res-bus", topic: "outcome.labelled", consumer: "C5" }],
+      } },
   ],
 };
 
@@ -187,12 +206,25 @@ export const notifyFlow = {
     { from: "Reacts to 'Authorization blocked' from Decisioning", reveals: "inbound async reaction", pattern: "Event-driven subscriber via a published-language contract" },
   ],
   nodes: [
-    { id: "n-sent", type: "SimpleNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, isEndNode: true, grounds: ["FR4"],
+    { id: "n-sent", type: "SimpleNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, grounds: ["FR4"],
       description: "A pure reaction: on a block, the customer is alerted with a confirm / deny action. This context owns no domain state of its own.",
-      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event (POL1)",
+      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'block.placed' event (POL1)",
         label: "An inbound domain event from Decisioning — the block is consumed here via a published-language contract.", crosses: "BC-DEC", grounds: ["POL1", "FR4"] },
       commands: [{ label: "Send notification (confirm / deny)", desc: "Push an alert the customer can act on, closing the loop on the block.", grounds: ["FR4"] }],
       hotspots: [{ label: "Channel choice + 60s delivery SLA", desc: "Which channel, and can we guarantee delivery within 60s? Points to an off-the-shelf provider.", grounds: ["FR4"] }] },
+
+    { id: "n-responded", type: "SimpleNode", parentId: "n-sent", kind: "event", summary: "Customer responded", isEndNode: true, grounds: ["FR9"],
+      description: "The customer answered the alert — 'it was me' releases the soft-hold automatically; 'not me' confirms the fraud and the case proceeds.",
+      trigger: { kind: "human", actor: "Cardholder", mechanism: "Confirm / deny action on the alert",
+        label: "A person taps confirm or deny on the alert — the response closes the loop on the block.", grounds: ["FR9"] },
+      commands: [{ label: "Relay response (confirm / deny)", desc: "Forward the customer's answer back across the seam as a published event.", grounds: ["FR9"] }],
+      policies: [{ label: "When confirmed → release the hold", desc: "FR9: a customer 'it was me' auto-releases the soft-hold in Decisioning.", crosses: "BC-DEC", grounds: ["FR9"] }],
+      arch: {
+        component: "C4",
+        entry: { type: "userTrigger", label: "confirm / deny from the alert channel" },
+        emits: { via: "res-bus", topic: "customer.confirmed / denied", schema: "SCH-customer-response" },
+        reactions: [{ via: "res-bus", topic: "customer.confirmed", consumer: "C1" }],
+      } },
   ],
 };
 
@@ -214,6 +246,8 @@ export const embeddedEntities = {
       "id", "name", "summary", "parentId", "type", "isEndNode", "submapId", "refNodeId", "domainId", "submapInstanceParentId",
       // event-flow extras (D-031 grounding + event-centric grammar)
       "kind", "isPivotal", "aggregate", "branch", "grounds", "description", "trigger", "commands", "businessRules", "readModels", "policies", "hotspots", "arch", "bc",
+      // system-map deep links (D-046) + the context-map component join
+      "intId", "personaId", "componentId",
     ],
   },
 };
