@@ -2,6 +2,7 @@ import React from 'react';
 import './org-data';
 import './org-prio';
 import './org-envision';
+import './kg-mesh.gen';
 const { ORG, PrioritizePortfolios, PrioritizeProducts } = window;
 /* ============================================================
    Cynergis — Organization app.
@@ -106,6 +107,46 @@ function LifeStrip({ phase }) {
 }
 
 /* ---------- Organization dashboard ---------- */
+/* ---------- Knowledge mesh (D-069): the control plane's derived index ---------- */
+function MeshPanel() {
+  const M = typeof window !== 'undefined' ? window.__KGMESH__ : null;
+  if (!M) return null;
+  const prods = M.modules.filter(m => m.kind === 'product');
+  const shortName = ns => (prods.find(p => p.namespace === ns) || { name: ns }).name.split(' graph')[0].split(' — ')[0];
+  return (
+    <div className="asc-section">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title"><Ico k="org" w={15} /> Knowledge mesh — the control plane</div>
+        <div className="asc-sec-sub">One derived index over the product knowledge graphs · find · identify · route (D-066)</div>
+      </div>
+      <div className="mesh-wrap">
+        <div className="mesh-col">
+          <div className="mesh-k">member graphs</div>
+          {M.modules.filter(m => m.kind !== 'org').map(m => (
+            <div className="mesh-row" key={m.id}>
+              <span className={'mesh-kind ' + m.kind}>{m.kind === 'bounded-context' ? 'BC' : 'product'}</span>
+              <span className="mesh-nm">{m.name}</span>
+              <span className="mesh-ns">{m.namespace}</span>
+              <span className="mesh-stats">{m.nodes != null ? `${m.nodes} nodes` : ''}{m.edges != null ? ` · ${m.edges} edges` : ''}{m.unresolved != null ? ` · ${m.unresolved} unresolved` : ''}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mesh-col">
+          <div className="mesh-k">seams — where the graphs converge</div>
+          {[...M.seams].sort((a, b) => b.referencedBy.length - a.referencedBy.length).map(s => (
+            <div className={'mesh-row' + (s.referencedBy.length > 1 ? ' converges' : '')} key={s.id}>
+              <span className="mesh-nm">{s.label}</span>
+              <span className="mesh-refs">{s.referencedBy.map(r => <span className="mesh-ref" key={r}>{shortName(r)}</span>)}</span>
+              {s.referencedBy.length > 1 && <span className="mesh-conv">converges</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mesh-foot">The org graph is <b>derived, never hand-authored</b> — writes go to the owning module's spec and regenerate (D-066 doctrine 4). Ask the concierge: <code>node kg/ask.js &lt;id&gt;</code> · <code>--seams</code> · <code>--modules</code></div>
+    </div>
+  );
+}
+
 function OrgDashboard({ onOpenPortfolio }) {
   const products = ORG.portfolios.flatMap(p => p.products);
   const live = products.filter(p => ['Operate','Realize'].includes(p.phase)).length;
@@ -162,6 +203,8 @@ function OrgDashboard({ onOpenPortfolio }) {
           })}
         </div>
       </div>
+
+      <MeshPanel />
     </div>
   );
 }
