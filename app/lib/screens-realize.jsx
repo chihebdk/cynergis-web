@@ -1,7 +1,7 @@
 import React from 'react';
 import './trace-core';
 import './realize-data';
-import { kgOutcomes } from './kg-query';
+import { kgOutcomes, kgValue } from './kg-query';
 const { Ref: RRef } = window;
 
 /* ============================================================
@@ -133,9 +133,15 @@ function RealValue() {
   const R = window.__REALIZE__;
   if (!R) return null;
   const Big = window.OpsBigTrend;
-  const V = R.value;
+  // D-081: the money view is a saved query — value facts + rollup are Product
+  // props, levers join their KPI (measured_by) and shares (attributed_to),
+  // the ramp dereferences via observed_via → DS-OBS.
+  const V = kgValue() || R.value;
   return (<>
     <p className="dd-lead">KPI movement translated into money, reconciled against the Envision business case, and <b>attributed along the spine</b> — which use cases moved which metric. Rolled up to the portfolio, where realization triggers the re-score.</p>
+    {V._kg && (
+      <div className="ops-kgline">Derived surface — realized / at-stake / variance and the portfolio rollup are <b>Product</b>-node facts; each lever's KPI is its <b>measured_by</b> edge, its shares the <b>attributed_to</b> edges; the quarterly ramp dereferences via <b>observed_via → DS-OBS</b> (D-066).</div>
+    )}
 
     <div className="ops-hero">
       <div className="ops-hero-card ok">

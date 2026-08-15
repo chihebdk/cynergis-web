@@ -173,6 +173,36 @@ export function kgOutcomes() {
   return _cache.outcomes;
 }
 
+/* ---- Saved query: the Realize value surface (D-081) --------
+   The money view: realized/at-stake/variance and the portfolio
+   rollup are Product-node props; each ValueLever's KPI is its
+   measured_by edge and its attribution the attributed_to edges
+   with shares; the quarterly ramp dereferences via
+   observed_via → DS-OBS (query value/ramp). */
+export function kgValue() {
+  const G = g(); if (!G) return null;
+  if (_cache.value) return _cache.value;
+  const prod = G.nodes.find(n => n.type === 'Product' && n.localId === 'PRODUCT');
+  if (!prod || !prod.props.valueRealized) return null;
+  const p = prod.props;
+  const ramp = telemetry('value/ramp') || {};
+  _cache.value = {
+    realized: p.valueRealized, atStake: p.valueAtStake, pct: p.valueRealizedPct, variance: p.valueVariance,
+    ramp: ramp.series || [], rampLabels: ramp.labels || [],
+    rollup: p.valueRollup || {},
+    levers: G.nodes.filter(n => n.type === 'ValueLever').map(n => {
+      const kpiEdge = kgOut(n.id, 'measured_by')[0];
+      return {
+        name: n.label, amount: n.props.amount, how: n.props.how,
+        kpi: kpiEdge ? (kgById(kpiEdge.to) || {}).localId : undefined,
+        attribution: kgOut(n.id, 'attributed_to').map(e => ({ id: (kgById(e.to) || {}).localId, share: e.props && e.props.share })).filter(a => a.id),
+      };
+    }),
+    _kg: true,
+  };
+  return _cache.value;
+}
+
 /* ---- Saved query: global search (D-073) --------------------
    The shell's search probes the mesh — the product graph plus the
    control-plane graph (org cards, GraphModules, seams). Ranked:
@@ -267,4 +297,4 @@ export function stageChange(op, target, payload) {
   }).then(r => r.json());
 }
 
-if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgSearch, kgApprovals, kgRunbooks, kgExecutors, stageChange };
+if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgSearch, kgApprovals, kgRunbooks, kgExecutors, stageChange };
