@@ -36,6 +36,19 @@ window.__PRD__ = {
       reviewCadence:'Phase-gate review at each lifecycle transition; portfolio steering reviews rank and sponsorship monthly.'
     }
   },
+  /* Envision Block 4 — value drivers with target KPIs (D-007; authored via
+     the ascent-phase-gate skill to close the Design-gate value chain
+     UC → advances → VD → measured_by → SC, D-075). Primary refs follow the
+     Realize attribution (SC1 ← UC1/UC2/UC3 · SC3 ← UC2 · UC4 = the unbuilt
+     step-up slice that rescues medium-band declines). */
+  valueDrivers:[
+    {id:'VD1', name:'Stop fraud in-stream', metric:'SC1', weight:0.4, measured:true,
+      kpi:{current:'18 bps', target:'7 bps', unit:'bps', direction:'down'}},
+    {id:'VD2', name:'Approve good customers', metric:'SC2', weight:0.35, measured:true,
+      kpi:{current:'6.2% false declines', target:'2.5%', unit:'%', direction:'down'}},
+    {id:'VD3', name:'Act in seconds, not hours', metric:'SC3', weight:0.25, measured:true,
+      kpi:{current:'4 h median time-to-block', target:'90 s', unit:'s', direction:'down'}},
+  ],
   portfolio:{
     domain:'Risk — Card Fraud',
     capability:'Fraud Decisioning (real-time scoring, blocking, and case triage)',
@@ -92,7 +105,7 @@ window.__PRD__ = {
     {id:'J3', title:'Regina governs a model promotion', personaId:'P4', opening:'The scoring skill has run supervised for six weeks with zero reversals.', rising:'Regina opens the promotion board with the shadow-deploy evidence and validation report.', climax:'She approves promotion of score-transaction to autonomous, with conditions.', resolution:'The promotion is recorded with a defensible trail; autonomy is governed, not assumed.', capabilities:'Trust ladder, validation evidence, promotion approval, audit trail'}
   ],
   usecases:[
-    {id:'UC1', title:'Score a transaction in real time', journeyId:'J1', primaryActor:'P1', supportingActors:'Card Authorization Switch, Feature Store, Model Registry', frs:['FR1','FR2','FR8'],
+    {id:'UC1', driverRef:'VD1', title:'Score a transaction in real time', journeyId:'J1', primaryActor:'P1', supportingActors:'Card Authorization Switch, Feature Store, Model Registry', frs:['FR1','FR2','FR8'],
       trigger:'An authorization arrives on the event bus from the card switch.',
       preconditions:'The card is active; the scoring model is live; features are available.',
       orchestration:'Switch → auth.requested event → Scoring Service → features + model → decision → auth.decided callback.',
@@ -106,7 +119,7 @@ window.__PRD__ = {
         {title:'High-risk authorization is blocked within budget', given:['an active card','an authorization scored high-risk'], when:['the Scoring Service decides'], then:['the transaction is soft-held within 300 ms','the decision and its explanation are logged']},
         {title:'Good transaction is approved', given:['an authorization scored low-risk'], when:['the Scoring Service decides'], then:['the transaction is approved','no customer friction is added']}
       ]},
-    {id:'UC2', title:'Auto-block and notify the customer', journeyId:'J1', primaryActor:'P1', supportingActors:'Notification Service, Case Manager', frs:['FR3','FR4','FR9'],
+    {id:'UC2', driverRef:'VD3', title:'Auto-block and notify the customer', journeyId:'J1', primaryActor:'P1', supportingActors:'Notification Service, Case Manager', frs:['FR3','FR4','FR9'],
       trigger:'The Scoring Service returns a high-risk block decision.',
       preconditions:'A reachable notification channel exists for the cardholder.',
       orchestration:'block decision → soft-hold on ledger → Notification Service alert → Case Manager case → await customer response.',
@@ -120,7 +133,7 @@ window.__PRD__ = {
         {title:'Customer is notified within a minute', given:['a transaction has been blocked'], when:['the block is placed'], then:['the customer is notified within 60 seconds','a case is queued with the explanation']},
         {title:'False positive is reversed', given:['a blocked transaction the customer confirms is theirs'], when:['the customer confirms'], then:['the hold is released automatically']}
       ]},
-    {id:'UC3', title:'Analyst triages a flagged case', journeyId:'J2', primaryActor:'P2', supportingActors:'Case Manager, Feature Store', frs:['FR5','FR6'],
+    {id:'UC3', driverRef:'VD1', title:'Analyst triages a flagged case', journeyId:'J2', primaryActor:'P2', supportingActors:'Case Manager, Feature Store', frs:['FR5','FR6'],
       trigger:'A case is queued from a blocked or escalated transaction.',
       preconditions:'The case carries the decision explanation and linked transactions.',
       orchestration:'case queued → analyst opens → review explanation + links → disposition → outcome label.',
@@ -133,7 +146,7 @@ window.__PRD__ = {
       acceptance:[
         {title:'Case carries its explanation', given:['a queued case'], when:['the analyst opens it'], then:['the score explanation and linked transactions are shown']}
       ]},
-    {id:'UC4', title:'Step-up authentication on medium risk', journeyId:'J1', primaryActor:'P1', supportingActors:'Notification Service', frs:['FR2','FR7'],
+    {id:'UC4', driverRef:'VD2', title:'Step-up authentication on medium risk', journeyId:'J1', primaryActor:'P1', supportingActors:'Notification Service', frs:['FR2','FR7'],
       trigger:'The Scoring Service returns a medium-risk decision.',
       preconditions:'The cardholder has an enrolled step-up channel.',
       orchestration:'medium decision → step-up challenge → response → approve or block.',

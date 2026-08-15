@@ -78,7 +78,7 @@ window.__ARCH__ = {
         ]},
       maps:[{title:'Decision flow', mermaid:'flowchart TD\n  A([auth.requested]) --> B[Fetch features]\n  B --> C[Score]\n  C --> D[Rules + policy]\n  D --> E{Band}\n  E -->|low| F([Approve])\n  E -->|med| G([Step-up])\n  E -->|high| H([Soft-hold])'}],
       components:[
-        {id:'C1', bc:'BC-DEC', name:'Decision Service', overview:'Owns the Decision aggregate — the only writer of decision_log. Consumes authorizations, fetches features, scores with the live model, lets the inline Rules Engine override, and applies an explainable, reversible decision within budget.', mapsTo:['FR1','FR2','FR3'],
+        {id:'C1', bc:'BC-DEC', name:'Decision Service', overview:'Owns the Decision aggregate — the only writer of decision_log. Consumes authorizations, fetches features, scores with the live model, lets the inline Rules Engine override, and applies an explainable, reversible decision within budget.', mapsTo:['FR1','FR2','FR3','FR10'],
           trigger:[
             {type:'Event', name:'auth.requested', source:'Card Authorization Switch (auth-bus)', schema:'{ authId, cardToken, amount, merchant, mcc, ts }', why:'Every authorization that must be decided.'},
             {type:'Event', name:'stepup.passed / stepup.failed', source:'Step-up Process Manager (auth-bus)', why:'Resume the held authorization when the challenge resolves.'},
