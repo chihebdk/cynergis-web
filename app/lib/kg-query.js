@@ -173,4 +173,27 @@ export function kgOutcomes() {
   return _cache.outcomes;
 }
 
-if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes };
+/* ---- Saved query: global search (D-073) --------------------
+   The shell's search probes the mesh — the product graph plus the
+   control-plane graph (org cards, GraphModules, seams). Ranked:
+   exact id, id prefix, label substring. */
+export function kgSearch(q, limit = 12) {
+  const G = g(); if (!G || !q) return [];
+  const mesh = (typeof window !== 'undefined' && window.__KGMESH__ && window.__KGMESH__.org) || null;
+  const pools = [{ graph: 'product', nodes: G.nodes }].concat(mesh ? [{ graph: 'org', nodes: mesh.nodes }] : []);
+  const needle = String(q).trim().toLowerCase();
+  const hits = [];
+  for (const pool of pools) {
+    for (const n of pool.nodes) {
+      const lid = String(n.localId).toLowerCase(), lab = String(n.label).toLowerCase();
+      const rank = lid === needle ? 0 : lid.startsWith(needle) ? 1 : lab.includes(needle) ? 2 : -1;
+      if (rank >= 0) hits.push({ rank, id: n.localId, type: n.type, label: n.label, module: n.module, graph: pool.graph, status: n.status });
+    }
+  }
+  hits.sort((a, b) => a.rank - b.rank);
+  // seams live in both a product graph and the control plane — one row each
+  const seen = new Set();
+  return hits.filter(h => !seen.has(h.id) && seen.add(h.id)).slice(0, limit);
+}
+
+if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgSearch };

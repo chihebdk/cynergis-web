@@ -3,6 +3,7 @@ import './org-data';
 import './org-prio';
 import './org-envision';
 import './kg-mesh.gen';
+import { kgSearch } from './kg-query';
 const { ORG, PrioritizePortfolios, PrioritizeProducts } = window;
 /* ============================================================
    Cynergis — Organization app.
@@ -107,6 +108,58 @@ function LifeStrip({ phase }) {
 }
 
 /* ---------- Organization dashboard ---------- */
+/* ---------- ⌘K palette (D-073): the shell search probes the mesh ---------- */
+function KgPalette({ open, onClose, onOpenPortfolio, onOpenProduct }) {
+  const [q, setQ] = useState('');
+  useEffect(() => { if (open) setQ(''); }, [open]);
+  if (!open) return null;
+  const needle = q.trim().toLowerCase();
+  const navHits = [];
+  if (needle) {
+    ORG.portfolios.forEach(pf => {
+      if (pf.name.toLowerCase().includes(needle)) navHits.push({ kind: 'portfolio', label: pf.name, sub: pf.value, go: () => { onOpenPortfolio(pf.id); onClose(); } });
+      pf.products.forEach(p => { if (p.name.toLowerCase().includes(needle)) navHits.push({ kind: 'product', label: p.name, sub: p.phase, go: () => { onOpenProduct(p); onClose(); } }); });
+    });
+  }
+  const kg = needle ? kgSearch(needle) : [];
+  return (
+    <div className="kgp-backdrop" onClick={onClose}>
+      <div className="kgp" onClick={e => e.stopPropagation()}>
+        <input autoFocus className="kgp-in" placeholder="Search the organization and the knowledge mesh…"
+          value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') onClose(); }} />
+        {needle !== '' && (
+          <div className="kgp-res">
+            {navHits.length > 0 && <div className="kgp-k">navigate</div>}
+            {navHits.slice(0, 5).map((h, i) => (
+              <button type="button" className="kgp-row" key={'n' + i} onClick={h.go}>
+                <span className={'kgp-kind ' + h.kind}>{h.kind}</span>
+                <span className="kgp-lab">{h.label}</span>
+                <span className="kgp-sub">{h.sub}</span>
+              </button>
+            ))}
+            {kg.length > 0 && <div className="kgp-k">knowledge mesh — the same index the concierge serves</div>}
+            {kg.map((h, i) => {
+              const peek = typeof window.cynTraceHas === 'function' && window.cynTraceHas(h.id);
+              return (
+                <button type="button" className={'kgp-row' + (peek ? '' : ' plain')} key={'k' + i}
+                  onClick={() => { if (peek) { window.cynTraceOpen(h.id); onClose(); } }}>
+                  <span className="kgp-type">{h.type}</span>
+                  <span className="kgp-id">{h.id}</span>
+                  <span className="kgp-lab">{h.label}</span>
+                  {h.status !== 'current' && <span className="kgp-st">{h.status}</span>}
+                  {peek ? <span className="kgp-go">peek →</span> : <span className="kgp-sub">{h.graph === 'org' ? 'control plane' : (h.module !== 'product' && h.module) || ''}</span>}
+                </button>
+              );
+            })}
+            {navHits.length === 0 && kg.length === 0 && <div className="kgp-none">No matches in the org or the mesh.</div>}
+          </div>
+        )}
+        <div className="kgp-foot">Every hit is a node in the derived knowledge graph — the same index Optimus serves (<code>kg/mcp-server.js</code> · D-066).</div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Knowledge mesh (D-069): the control plane's derived index ---------- */
 function MeshPanel() {
   const M = typeof window !== 'undefined' ? window.__KGMESH__ : null;
@@ -362,6 +415,13 @@ function OrgApp() {
   const scrollTop = () => document.querySelector('.asc-main')?.scrollTo(0, 0);
   const RESET = { phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' };
 
+  const [palOpen, setPalOpen] = useState(false);
+  useEffect(() => {
+    const onKey = e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalOpen(v => !v); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const openPortfolio = useCallback((id) => {
     setPid(id); setSub('dashboard'); setView('portfolio');
     window.cynPushUrl({ v: 'pf', pf: id, prod: null, sub: 'dashboard', ...RESET });
@@ -418,9 +478,11 @@ function OrgApp() {
           </button>
         </div>
 
-        <div className="asc-search"><Ico k="search" w={13} /> <span className="stxt">Search products &amp; portfolios</span> <span className="kbd">⌘K</span></div>
+        <button type="button" className="asc-search" onClick={() => setPalOpen(true)}><Ico k="search" w={13} /> <span className="stxt">Search org &amp; knowledge mesh</span> <span className="kbd">⌘K</span></button>
         <div className="asc-userav">AT</div>
       </header>
+
+      <KgPalette open={palOpen} onClose={() => setPalOpen(false)} onOpenPortfolio={openPortfolio} onOpenProduct={openProduct} />
 
       {view === 'product'
         ? <ProductPage product={prod} portfolio={pf} />
