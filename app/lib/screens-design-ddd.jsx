@@ -4,6 +4,7 @@ import './trace-core';
 import './ddd-data';
 import './domain-model-data';
 import { seedFlows } from '../flow/data';
+import { kgContracts } from './kg-query';
 import { componentById, componentsForBC, deriveArch } from '../flow/arch';
 const { Ref: DDRef } = window;
 
@@ -778,9 +779,14 @@ function ContextDetail({ c, D, M, prd, onBack }) {
 /* Contract registry with expandable schema rows (D-062): the published
    language IS the fields — click a contract to see its payload/columns,
    the carrier, and (for API contracts) the endpoint. */
-function ContractRegistry({ schemas, partyName }) {
+function ContractRegistry({ schemas: seedSchemas, partyName }) {
   const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
   const [openId, setOpenId] = React.useState(null);
+  // D-083: each row prefers its Contract node — structured fields (the
+  // published language IS the seam surface), parties from publishes /
+  // consumes / owned_by edges; the caller's BC filtering is kept as-is.
+  const kg = kgContracts();
+  const schemas = kg ? seedSchemas.map(s => kg.find(k => k.id === s.id) || s) : seedSchemas;
   const resName = id => { const r = (A.resources || []).find(x => x.id === id); return r ? `${r.name} (${r.engine})` : id; };
   const apiOf = id => (A.apis || []).find(a => a.id === id);
   return (

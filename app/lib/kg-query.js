@@ -225,6 +225,82 @@ export function kgDecision() {
   return _cache.decision;
 }
 
+/* ---- Saved queries: the Build/Design registries (D-083) ----
+   Tests: AcceptanceTest nodes carry the Design knowledge (criterion,
+   Gherkin, env); tests/verifies/blocks edges carry the joins; run
+   histories, failure logs, suites and the CI-run pointer dereference
+   via DS-CI. Evals: the Eval node is the definition + gates; the
+   runs (history, transcripts, fail causes) live behind DS-EVALS.
+   Contracts: the published language — fields structured, parties
+   from publishes/consumes/owned_by edges. */
+export function kgTests() {
+  const G = g(); if (!G) return null;
+  if (_cache.tests) return _cache.tests;
+  const run = telemetry('testing/run');
+  if (!run) return null;
+  const acceptance = G.nodes.filter(n => n.type === 'AcceptanceTest' && n.doc === 'arch').map(n => {
+    const p = n.props || {};
+    const t = telemetry(`acceptance/${n.localId}`) || {};
+    const ucEdge = kgOut(n.id, 'tests')[0];
+    const blk = kgIn(n.id, 'blocks')[0];
+    return {
+      id: n.localId, crit: p.crit, env: p.env, status: p.status, lastRun: p.lastRun, duration: p.duration,
+      note: p.note, gherkin: p.gherkin,
+      uc: ucEdge ? (kgById(ucEdge.to) || {}).localId : undefined,
+      verifies: kgOut(n.id, 'verifies').map(e => (kgById(e.to) || {}).localId).filter(Boolean),
+      blocker: blk ? (kgById(blk.from) || {}).localId : undefined,
+      history: t.history || [], failure: t.failure,
+    };
+  });
+  const suites = G.edges.filter(e => e.type === 'observed_via' && e.props && String(e.props.query).startsWith('suite/'))
+    .map(e => telemetry(e.props.query)).filter(Boolean);
+  _cache.tests = { ...run, acceptance, suites, _kg: true };
+  return _cache.tests;
+}
+export function kgEvalRuns() {
+  const G = g(); if (!G) return null;
+  if (_cache.evalRuns) return _cache.evalRuns;
+  _cache.evalRuns = G.nodes.filter(n => n.type === 'Eval' && (n.props || {}).dataset).map(n => {
+    const p = n.props || {};
+    const skEdge = kgOut(n.id, 'evaluates')[0];
+    const sk = skEdge ? kgById(skEdge.to) : null;
+    const agEdge = sk ? kgIn(sk.id, 'equips').map(e => kgById(e.from)).find(x => x && (x.props || {}).role === 'operations') : null;
+    const t = telemetry(`eval/${sk ? sk.localId : ''}`) || {};
+    return {
+      key: (agEdge ? agEdge.localId : '?') + '/' + (sk ? sk.localId : n.localId),
+      a: agEdge ? { id: agEdge.localId, name: agEdge.label, bc: agEdge.module } : { id: '?', name: '—', bc: '' },
+      sk: sk ? { name: sk.label, tier: (sk.props || {}).tier } : {},
+      e: {
+        skill: sk ? sk.localId : undefined, metric: p.metric, dataset: p.dataset || {}, judge: p.judge,
+        score: p.score, verdict: p.verdict, holdAt: p.holdAt, promoteAt: p.promoteAt, lastRun: p.lastRun,
+        history: t.history, samples: t.samples, failCauses: t.failCauses,
+        passed: t.passed, failed: t.failed, duration: t.duration, agentVersion: t.agentVersion,
+      },
+      _kg: true,
+    };
+  });
+  return _cache.evalRuns;
+}
+export function kgContracts() {
+  const G = g(); if (!G) return null;
+  if (_cache.contracts) return _cache.contracts;
+  _cache.contracts = G.nodes.filter(n => n.type === 'Contract').map(n => {
+    const p = n.props || {};
+    const carried = kgOut(n.id, 'carried_by').map(e => kgById(e.to)).filter(Boolean);
+    const owned = kgOut(n.id, 'owned_by')[0];
+    return {
+      id: n.localId, name: n.label, kind: p.kind, version: p.version, fields: p.fields || [],
+      ownedBy: owned ? (kgById(owned.to) || {}).localId : undefined,
+      via: (carried.find(t => t.type === 'Resource') || {}).localId,
+      api: (carried.find(t => t.type === 'Api') || {}).localId,
+      producers: kgIn(n.id, 'publishes').map(e => (kgById(e.from) || {}).localId).filter(Boolean),
+      consumers: kgIn(n.id, 'consumes').map(e => (kgById(e.from) || {}).localId).filter(Boolean),
+      _kg: true,
+    };
+  });
+  return _cache.contracts;
+}
+
 /* ---- Saved query: global search (D-073) --------------------
    The shell's search probes the mesh — the product graph plus the
    control-plane graph (org cards, GraphModules, seams). Ranked:
@@ -319,4 +395,4 @@ export function stageChange(op, target, payload) {
   }).then(r => r.json());
 }
 
-if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgDecision, kgSearch, kgApprovals, kgRunbooks, kgExecutors, stageChange };
+if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgDecision, kgSearch, kgApprovals, kgRunbooks, kgExecutors, kgTests, kgEvalRuns, kgContracts, stageChange };

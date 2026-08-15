@@ -1,6 +1,7 @@
 import React from 'react';
 import './trace-core';
 import { componentArchetype } from '../flow/arch';
+import { kgTests, kgEvalRuns } from './kg-query';
 /* ============================================================
    Cynergis — Discover & Design phase content (org app).
    Now fully traceable, Product-Studio style:
@@ -1566,7 +1567,10 @@ const TstDef = ({ k, children }) => <div className="dd-idef"><span className="dd
 
 function BuildTests({ prd }) {
   const A = window.__ARCH__;
-  const T = A && A.testing;
+  // D-083: the register is a saved query — AcceptanceTest nodes (criterion,
+  // Gherkin, env) + tests/verifies/blocks edges; run header, histories,
+  // failure logs and suites dereference via observed_via → DS-CI.
+  const T = kgTests() || (A && A.testing);
   const open = useOpen();
   const [tab, setTab] = React.useState('acceptance');   // acceptance | suites
   const [selId, setSelId] = React.useState(null);        // AT-x or suite comp id
@@ -1588,7 +1592,7 @@ function BuildTests({ prd }) {
   // ---------- detail: one acceptance test ----------
   const at = T.acceptance.find(t => t.id === selId);
   if (tab === 'acceptance' && at) {
-    const g = gherkinOf(at);
+    const g = at.gherkin || gherkinOf(at);
     return (<>
       <button type="button" className="dd-iback" onClick={() => setSelId(null)}>← Acceptance tests</button>
       <div className="tstx-dh">
@@ -1655,6 +1659,9 @@ function BuildTests({ prd }) {
   shown.forEach(t => { (byUc[t.uc] = byUc[t.uc] || []).push(t); });
   return (<>
     <p className="dd-lead">The deterministic plane’s verification, at tool depth: the acceptance register (the Gherkin contract from Design, run as tests) and the component suites. Open any row for its scenario, environment, run history and failure logs.</p>
+    {T._kg && (
+      <div className="ops-kgline">Derived surface — each test is an <b>AcceptanceTest</b> node (criterion + Gherkin from Design) with <b>tests</b> / <b>verifies</b> / <b>blocks</b> edges; run header, histories, failure logs and suites dereference via <b>observed_via → DS-CI</b> (D-066).</div>
+    )}
 
     <div className="tstx-run">
       <span className="tstx-run-k">run</span><b>{T.runId}</b>
@@ -1753,7 +1760,9 @@ function BuildEvals() {
     const t = { v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Build', entry: 'agents' };
     window.cynPushUrl?.(t); window.__cynApplyProd?.(t);
   };
-  const runs = A.agents.flatMap(a => (a.evals?.skills || []).map(e => ({ a, e, sk: a.skills.find(x => x.id === e.skill) || {}, key: a.id + '/' + e.skill })));
+  // D-083: one row per eval run — the Eval node (definition + gates) joined to
+  // its skill (evaluates) and agent (equips); runs/transcripts via DS-EVALS.
+  const runs = kgEvalRuns() || A.agents.flatMap(a => (a.evals?.skills || []).map(e => ({ a, e, sk: a.skills.find(x => x.id === e.skill) || {}, key: a.id + '/' + e.skill })));
   const trend = (e) => {
     const h = e.history || [];
     if (h.length < 2) return null;
@@ -1825,6 +1834,9 @@ function BuildEvals() {
   // ---------- the run register ----------
   return (<>
     <p className="dd-lead">The agent plane’s evidence, at tool depth: one row per eval run — dataset, judge, score and trend. Open a run for its metadata, score history, failure causes and the sampled transcripts (query · agent response · golden · judge). Aggregate thresholds live on each agent’s Evals tab.</p>
+    {runs[0] && runs[0]._kg && (
+      <div className="ops-kgline">Derived surface — each row joins an <b>Eval</b> node (dataset · judge · gates, D-052) to its skill (<b>evaluates</b>) and agent (<b>equips</b>); score histories, fail causes and transcripts dereference via <b>observed_via → DS-EVALS</b> (D-066). Tiers read in the canonical ladder (D-067).</div>
+    )}
     <div className="tstx-group">
       {runs.map(r => {
         const tr = trend(r.e);
