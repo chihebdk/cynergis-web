@@ -1,6 +1,7 @@
 import React from 'react';
 import './trace-core';
 import './ops-data';
+import { kgSlos } from './kg-query';
 const { Ref: ORef } = window;
 
 /* ============================================================
@@ -132,6 +133,10 @@ const ACTION_META = {
 };
 function OpsFleet() {
   const O = window.__OPS__;
+  // D-068: the SLO surface is a saved query over the derived knowledge graph;
+  // series arrive through the graph's observed_via pointers (DS-OBS). The
+  // hand-seed remains only as a fallback if the generated KB is absent.
+  const slos = kgSlos() || O.slos;
   const [tab, setTab] = React.useState('slos');   // slos | fleet | log
   const [selSlo, setSelSlo] = React.useState(() => {
     const b = (typeof window !== 'undefined' && window.__cynOpsOpenSlo) || null;
@@ -178,7 +183,7 @@ function OpsFleet() {
   };
 
   // ---------- SLO detail: one objective, dashboard-style ----------
-  const slo = O.slos.find(x => x.id === selSlo);
+  const slo = slos.find(x => x.id === selSlo);
   if (tab === 'slos' && slo) {
     return (<>
       <button type="button" className="dd-iback" onClick={() => setSelSlo(null)}>← SLOs & value targets</button>
@@ -187,6 +192,7 @@ function OpsFleet() {
         {slo.ref && <span onClick={e => e.stopPropagation()}><ORef id={slo.ref} /></span>}
         <span className={'ops-slo-state ' + slo.state}>{slo.state === 'ok' ? 'on target' : 'off target'}</span>
         <span className="ops-asof">{slo.group.toLowerCase()} · as of {O.asOf}</span>
+        {slo._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph (Slo node + typed edges); the trend series is dereferenced through the node's observed_via pointer into the DS-OBS DataSource.">KG · DS-OBS</span>}
       </div>
 
       <div className="ops-hero">
@@ -335,17 +341,20 @@ function OpsFleet() {
     </div>
 
     <div className="ddd-tabs">
-      {[['slos', `SLOs & value targets · ${O.slos.length}`], ['fleet', `Fleet · ${O.fleet.length}`], ['log', `Recorded actions · ${O.actionLog.length}`]].map(([k, lbl]) => (
+      {[['slos', `SLOs & value targets · ${slos.length}`], ['fleet', `Fleet · ${O.fleet.length}`], ['log', `Recorded actions · ${O.actionLog.length}`]].map(([k, lbl]) => (
         <button key={k} type="button" className={'ddd-tab' + (tab === k ? ' on' : '')} onClick={() => { setTab(k); setSelSlo(null); setSelFleet(null); }}>{lbl}</button>
       ))}
     </div>
 
     {tab === 'slos' && (
       <div className="tstx-group ops-slolist">
+        {slos[0] && slos[0]._kg && (
+          <div className="ops-kgline">Derived surface — definitions, targets and relations read from the knowledge graph (<b>{window.__KG__.stats.nodes} nodes · {window.__KG__.stats.edges} edges · {window.__KG__.stats.unresolved} unresolved</b>, ontology {window.__KG__.ontologyVersion}); trend series dereferenced via <b>observed_via → DS-OBS</b>. The graph holds the pointer, never the telemetry (D-066).</div>
+        )}
         {['Service objectives', 'Value targets'].map(grp => (
           <React.Fragment key={grp}>
             <div className="ops-slt-grp">{grp}</div>
-            {O.slos.filter(x => x.group === grp).map(x => (
+            {slos.filter(x => x.group === grp).map(x => (
               <div role="button" tabIndex={0} className="tstx-row ops-slorow" key={x.id}
                 onClick={() => setSelSlo(x.id)} onKeyDown={e => { if (e.key === 'Enter') setSelSlo(x.id); }}>
                 <span className={'ops-health ' + (x.state === 'ok' ? 'ok' : 'warn')} />

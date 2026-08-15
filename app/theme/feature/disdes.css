@@ -967,3 +967,11 @@ a.dd-env-res{ text-decoration:none; }
 
 /* operations-agent kind label on the Build register (D-065) */
 .agb-kind{ font-family:var(--font-mono); font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-4); border:1px solid var(--line); border-radius:20px; padding:2px 9px; }
+/* ---- D-068: first KG-derived surface (Operate · SLOs) ---- */
+.ops-kgline{ margin:10px 2px 2px; padding:8px 12px; font-size:11.5px; line-height:1.5;
+  color:var(--ink-3); border:1px dashed var(--accent-ink); border-radius:9px;
+  background:var(--accent-soft); opacity:.92; }
+.ops-kgline b{ color:var(--ink-1); font-weight:600; }
+.ops-kgchip{ font-family:var(--font-mono); font-size:9.5px; font-weight:700; letter-spacing:.06em;
+  padding:2px 8px; border-radius:20px; border:1px dashed var(--accent-ink);
+  color:var(--accent-ink); cursor:help; flex:none; }
