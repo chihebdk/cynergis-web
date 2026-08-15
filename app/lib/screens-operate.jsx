@@ -1,7 +1,7 @@
 import React from 'react';
 import './trace-core';
 import './ops-data';
-import { kgSlos } from './kg-query';
+import { kgSlos, kgFleet, kgIncidents, telemetry as kgTelemetry } from './kg-query';
 const { Ref: ORef } = window;
 
 /* ============================================================
@@ -133,10 +133,11 @@ const ACTION_META = {
 };
 function OpsFleet() {
   const O = window.__OPS__;
-  // D-068: the SLO surface is a saved query over the derived knowledge graph;
-  // series arrive through the graph's observed_via pointers (DS-OBS). The
-  // hand-seed remains only as a fallback if the generated KB is absent.
+  // D-068/D-070: SLOs and fleet are saved queries over the derived knowledge
+  // graph; series arrive through the graph's observed_via pointers (DS-OBS).
+  // The hand-seeds remain only as fallbacks if the generated KB is absent.
   const slos = kgSlos() || O.slos;
+  const fleet = kgFleet() || O.fleet;
   const [tab, setTab] = React.useState('slos');   // slos | fleet | log
   const [selSlo, setSelSlo] = React.useState(() => {
     const b = (typeof window !== 'undefined' && window.__cynOpsOpenSlo) || null;
@@ -239,19 +240,20 @@ function OpsFleet() {
   }
 
   // ---------- fleet detail: one component, dashboard-style (D-060) ----------
-  const fc = O.fleet.find(x => x.id === selFleet);
+  const fc = fleet.find(x => x.id === selFleet);
   if (tab === 'fleet' && fc) {
     const myLog = O.actionLog.filter(l => l.target === fc.id);
     return (<>
       <button type="button" className="dd-iback" onClick={() => setSelFleet(null)}>← Fleet</button>
       <div className="tstx-dh">
         <HealthDot h={fc.paused ? 'warn' : fc.health} />
-        <span className="tst-uc-t">{nameOf(fc.id)}</span>
+        <span className="tst-uc-t">{fc.name || nameOf(fc.id)}</span>
         {fc.paused && <span className="ops-paused">paused</span>}
         <span className={'ops-kind k-' + fc.kind}>{KIND_LBL[fc.kind] || fc.kind}</span>
         <span className="ops-profile">{fc.profile} profile</span>
         {fc.tier && <span className={'agb-tier ' + fc.tier.toLowerCase()}>{fc.tier}</span>}
         <span onClick={e => e.stopPropagation()}><ORef id={fc.id} /></span>
+        {fc._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph (Component/Agent node governed by the Operator via governs_runtime); telemetry & trend are dereferenced through the node's observed_via pointer into DS-OBS.">KG · DS-OBS</span>}
       </div>
 
       <div className="ops-hero">
@@ -341,7 +343,7 @@ function OpsFleet() {
     </div>
 
     <div className="ddd-tabs">
-      {[['slos', `SLOs & value targets · ${slos.length}`], ['fleet', `Fleet · ${O.fleet.length}`], ['log', `Recorded actions · ${O.actionLog.length}`]].map(([k, lbl]) => (
+      {[['slos', `SLOs & value targets · ${slos.length}`], ['fleet', `Fleet · ${fleet.length}`], ['log', `Recorded actions · ${O.actionLog.length}`]].map(([k, lbl]) => (
         <button key={k} type="button" className={'ddd-tab' + (tab === k ? ' on' : '')} onClick={() => { setTab(k); setSelSlo(null); setSelFleet(null); }}>{lbl}</button>
       ))}
     </div>
@@ -372,14 +374,17 @@ function OpsFleet() {
     )}
 
     {tab === 'fleet' && (<>
-      <VolChart v={O.volume24h} />
+      <VolChart v={kgTelemetry('volume24h') || O.volume24h} />
+      {fleet[0] && fleet[0]._kg && (
+        <div className="ops-kgline">Derived surface — the fleet is what the Operator governs (<b>governs_runtime</b> edges, in edge order); profiles, tiers & controls are node props, telemetry dereferenced via <b>observed_via → DS-OBS</b>. Tiers read in the canonical ladder (D-067).</div>
+      )}
       <div className="asc-panel ops-panel">
-        {O.fleet.map(f => (
+        {fleet.map(f => (
           <div className="ops-fleet-row clickable" role="button" tabIndex={0} key={f.id}
             onClick={() => setSelFleet(f.id)} onKeyDown={e => { if (e.key === 'Enter') setSelFleet(f.id); }}>
             <div className="ops-fleet-h">
               <HealthDot h={f.paused ? 'warn' : f.health} />
-              <span className="ops-fleet-nm">{nameOf(f.id)}</span>
+              <span className="ops-fleet-nm">{f.name || nameOf(f.id)}</span>
               {f.paused && <span className="ops-paused">paused</span>}
               <span className={'ops-kind k-' + f.kind}>{KIND_LBL[f.kind] || f.kind}</span>
               <span className="ops-profile">{f.profile}</span>
@@ -440,6 +445,9 @@ function OpsIncidents() {
   });
   const [, bump] = React.useState(0);
   if (!O) return null;
+  // D-071: the register is a saved query over Incident nodes (the structured
+  // curated record); timeline dereferences via observed_via → DS-OBS.
+  const incidents = kgIncidents() || O.incidents;
   const now = () => new Date().toISOString().slice(0, 16).replace('T', ' ');
   const applyRemediation = (inc) => {
     inc.remediation.status = 'applied';
@@ -456,7 +464,7 @@ function OpsIncidents() {
     O.actionLog.unshift({ t: now(), actor: 'You — console', action: 'Deep investigation launched in the harness (Claude Code)', target: inc.impacted[0], via: inc.id });
     bump(n => n + 1);
   };
-  const sel = O.incidents.find(i => i.id === selId);
+  const sel = incidents.find(i => i.id === selId);
 
   if (sel) {
     const ps = pipeState(sel);
@@ -468,6 +476,7 @@ function OpsIncidents() {
         <span className={'ops-inc-st ' + sel.status}>{sel.status}</span>
         <span className={'ops-plane ' + sel.plane}>{sel.plane} plane</span>
         <span className={'ops-pipe ' + ps.k}>{ps.label}</span>
+        {sel._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph — the Incident node carries the structured curated record (discovery · findings · triage · remediation · hypotheses); impacted set and matched runbook are impacts / remediated_by edges; the raw timeline is dereferenced through observed_via into DS-OBS.">KG · DS-OBS</span>}
       </div>
       <div className="dd-idetail">
         <div className="dd-idef"><span className="dd-iext-k">opened</span><div className="dd-idef-v">{sel.opened}{sel.resolved && <> · resolved <b>{sel.resolved}</b></>}</div></div>
@@ -530,8 +539,11 @@ function OpsIncidents() {
 
   return (<>
     <p className="dd-lead">Full agent-operation mode: the <b>Operator discovers</b> each incident from a signal, <b>investigates</b>, matches the runbook, and triages. <b>Low-risk</b> → the remediation is prepared and waits for one human <i>Apply</i>. <b>Complex</b> → remediation hypotheses need human direction, with a deep-investigation escalation into an agentic harness (Claude Code).</p>
+    {incidents[0] && incidents[0]._kg && (
+      <div className="ops-kgline">Derived surface — each row is an <b>Incident</b> node: the structured record of judgment (discovery · findings · triage · remediation · hypotheses · escalation) lives on the node; impacted components and the matched runbook are <b>impacts</b> / <b>remediated_by</b> edges; raw timelines dereference via <b>observed_via → DS-OBS</b> (D-066).</div>
+    )}
     <div className="tstx-group">
-      {O.incidents.map(inc => {
+      {incidents.map(inc => {
         const ps = pipeState(inc);
         return (
           <button type="button" className="tstx-row" key={inc.id} onClick={() => setSelId(inc.id)}>

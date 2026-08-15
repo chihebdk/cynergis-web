@@ -1,6 +1,7 @@
 import React from 'react';
 import './trace-core';
 import './realize-data';
+import { kgOutcomes } from './kg-query';
 const { Ref: RRef } = window;
 
 /* ============================================================
@@ -50,8 +51,11 @@ function RealOutcomes() {
   const R = window.__REALIZE__;
   const [selId, setSelId] = React.useState(null);
   if (!R) return null;
+  // D-072: outcomes are a saved query over Outcome nodes — the actualizes /
+  // sourced_from / attributed_to edges; KPI history via observed_via → DS-OBS.
+  const kpis = kgOutcomes() || R.kpis;
   const Big = window.OpsBigTrend, Sp = window.OpsSpark;
-  const sel = R.kpis.find(k => k.sc === selId);
+  const sel = kpis.find(k => k.sc === selId);
 
   if (sel && Big) {
     return (<>
@@ -61,6 +65,7 @@ function RealOutcomes() {
         <span onClick={e => e.stopPropagation()}><RRef id={sel.sc} /></span>
         <KpiState st={sel.state} />
         <span className="ops-asof">as of {R.asOf}</span>
+        {sel._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph — the Outcome node actualizes its success criterion, sourced_from names the Operate SLO instrumenting it, attributed_to carries the value shares; the KPI history is dereferenced through observed_via into DS-OBS.">KG · DS-OBS</span>}
       </div>
       <div className="ops-hero">
         <div className="ops-hero-card">
@@ -103,8 +108,11 @@ function RealOutcomes() {
 
   return (<>
     <p className="dd-lead">The measurable heart of Realize: every Charter success criterion against its <b>actual</b> — the % of the baseline→target gap closed, the trend, and the time to target. The actuals are the same telemetry Operate watches, framed against the promise.</p>
+    {kpis[0] && kpis[0]._kg && (
+      <div className="ops-kgline">Derived surface — each row is an <b>Outcome</b> node: <b>actualizes</b> names the Charter criterion, <b>sourced_from</b> the Operate SLO feeding it, <b>attributed_to</b> the use cases with their value shares; KPI histories dereference via <b>observed_via → DS-OBS</b> (D-066).</div>
+    )}
     <div className="tstx-group">
-      {R.kpis.map(k => (
+      {kpis.map(k => (
         <div role="button" tabIndex={0} className="tstx-row ops-slorow" key={k.sc}
           onClick={() => setSelId(k.sc)} onKeyDown={e => { if (e.key === 'Enter') setSelId(k.sc); }}>
           <span className={'ops-health ' + (k.state === 'met' ? 'ok' : 'warn')} />

@@ -975,3 +975,8 @@ a.dd-env-res{ text-decoration:none; }
 .ops-kgchip{ font-family:var(--font-mono); font-size:9.5px; font-weight:700; letter-spacing:.06em;
   padding:2px 8px; border-radius:20px; border:1px dashed var(--accent-ink);
   color:var(--accent-ink); cursor:help; flex:none; }
+
+/* D-067 canonical trust-ladder chips (surfaces flipped to the KB read these) */
+.agb-tier.assist{ color:oklch(0.45 0.11 70); background:oklch(0.95 0.05 70); }
+.agb-tier.operate{ color:oklch(0.42 0.1 145); background:oklch(0.94 0.05 145); }
+.agb-tier.codify{ color:oklch(0.42 0.1 295); background:oklch(0.95 0.04 295); }
