@@ -14,6 +14,7 @@ import path from 'path';
 /* op → the owning spec (the routing table update_route serves) */
 const ROUTES = {
   'approval.decide': 'cynergis/app/lib/ops-data.js',
+  'decision.record': 'cynergis/app/lib/realize-data.js',
 };
 
 export async function POST(req) {

@@ -72,7 +72,8 @@ window.__REALIZE__ = {
   },
 
   decision: {
-    status: 'recommended', recommendation: 'scale',
+    status: 'decided', recommendation: 'scale',
+    decided: {"option":"scale","on":"2026-08-15","by":"Product board — Elena Cho (sponsor) · Cards & Payments portfolio lead · Regina Foss (Model Risk)","note":"Complete UC4 first (BLK2), carry the agent doctrine unchanged"},
     board: 'Product board — Elena Cho (sponsor) · Cards & Payments portfolio lead · Regina Foss (Model Risk)',
     options: [
       { k: 'scale', title: 'Scale', what: 'Extend the proven pattern across the enterprise.',

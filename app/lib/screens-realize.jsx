@@ -1,7 +1,7 @@
 import React from 'react';
 import './trace-core';
 import './realize-data';
-import { kgOutcomes, kgValue } from './kg-query';
+import { kgOutcomes, kgValue, kgDecision, stageChange } from './kg-query';
 const { Ref: RRef } = window;
 
 /* ============================================================
@@ -199,17 +199,27 @@ function RealValue() {
 function RealDecision() {
   const R = window.__REALIZE__;
   const [note, setNote] = React.useState('');
-  const [, bump] = React.useState(0);   // the decision mutates the seed in memory (a reload restores it)
+  const [, bump] = React.useState(0);
   if (!R) return null;
-  const D = R.decision;
+  // D-082: the record is a Decision node (go-forward) + Learning nodes; the
+  // Record act is a governance act on the D-077 gated write path — the
+  // in-memory mutation is the optimistic echo, the durable record travels
+  // change request → kg/apply.js → owning spec → regenerate.
+  const D = kgDecision() || R.decision;
   const record = (k) => {
     D.status = 'decided';
     D.decided = { option: k, on: new Date().toISOString().slice(0, 10), by: D.board, note: note.trim() };
     setNote('');
+    stageChange('decision.record', 'DEC-GO-FWD', { decided: D.decided })
+      .then(res => { D.staged = res; bump(n => n + 1); })
+      .catch(() => { D.staged = { error: 'intake unreachable — decision is in-memory only until re-staged' }; bump(n => n + 1); });
     bump(n => n + 1);
   };
   return (<>
     <p className="dd-lead">The gate that closes the loop: <b>sustain · scale · pivot · retire</b>, decided by the named humans on realized evidence — then the learnings feed back into Envision, Discover and prioritization. Not a hard exit: Operate keeps running either way.</p>
+    {D._kg && (
+      <div className="ops-kgline">Derived surface — the go-forward record is a <b>Decision</b> node, the learnings are <b>Learning</b> nodes with their <b>feeds</b> edges; recording travels the <b>gated write path</b> (D-077) and returns from the KB (D-066).</div>
+    )}
 
     <RSec icon="compass" title="The options" sub="One recommendation, argued on the evidence — the board decides">
       <div className="rlz-opts">
@@ -246,6 +256,12 @@ function RealDecision() {
         <div className="ops-remed-h"><RIco k="check" w={14} /> Decision recorded <span className="ops-remed-meta">{D.decided.on} · {D.decided.by}</span></div>
         <div className="ops-remed-a"><b>{D.options.find(o => o.k === D.decided.option)?.title}</b>{D.decided.note ? ' — ' + D.decided.note : ''}</div>
         <div className="ops-remed-why">A temporal record — the decision history is never overwritten; the loop-back items below are now the next products’ inputs.</div>
+        {D.staged && (
+          <div className="ops-kgline">{D.staged.error
+            ? <>⚠ {D.staged.error}</>
+            : <>Recorded decision <b>staged for the gated write path</b> — change <b>{D.staged.id}</b> routed to <b>{D.staged.route}</b>. Apply with <b>node kg/apply.js</b>: spec → regenerate → this record returns from the derived KB and survives reload (D-066 doctrine 4).</>}
+          </div>
+        )}
       </div>
     ) : (
       <div className="ops-decide">

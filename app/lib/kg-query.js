@@ -203,6 +203,28 @@ export function kgValue() {
   return _cache.value;
 }
 
+/* ---- Saved query: the Realize go-forward surface (D-082) ---
+   The go-forward record IS a Decision node (cat go-forward);
+   learnings are Learning nodes with their feeds edges. Recording
+   is a governance act on the D-077 gated write path: the board's
+   choice is staged as a change request, routed into the owning
+   spec, and returns from the derived KB. */
+export function kgDecision() {
+  const G = g(); if (!G) return null;
+  if (_cache.decision) return _cache.decision;
+  const n = G.nodes.find(x => x.type === 'Decision' && (x.props || {}).cat === 'go-forward');
+  if (!n) return null;
+  const p = n.props || {};
+  _cache.decision = {
+    status: p.status, recommendation: p.recommendation, board: p.board,
+    options: p.options || [], rationale: p.rationale || [], conditions: p.conditions,
+    decided: p.decided && { ...p.decided },
+    learnings: G.nodes.filter(x => x.type === 'Learning').map(x => ({ text: x.props.text || x.label, feeds: x.props.feeds, note: x.props.note })),
+    _kg: true,
+  };
+  return _cache.decision;
+}
+
 /* ---- Saved query: global search (D-073) --------------------
    The shell's search probes the mesh — the product graph plus the
    control-plane graph (org cards, GraphModules, seams). Ranked:
@@ -297,4 +319,4 @@ export function stageChange(op, target, payload) {
   }).then(r => r.json());
 }
 
-if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgSearch, kgApprovals, kgRunbooks, kgExecutors, stageChange };
+if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgDecision, kgSearch, kgApprovals, kgRunbooks, kgExecutors, stageChange };
