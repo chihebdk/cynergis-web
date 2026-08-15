@@ -114,6 +114,7 @@ window.__ARCH__ = {
           businessRules:[{rule:'Hard blocklist and velocity rules can override a low model score.', ref:'FR8'},{rule:'Provide a rules-only decision within budget when the model is unavailable.', ref:'NFR1'}],
           command:[{command:'ApplyRules(score, context)', ref:'FR8'}],
           dependency:[{type:'component', ref:'C1', note:'Invoked inline by the Scoring Service.'}],
+          code:{ path:'services/scoring/rules', repo:'https://example.com/fraud-scoring', tests:'38 / 38 passing', coverage:'92%', owners:'Decisioning squad' },
           hotspot:[{level:'Consistency', text:'Rule changes must be versioned with the model to keep decisions reproducible.'}]},
         {id:'C5', bc:'BC-DEC', name:'Feature Pipeline', overview:'The projection builder behind the cache: computes low-latency features from the authorization stream and ingests labelled outcomes from Case Management — the learning loop that keeps the model honest. The cache itself is the res-featcache resource.', mapsTo:['FR1'],
           trigger:[
@@ -211,6 +212,7 @@ window.__ARCH__ = {
           ],
           resource:['res-notify'],
           dependency:[{type:'integration', ref:'INT-notify', note:'Push/SMS/app delivery.'}],
+          code:{ path:'services/notify', repo:'https://example.com/fraud-notify', tests:'47 / 47 passing', coverage:'84%', owners:'Case & Response squad' },
           hotspot:[{level:'Reliability', text:'Channel reachability varies — fall back to an analyst when no channel is available.'}]}
       ]}
   ],
