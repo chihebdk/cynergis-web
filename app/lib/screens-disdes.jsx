@@ -1,7 +1,7 @@
 import React from 'react';
 import './trace-core';
 import { componentArchetype } from '../flow/arch';
-import { kgTests, kgEvalRuns } from './kg-query';
+import { kgTests, kgEvalRuns, kgAgents } from './kg-query';
 /* ============================================================
    Cynergis — Discover & Design phase content (org app).
    Now fully traceable, Product-Studio style:
@@ -1326,6 +1326,10 @@ function BuildAgents({ prd }) {
   const [dtab, setDtab] = React.useState(() => { const t = ((typeof window !== 'undefined' && window.__cynAgentOpen) || {}).tab || 'knowledge'; if (typeof window !== 'undefined') delete window.__cynAgentOpen; return t; });
   const pick = (id) => { setSelId(id); setDtab('knowledge'); };
   if (!A || !(A.agents || []).length) return <div className="env-empty"><div className="env-empty-ic"><DIco k="spark" w={20} /></div><div className="env-empty-t">Agents</div><div className="env-empty-s">No subdomain agents built yet.</div></div>;
+  // D-084: the register is a saved query — operations Agent nodes with their
+  // act triples (acts_via), observes lens list, skills (equips → does_work_of/
+  // acts_via/knowledge) and evals (evaluates, agent- and skill-level).
+  const agents = kgAgents() || A.agents;
   const nav = (typeof window !== 'undefined' && window.__cynNav) || {};
   const { comps, groups } = intCatalog(A);
   const ctxs = (((window.__DDD__ || {}).byProduct || {})[nav.prod] || {}).contexts || [];
@@ -1345,14 +1349,14 @@ function BuildAgents({ prd }) {
       bcs.delete(bc);
       bcs.forEach(b => { const e = out.get(b) || []; e.push(s.id); out.set(b, e); });
     });
-    return [...out.entries()].map(([pbc, via]) => ({ bc: pbc, via, agent: A.agents.find(a => a.bc === pbc) || null }));
+    return [...out.entries()].map(([pbc, via]) => ({ bc: pbc, via, agent: agents.find(a => a.bc === pbc) || null }));
   };
   const goKnowledge = (bc) => {
     const t = { v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx: bc, tab: 'agent' };
     window.cynPushUrl?.(t); window.__cynApplyProd?.(t);
   };
 
-  const sel = A.agents.find(a => a.id === selId);
+  const sel = agents.find(a => a.id === selId);
   const TierChip = ({ t }) => <span className={'agb-tier ' + t.toLowerCase()}>{AGB_TIER[t.toLowerCase()] || t}</span>;
   const VerdChip = ({ v }) => <span className={'agb-verd ' + v}>{v}</span>;
   const AsChip = ({ id }) => {
@@ -1375,6 +1379,7 @@ function BuildAgents({ prd }) {
             <span className="agb-bc">{ctxName(sel.bc)} · {sel.bc}</span>
             <TierChip t={sel.tier} />
             <span className={'agb-status ' + sel.status}>{sel.status}</span>
+            {sel._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph — the operations Agent node with its act triples (acts_via: tool · whose work · what), observes lens list, skills (equips → does_work_of · acts_via · knowledge) and evals (evaluates — doctrine checks on the agent, promotion evidence on each skill).">KG</span>}
           </div>
           <p className="agb-mission">{sel.mission}</p>
           <div className="agb-mcp"><span className="dd-iext-k">mcp</span><code>{sel.mcp.server}</code><span className="agb-mcp-note">{sel.mcp.note}</span></div>
@@ -1514,11 +1519,14 @@ function BuildAgents({ prd }) {
   }
 
   // ---------- roster ----------
-  const agentless = groups.filter(g => !A.agents.some(a => a.bc === g.key));
+  const agentless = groups.filter(g => !agents.some(a => a.bc === g.key));
   return (<>
     <p className="dd-lead">The <b>operations agents</b> — one per subdomain, used by humans in live operation. Each is defined in Design (on its bounded context’s Agents tab, beside its <b>domain agent</b> sibling that knows and builds the subdomain); this page is its as-built form. It does the subdomain’s <b>human work</b> — acting through the same role-scoped surfaces people use, reading what a support engineer reads. The deterministic workflow stays authoritative; agents collaborate with it and with each other, never replace it.</p>
+    {agents[0] && agents[0]._kg && (
+      <div className="ops-kgline">Derived surface — each card is an operations <b>Agent</b> node: act triples on <b>acts_via</b> edges, skills via <b>equips</b> (personas <b>does_work_of</b>, tools <b>acts_via</b>), evals via <b>evaluates</b>; collaborators derive from the shared event contracts (D-066). Tiers read in the canonical ladder (D-067).</div>
+    )}
     <div className="agb-grid">
-      {A.agents.map(a => {
+      {agents.map(a => {
         const nPartners = partnersOf(a.bc).length;
         return (
           <button type="button" className="agb-card" key={a.id} onClick={() => pick(a.id)}>

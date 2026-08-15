@@ -301,6 +301,53 @@ export function kgContracts() {
   return _cache.contracts;
 }
 
+/* ---- Saved query: the Build agents register (D-084) --------
+   The richest join in the app: each operations Agent node with its
+   act triples (acts_via edges: tool · whose work · what), its
+   observes lens list (node prop; edges where refs resolve), its
+   skills (equips edges, excluding planned cross-links) each with
+   their persona (does_work_of), tools (acts_via) and knowledge,
+   and its evals — doctrine checks (Eval → agent) and per-skill
+   promotion evidence (Eval → skill, dataset + gates). */
+export function kgAgents() {
+  const G = g(); if (!G) return null;
+  if (_cache.agents) return _cache.agents;
+  _cache.agents = G.nodes.filter(n => n.type === 'Agent' && (n.props || {}).role === 'operations').map(n => {
+    const p = n.props || {};
+    const acts = kgOut(n.id, 'acts_via').map(e => ({ tool: (kgById(e.to) || {}).localId, what: e.props && e.props.what, as: e.props && e.props.as })).filter(a => a.tool);
+    const skills = kgOut(n.id, 'equips').filter(e => !(e.props && e.props.planned)).map(e => {
+      const sk = kgById(e.to); if (!sk) return null;
+      const asEdge = kgOut(sk.id, 'does_work_of')[0];
+      return {
+        id: sk.localId, name: sk.label, tier: (sk.props || {}).tier, status: (sk.props || {}).status,
+        does: (sk.props || {}).does, knowledge: (sk.props || {}).knowledge || [],
+        as: asEdge ? (kgById(asEdge.to) || {}).localId : undefined,
+        tools: kgOut(sk.id, 'acts_via').map(x => (kgById(x.to) || {}).localId).filter(Boolean),
+      };
+    }).filter(Boolean);
+    const evalNodes = kgIn(n.id, 'evaluates').map(e => kgById(e.from)).filter(Boolean);
+    const checks = evalNodes.filter(x => !(x.props || {}).dataset).map(x => ({
+      id: x.localId, name: x.label, metric: x.props.metric, score: x.props.score,
+      verdict: x.props.verdict, what: x.props.what, lastRun: x.props.lastRun,
+    }));
+    const skillEvals = skills.map(sk => {
+      const skNode = G.nodes.find(x => x.localId === sk.id);
+      const ev = skNode ? kgIn(skNode.id, 'evaluates').map(e => kgById(e.from)).find(x => x && (x.props || {}).dataset) : null;
+      return ev && {
+        skill: sk.id, dataset: ev.props.dataset, metric: ev.props.metric, score: ev.props.score,
+        holdAt: ev.props.holdAt, promoteAt: ev.props.promoteAt, lastRun: ev.props.lastRun, verdict: ev.props.verdict,
+      };
+    }).filter(Boolean);
+    return {
+      id: n.localId, name: n.label, bc: n.module, tier: p.tier, status: p.status,
+      mission: p.mission, mcp: p.mcp || {}, observes: p.observes || [],
+      acts, skills, evals: { checks, skills: skillEvals },
+      _kg: true,
+    };
+  });
+  return _cache.agents;
+}
+
 /* ---- Saved query: global search (D-073) --------------------
    The shell's search probes the mesh — the product graph plus the
    control-plane graph (org cards, GraphModules, seams). Ranked:
@@ -395,4 +442,4 @@ export function stageChange(op, target, payload) {
   }).then(r => r.json());
 }
 
-if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgDecision, kgSearch, kgApprovals, kgRunbooks, kgExecutors, kgTests, kgEvalRuns, kgContracts, stageChange };
+if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgDecision, kgSearch, kgApprovals, kgRunbooks, kgExecutors, kgTests, kgEvalRuns, kgContracts, kgAgents, stageChange };
