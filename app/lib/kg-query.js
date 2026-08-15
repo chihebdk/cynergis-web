@@ -196,4 +196,35 @@ export function kgSearch(q, limit = 12) {
   return hits.filter(h => !seen.has(h.id) && seen.add(h.id)).slice(0, limit);
 }
 
-if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgSearch };
+/* ---- Saved query: the Operate approvals surface (D-077) ----
+   Approval nodes ARE the governance records (temporal, never
+   overwritten). The two-way act on this surface is the doctrine-4
+   test: deciding stages a CHANGE REQUEST onto the gated write path
+   (POST /api/kg-changes → kg/changes/pending.jsonl → kg/apply.js
+   routes it into the owning spec → regenerate). The in-memory
+   mutation is only the optimistic echo; the durable record arrives
+   from the derived KB after apply. */
+export function kgApprovals() {
+  const G = g(); if (!G) return null;
+  if (_cache.approvals) return _cache.approvals;
+  _cache.approvals = G.nodes.filter(n => n.type === 'Approval').map(n => {
+    const p = n.props || {};
+    return {
+      id: n.localId, title: n.label,
+      kind: p.kind, status: p.status, date: p.date, requestedBy: p.requestedBy,
+      approver: p.approver, evidence: p.evidence, decision: p.decision, note: p.note, links: p.links,
+      _kg: true,
+    };
+  });
+  return _cache.approvals;
+}
+
+/* Stage a change request onto the gated write path (doctrine 4). */
+export function stageChange(op, target, payload) {
+  return fetch('/api/kg-changes', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op, target, payload }),
+  }).then(r => r.json());
+}
+
+if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgSearch, kgApprovals, stageChange };

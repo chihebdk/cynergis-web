@@ -1,7 +1,7 @@
 import React from 'react';
 import './trace-core';
 import './ops-data';
-import { kgSlos, kgFleet, kgIncidents, telemetry as kgTelemetry } from './kg-query';
+import { kgSlos, kgFleet, kgIncidents, kgApprovals, stageChange, telemetry as kgTelemetry } from './kg-query';
 const { Ref: ORef } = window;
 
 /* ============================================================
@@ -571,11 +571,13 @@ function OpsApprovals() {
     return b;
   });
   const [note, setNote] = React.useState('');
-  const [, bump] = React.useState(0);   // approvals mutate the seed in memory (demo: a reload restores it)
+  const [, bump] = React.useState(0);
   if (!O) return null;
-  // The decide action (D-055): the named human approves or rejects; the decision
-  // becomes a temporal record (D-009) and, at the Operator's Suggest tier, a
-  // human executes the approved change.
+  // D-077: the register is a saved query over Approval nodes; deciding is the
+  // doctrine-4 act — the mutation below is only the optimistic echo, the real
+  // write is STAGED onto the gated write path (change request → kg/apply.js →
+  // owning spec → regenerate) and comes back from the derived KB.
+  const approvals = kgApprovals() || O.approvals;
   const decide = (a, action) => {
     const today = new Date().toISOString().slice(0, 10);
     a.status = action;
@@ -583,6 +585,9 @@ function OpsApprovals() {
       (note.trim() ? ' — ' + note.trim().replace(/\.$/, '') : '') +
       '. Recorded by ' + a.approver.split(' — ')[0] + '; at Suggest, execution is human-run.';
     setNote('');
+    stageChange('approval.decide', a.id, { status: a.status, decision: a.decision })
+      .then(res => { a.staged = res; bump(n => n + 1); })
+      .catch(() => { a.staged = { error: 'intake unreachable — decision is in-memory only until re-staged' }; bump(n => n + 1); });
     bump(n => n + 1);
   };
   const goEvals = () => {
@@ -590,7 +595,7 @@ function OpsApprovals() {
     const t = { v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Build', entry: 'evals' };
     window.cynPushUrl?.(t); window.__cynApplyProd?.(t);
   };
-  const sel = O.approvals.find(a => a.id === selId);
+  const sel = approvals.find(a => a.id === selId);
   const pickApr = (id) => { setSelId(id); setNote(''); };
 
   if (sel) {
@@ -600,7 +605,14 @@ function OpsApprovals() {
         <span className={'ops-apr-kind'}>{sel.kind}</span>
         <span className="tst-uc-t">{sel.title}</span>
         <span className={'ops-apr-st ' + sel.status}>{sel.status}</span>
+        {sel._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph — Approval nodes are the governance records. Deciding stages a change request onto the gated write path; the durable record returns from the KB after kg/apply.js routes it into the owning spec and regenerates.">KG · write-path</span>}
       </div>
+      {sel.staged && (
+        <div className="ops-kgline">{sel.staged.error
+          ? <>⚠ {sel.staged.error}</>
+          : <>Decision <b>staged for the gated write path</b> — change <b>{sel.staged.id}</b> routed to <b>{sel.staged.route}</b> (the owning spec, per Optimus update_route). Apply with <b>node kg/apply.js</b>: spec → regenerate → this record returns from the derived KB and survives reload. The graph is never edited directly (D-066 doctrine 4).</>}
+        </div>
+      )}
       <div className="dd-idetail">
         <div className="dd-idef"><span className="dd-iext-k">requested by</span><div className="dd-idef-v">{sel.requestedBy}</div></div>
         <div className="dd-idef"><span className="dd-iext-k">approver</span><div className="dd-idef-v"><b>{sel.approver}</b></div></div>
@@ -623,8 +635,8 @@ function OpsApprovals() {
     </>);
   }
 
-  const pending = O.approvals.filter(a => a.status === 'pending');
-  const decided = O.approvals.filter(a => a.status !== 'pending');
+  const pending = approvals.filter(a => a.status === 'pending');
+  const decided = approvals.filter(a => a.status !== 'pending');
   const Row = (a) => (
     <button type="button" className="tstx-row" key={a.id} onClick={() => pickApr(a.id)}>
       <span className="ops-apr-kind">{a.kind}</span>
