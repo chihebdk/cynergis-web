@@ -1,7 +1,7 @@
 import React from 'react';
 import './trace-core';
 import './ops-data';
-import { kgSlos, kgFleet, kgIncidents, kgApprovals, stageChange, telemetry as kgTelemetry } from './kg-query';
+import { kgSlos, kgFleet, kgIncidents, kgApprovals, kgRunbooks, kgExecutors, stageChange, telemetry as kgTelemetry } from './kg-query';
 const { Ref: ORef } = window;
 
 /* ============================================================
@@ -675,9 +675,14 @@ function OpsRunbooks() {
     return b;
   });
   if (!O) return null;
-  const exeOf = id => (O.opsAgents || []).find(x => x.id === id) || null;
+  // D-080: runbooks are a saved query over Runbook nodes (trigger + body +
+  // toolset ARE the skill, D-059); the executor registry is the executor-role
+  // Agent nodes, both joined by the executed_by edges.
+  const runbooks = kgRunbooks() || O.runbooks;
+  const executors = kgExecutors() || O.opsAgents || [];
+  const exeOf = id => executors.find(x => x.id === id) || null;
   const ExeChip = ({ exe }) => exe ? <span className={'ops-exe ' + (EXE_KIND[exe.kind]?.cls || '')} title={exe.provider}>{exe.name.split(' — ')[0]}</span> : null;
-  const sel = O.runbooks.find(r => r.id === selId);
+  const sel = runbooks.find(r => r.id === selId);
 
   if (sel) {
     const exe = exeOf(sel.executor);
@@ -687,6 +692,7 @@ function OpsRunbooks() {
         <span className="tstx-dh-id">{sel.id}</span>
         <span className="tst-uc-t">{sel.title}</span>
         {exe && <ExeChip exe={exe} />}
+        {sel._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph — the Runbook node carries the skill (trigger · body · toolset, D-059); the executor is its executed_by edge and the linked surfaces are its traces_to edges.">KG</span>}
       </div>
       <div className="dd-idetail">
         <div className="dd-idef"><span className="dd-iext-k">trigger</span><div className="dd-idef-v">{sel.trigger}</div></div>
@@ -716,8 +722,11 @@ function OpsRunbooks() {
   return (<>
     <p className="dd-lead">Runbooks are not documents — they are <b>agent skills</b>: a trigger, a body, and a toolset of MCPs, each with a named <b>executor</b>. Executors are our deployed agents or <b>registered off-the-shelf platform agents</b> — source and scope below, even where we don’t own the implementation.</p>
 
+    {runbooks[0] && runbooks[0]._kg && (
+      <div className="ops-kgline">Derived surface — each row is a <b>Runbook</b> node carrying the skill itself (trigger · body · toolset, D-059); executors join via <b>executed_by</b> edges, linked surfaces via <b>traces_to</b> (D-066).</div>
+    )}
     <div className="tstx-group">
-      {O.runbooks.map(rb => {
+      {runbooks.map(rb => {
         const exe = exeOf(rb.executor);
         return (
           <button type="button" className="tstx-row" key={rb.id} onClick={() => setSelId(rb.id)}>
@@ -734,7 +743,7 @@ function OpsRunbooks() {
 
     <OSec icon="spark" title="Executor registry" sub="Who runs the runbooks — deployed agents, registered platform agents with their source and scope, and the harness the human drives">
       <div className="ops-exes">
-        {(O.opsAgents || []).map(x => (
+        {executors.map(x => (
           <div className={'ops-exe-card ' + (EXE_KIND[x.kind]?.cls || '')} key={x.id}>
             <div className="ops-exe-h">
               <span className="ops-exe-nm">{x.name}</span>
@@ -752,7 +761,7 @@ function OpsRunbooks() {
             )}
             {x.runbooks.length > 0 && (
               <div className="ops-exe-def"><span className="dd-iext-k">runs</span>
-                <span className="ops-exe-rbs">{x.runbooks.map(r => <button type="button" key={r} className="ops-exe-rb" onClick={() => { const id = r.split(' ')[0]; if (O.runbooks.some(b => b.id === id)) setSelId(id); }}>{r}</button>)}</span>
+                <span className="ops-exe-rbs">{x.runbooks.map(r => <button type="button" key={r} className="ops-exe-rb" onClick={() => { const id = r.split(' ')[0]; if (runbooks.some(b => b.id === id)) setSelId(id); }}>{r}</button>)}</span>
               </div>
             )}
           </div>

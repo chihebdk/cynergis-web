@@ -219,6 +219,46 @@ export function kgApprovals() {
   return _cache.approvals;
 }
 
+/* ---- Saved query: the Operate runbooks surface (D-080) -----
+   A Runbook IS an agent skill (D-059): trigger + body + toolset on
+   the node; the executor is the executed_by edge (deployed agent or
+   registered off-the-shelf platform agent); the linked surfaces are
+   its traces_to edges. The executor registry is the Agent nodes
+   with role 'executor', their runbook lists derived from the same
+   executed_by edges in reverse. */
+export function kgRunbooks() {
+  const G = g(); if (!G) return null;
+  if (_cache.runbooks) return _cache.runbooks;
+  _cache.runbooks = G.nodes.filter(n => n.type === 'Runbook').map(n => {
+    const p = n.props || {};
+    const exeEdge = kgOut(n.id, 'executed_by').map(e => kgById(e.to)).find(t => t && t.type === 'Agent');
+    return {
+      id: n.localId, title: n.label,
+      trigger: p.trigger, owner: p.owner, lastExercised: p.lastExercised || '',
+      humanActuated: p.humanActuated, steps: p.steps || [], tools: p.tools,
+      executor: exeEdge ? exeEdge.localId : undefined,
+      links: kgOut(n.id, 'traces_to').map(e => (kgById(e.to) || {}).localId).filter(Boolean),
+      _kg: true,
+    };
+  });
+  return _cache.runbooks;
+}
+export function kgExecutors() {
+  const G = g(); if (!G) return null;
+  if (_cache.executors) return _cache.executors;
+  _cache.executors = G.nodes.filter(n => n.type === 'Agent' && (n.props || {}).role === 'executor').map(n => {
+    const p = n.props || {};
+    return {
+      id: n.localId, name: n.label,
+      kind: p.kind, provider: p.provider, version: p.version, registered: p.registered,
+      note: p.note, scope: p.scope, auth: p.auth, guardrails: p.guardrails, source: p.source,
+      runbooks: kgIn(n.id, 'executed_by').map(e => (kgById(e.from) || {}).localId).filter(Boolean).sort(),
+      _kg: true,
+    };
+  });
+  return _cache.executors;
+}
+
 /* Stage a change request onto the gated write path (doctrine 4). */
 export function stageChange(op, target, payload) {
   return fetch('/api/kg-changes', {
@@ -227,4 +267,4 @@ export function stageChange(op, target, payload) {
   }).then(r => r.json());
 }
 
-if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgSearch, kgApprovals, stageChange };
+if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgSearch, kgApprovals, kgRunbooks, kgExecutors, stageChange };
