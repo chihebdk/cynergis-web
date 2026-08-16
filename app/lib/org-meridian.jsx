@@ -73,7 +73,8 @@ const M = (() => {
         .map(e => claims.byId.get(e.to)).filter(k => k && k.type === 'Contract')
         .map(k => ({ node: k, counterpart: claims.byId.get((claims.out(k.id, 'with')[0] || {}).to) }));
       const oms = claims.out(c.id, 'measured_by').map(e => claims.byId.get(e.to)).filter(Boolean);
-      depth.set(c.localId, { node: c, team, models, apps, contracts, oms });
+      const agents = claims.nodes('Agent').filter(a => claims.out(a.id, 'serves').some(e => e.to === c.id));
+      depth.set(c.localId, { node: c, team, models, apps, contracts, oms, agents });
     }
   }
   const claimsUnits = claims ? claims.nodes('OrgUnit') : [];
@@ -693,6 +694,37 @@ function MerContext({ id }) {
           <div className="asc-sec-head"><div className="asc-sec-title">Outcome measures</div>
             <div className="asc-sec-sub">What this wall is accountable for — attached at context level</div></div>
           <div className="mer-oms">{dep.oms.map(o => <span className="mer-om" key={o.id}>{o.label}</span>)}</div>
+        </div>
+      )}
+
+      {dep && (dep.agents || []).length > 0 && (
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">The two agents</div>
+            <div className="asc-sec-sub">One per profile (D-065): the builder lives in the harness, the operator is deployed on the trust ladder — governance acts human-reserved at every tier (D-056)</div></div>
+          <div className="mer-two">
+            {dep.agents.map(a => (
+              <div className="mer-panel" key={a.id}>
+                <div className="mer-h-top"><b>{a.label}</b>
+                  <span style={{ display: 'flex', gap: 6 }}>
+                    <span className={'badge ' + (a.props.kind === 'operations' ? 'ok' : '')}>{a.props.kind === 'operations' ? `deployed · ${a.props.tier}` : 'harness · builder'}</span>
+                  </span>
+                </div>
+                {a.props.knows && <div className="mer-h-act">{a.props.knows}</div>}
+                {a.props.posture && <div className="mer-h-act" style={{ marginTop: 4 }}><b>Posture:</b> {a.props.posture}</div>}
+                {a.props.tierNote && <div className="mer-h-act" style={{ marginTop: 4 }}>{a.props.tierNote}</div>}
+                {(a.props.skills || []).length > 0 && <div className="mer-oms" style={{ margin: '8px 0 0' }}>{a.props.skills.map(s => <span className="mer-om prod" key={s}>{s}</span>)}</div>}
+                {(a.props.acts || []).length > 0 && (
+                  <div className="mer-fact" style={{ marginTop: 8 }}><span className="k">Acts</span><span className="v">{a.props.acts.map((x, i) => <div key={i}>· {x}</div>)}</span></div>
+                )}
+                {(a.props.observes || []).length > 0 && (
+                  <div className="mer-fact"><span className="k">Observes</span><span className="v">{a.props.observes.map((x, i) => <div key={i}>· {x}</div>)}</span></div>
+                )}
+                {(a.props.guardrails || []).length > 0 && (
+                  <div className="mer-fact"><span className="k">Guardrails</span><span className="v">{a.props.guardrails.map((x, i) => <div key={i}>· {x}</div>)}</span></div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
