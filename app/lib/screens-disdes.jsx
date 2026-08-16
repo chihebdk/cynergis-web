@@ -1377,6 +1377,7 @@ function BuildAgents({ prd }) {
             <span className="agb-name">{sel.name}</span>
             <span className="agb-kind">operations agent</span>
             <span className="agb-bc">{ctxName(sel.bc)} · {sel.bc}</span>
+            {ctxOf(sel.bc)?.classification && <span className={'ddd-class ' + ctxOf(sel.bc).classification} title="DDD distillation (D-026) — richness scales with coreness">{ctxOf(sel.bc).classification}</span>}
             <TierChip t={sel.tier} />
             <span className={'agb-status ' + sel.status}>{sel.status}</span>
             {sel._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph — the operations Agent node with its act triples (acts_via: tool · whose work · what), observes lens list, skills (equips → does_work_of · acts_via · knowledge) and evals (evaluates — doctrine checks on the agent, promotion evidence on each skill).">KG</span>}
@@ -1534,7 +1535,7 @@ function BuildAgents({ prd }) {
               <span className="agb-name">{a.name}</span>
               <TierChip t={a.tier} />
             </div>
-            <div className="agb-bc">{ctxName(a.bc)} · {a.bc}</div>
+            <div className="agb-bc">{ctxName(a.bc)} · {a.bc}{ctxOf(a.bc)?.classification && <> <span className={'ddd-class ' + ctxOf(a.bc).classification}>{ctxOf(a.bc).classification}</span></>}</div>
             <p className="agb-card-mission">{a.mission}</p>
             <div className="agb-card-foot">
               <span><b>{a.skills.length}</b> skills</span>
@@ -1549,7 +1550,7 @@ function BuildAgents({ prd }) {
       {agentless.map(g => (
         <div className="agb-card none" key={g.key}>
           <div className="agb-card-h"><span className="agb-name muted">{ctxName(g.key)}</span></div>
-          <div className="agb-bc">{g.key}</div>
+          <div className="agb-bc">{g.key}{ctxOf(g.key)?.classification && <> <span className={'ddd-class ' + ctxOf(g.key).classification}>{ctxOf(g.key).classification}</span></>}</div>
           <p className="agb-card-mission">Generic context — no bespoke agent; richness scales with coreness. Its human work is thin; the workflow runs it deterministically.</p>
         </div>
       ))}

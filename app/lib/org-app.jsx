@@ -179,6 +179,7 @@ function MeshPanel() {
             <div className="mesh-row" key={m.id}>
               <span className={'mesh-kind ' + m.kind}>{m.kind === 'bounded-context' ? 'BC' : 'product'}</span>
               <span className="mesh-nm">{m.name}</span>
+              {m.classification && <span className={'ddd-class ' + m.classification} title="DDD distillation (D-026): core — differentiating, invest & build deep · supporting — necessary, keep lean · generic — commodity, buy or wrap. Richness scales with coreness.">{m.classification}</span>}
               <span className="mesh-ns">{m.namespace}</span>
               <span className="mesh-stats">{m.nodes != null ? `${m.nodes} nodes` : ''}{m.edges != null ? ` · ${m.edges} edges` : ''}{m.unresolved != null ? ` · ${m.unresolved} unresolved` : ''}</span>
             </div>
