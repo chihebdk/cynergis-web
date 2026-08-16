@@ -638,6 +638,7 @@ function OpsApprovals() {
         <div className="dd-idef"><span className="dd-iext-k">evidence</span><div className="dd-idef-v">{sel.evidence}{sel.links?.evals && <> <button type="button" className="coa-kg-link evx-inline" onClick={goEvals}>eval runs & transcripts →</button></>}</div></div>
         {sel.decision && <div className="dd-idef"><span className="dd-iext-k">decision</span><div className="dd-idef-v">{sel.decision}</div></div>}
         {sel.note && <div className="dd-idef"><span className="dd-iext-k">note</span><div className="dd-idef-v">{sel.note}</div></div>}
+        {sel.priorVersions > 0 && <div className="dd-idef"><span className="dd-iext-k">history</span><div className="dd-idef-v"><b>{sel.priorVersions}</b> prior version{sel.priorVersions > 1 ? 's' : ''} archived in the graph — superseded, never overwritten (D-009). Ask Optimus: <code>history {sel.id}</code>.</div></div>}
       </div>
       {sel.status === 'pending' && (
         <div className="ops-decide">

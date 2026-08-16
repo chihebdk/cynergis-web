@@ -196,8 +196,10 @@ window.__OPS__ = {
   /* Approvals queue (Block 3) — pending first; approvals are temporal,
      cited records (D-009). */
   approvals: [
+    {"id":"APR-101@2026-08-16","status":"pending","kind":"threshold change","date":"2026-08-06","title":"Medium-band cutoff 0.62 → 0.65","requestedBy":"Decisioning Agent · skill “Propose a threshold change” (Suggest)","approver":"Elena Cho — Fraud Ops Manager","evidence":"False declines in the medium band +0.4 pp WoW; step-up pass rate steady at 96%. Estimated −0.3 pp false declines, +0.1 pp missed fraud. Targets the SLO-4 gap.","links":{"evals":true},"note":"The Suggest-tier loop closing: the agent proposes, Elena decides and applies.","archived":true,"validTo":"2026-08-16","supersededBy":"APR-101"},
     {"id":"APR-105","status":"pending","kind":"envelope change","date":"2026-08-16","title":"Envelope change for Decisioning Agent","requestedBy":"You — console","approver":"Regina Foss — Model Risk","evidence":"Requested from the fleet view; scope and limits to be specified in review.","links":{},"note":"Envelope changes are governance acts (D-056) — routed for approval, never applied directly."},
-    { id: 'APR-101', status: 'pending', kind: 'threshold change', date: '2026-08-06',
+    { id: 'APR-101', status: 'approved', kind: 'threshold change', date: '2026-08-06',
+      decision: "Approved 2026-08-16 — Approved on the eval evidence; step-up pass rate steady — apply and watch SLO-4 for two weeks. Recorded by Elena Cho; at Suggest, execution is human-run.",
       title: 'Medium-band cutoff 0.62 → 0.65',
       requestedBy: 'Decisioning Agent · skill “Propose a threshold change” (Suggest)',
       approver: 'Elena Cho — Fraud Ops Manager',

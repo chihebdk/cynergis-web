@@ -382,12 +382,15 @@ export function kgSearch(q, limit = 12) {
 export function kgApprovals() {
   const G = g(); if (!G) return null;
   if (_cache.approvals) return _cache.approvals;
-  _cache.approvals = G.nodes.filter(n => n.type === 'Approval').map(n => {
+  // superseded versions stay in the graph (D-009) but not in the working
+  // queue; each current record counts its prior versions via supersedes
+  _cache.approvals = G.nodes.filter(n => n.type === 'Approval' && n.status !== 'superseded').map(n => {
     const p = n.props || {};
     return {
       id: n.localId, title: n.label,
       kind: p.kind, status: p.status, date: p.date, requestedBy: p.requestedBy,
       approver: p.approver, evidence: p.evidence, decision: p.decision, note: p.note, links: p.links,
+      priorVersions: kgOut(n.id, 'supersedes').length,
       _kg: true,
     };
   });
