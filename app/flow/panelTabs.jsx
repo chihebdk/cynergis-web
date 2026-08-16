@@ -21,7 +21,7 @@ function navTargetFor(id) {
   const nav = (typeof window !== "undefined" && window.__cynNav) || {};
   const base = { v: "prod", pf: nav.pf, prod: nav.prod, sub: "dashboard" };
   if (/^AGG/i.test(id)) return { ...base, phase: "Design", entry: "contexts", ctx: nav.ctx, tab: "aggregates" };
-  if (/^BC-/i.test(id)) return { ...base, phase: "Design", entry: "contexts", ctx: id, tab: "rels" };
+  if (/^(BC|CTX)-/i.test(id)) return { ...base, phase: "Design", entry: "contexts", ctx: id, tab: "rels" };
   const g = resolveGround(id);
   const t = g && KIND_TO_TARGET[g.kind];
   return t ? { ...base, ...t } : null;
@@ -650,7 +650,11 @@ export function SystemMapModal({ mapId }) {
   const k = CM_KIND[kind];
   const A = (typeof window !== "undefined" && window.__ARCH__) || {};
   const int = kind === "external" ? (A.integrations || []).find((i) => i.id === node.intId) : null;
-  const persona = kind === "actor" ? (((typeof window !== "undefined" && window.__PRD__) || {}).personas || []).find((p) => p.id === node.personaId) : null;
+  // personas resolve from the OPEN product's PRD (v4 products carry their own in
+  // __PRD4__) — never another product's registry.
+  const prd = (typeof window !== "undefined"
+    && ((window.__PRD4__ && window.__cynNav && window.__PRD4__[window.__cynNav.prod]) || window.__PRD__)) || {};
+  const persona = kind === "actor" ? (prd.personas || []).find((p) => p.id === node.personaId) : null;
 
   return (
     <div className="cyn-smm-backdrop" onClick={close}>

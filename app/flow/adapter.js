@@ -3,6 +3,7 @@
 import { seedFlows } from "./data";
 import { contextMap, contextSubmaps } from "./contextmap-data";
 import { systemMap, systemSubmaps } from "./systemmap-data";
+import { claimsFlows, ccContextMap, ccContextSubmaps, ccSystemMap, ccSystemSubmaps } from "./claims-flows";
 
 // In-memory store (mapper starter pattern), seeded with our flows as `map` docs.
 const collections = new Map();
@@ -17,6 +18,11 @@ getCollection("map").set(contextMap.id, structuredClone(contextMap));
 for (const sm of contextSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 getCollection("map").set(systemMap.id, structuredClone(systemMap));
 for (const sm of systemSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
+for (const flow of claimsFlows) getCollection("map").set(flow.id, structuredClone(flow));
+getCollection("map").set(ccContextMap.id, structuredClone(ccContextMap));
+for (const sm of ccContextSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
+getCollection("map").set(ccSystemMap.id, structuredClone(ccSystemMap));
+for (const sm of ccSystemSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 
 export function createMemoryAdapter(databaseName) {
   const prefix = databaseName ? `${databaseName}:` : "";

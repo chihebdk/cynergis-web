@@ -72,6 +72,10 @@ export function componentArchetype(comp) {
 
 export function deriveArch(node) {
   if (typeof window === "undefined" || !window.__ARCH__) return null;
+  // __ARCH__ is the v3 (fraud) as-built registry. A v4 product (PRD4-registered)
+  // has no as-built arch yet — never borrow fraud's components on colliding FR ids.
+  const prod = window.__cynNav && window.__cynNav.prod;
+  if (prod && window.__PRD4__ && window.__PRD4__[prod]) return null;
   const ARCH = window.__ARCH__;
   const grounds = new Set(node.grounds || []);
   const comp = allComponents(ARCH).find((c) => (c.mapsTo || []).some((fr) => grounds.has(fr)));

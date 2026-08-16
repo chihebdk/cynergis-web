@@ -205,7 +205,9 @@ window.__DDD__ = {
        truth; this seed is its Design-surface projection. canvas:false —
        the storming flows / interactive maps arrive in a later R2 pass. */
     'PROD-CLAIMSCORE': {
-      canvas: false,
+      /* the interactive canvas arrived with D-108 — the maps live in flow/claims-flows.js */
+      contextMapId: 'cc-contextmap',
+      systemMapId: 'cc-systemmap',
       contexts: [
         { id: 'CTX-FNOL', name: 'Notice of loss', classification: 'core',
           language: [

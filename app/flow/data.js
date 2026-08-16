@@ -20,7 +20,17 @@ export const GROUNDING = {
   "NFR1": { id: "NFR1", kind: "NonFunctionalRequirement", title: "p95 scoring latency under 300 ms at 3,000 TPS sustained", evidencedBy: ["S2"] },
   "POL1": { id: "POL1", kind: "Policy", title: "Notify on block", evidencedBy: ["S1"] },
 };
-export const resolveGround = (id) => GROUNDING[id];
+// Product-scoped grounding: id vocabularies collide across products (ClaimsCore's
+// UC1 is not fraud's UC1), so a registered product resolves ONLY from its own
+// registry — never falling back to another product's definitions. Unregistered
+// products (fraud, the v3 originals) keep the registry above.
+const PRODUCT_GROUNDING = {};
+export const registerGrounding = (productId, entries) => { PRODUCT_GROUNDING[productId] = entries; };
+export const resolveGround = (id) => {
+  const prod = typeof window !== "undefined" && window.__cynNav && window.__cynNav.prod;
+  const per = prod && PRODUCT_GROUNDING[prod];
+  return per ? per[id] : GROUNDING[id];
+};
 
 // trigger.kind vocabulary — "what set this event off": an outside system, a person,
 // an automatic policy/rule, or simply the previous step in this flow.

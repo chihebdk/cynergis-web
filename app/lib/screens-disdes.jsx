@@ -629,6 +629,25 @@ function DesignArchitecture({ prd }) {
   if (!A) return <div className="env-empty"><div className="env-empty-ic"><DIco k="arch" w={20} /></div><div className="env-empty-t">System design</div><div className="env-empty-s">No system design has been authored for this product yet.</div></div>;
   const SysMap = window.DesignSystemMap;
   const nav = (typeof window !== 'undefined' && window.__cynNav) || {};
+  /* __ARCH__ is the v3 (fraud) as-built registry — a v4 product must never wear it.
+     v4 products get the System map (their own, from the DDD seed's systemMapId) plus
+     honest empty states on the as-built tabs until an arch registry is derived. */
+  const p4 = typeof window !== 'undefined' && window.__PRD4__ && window.__PRD4__[nav.prod];
+  if (p4) {
+    return (
+      <>
+        <p className="dd-lead">{(p4.overview && p4.overview.vision) || 'The product in its world.'}</p>
+        <div className="ddd-tabs">
+          {SD_TABS.map(t => (
+            <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => setTab(t.key)}>{t.label}</button>
+          ))}
+        </div>
+        {tab === 'map'
+          ? (SysMap ? <SysMap product={{ id: nav.prod }} prd={prd} /> : null)
+          : <div className="ddd-empty-inline">Not authored yet — and the registry says so. The as-built {SD_TABS.find(t => t.key === tab)?.label.toLowerCase()} register for this product arrives when its architecture layer is derived from the graph; until then, the Design records live on the Bounded contexts tabs (models, contracts, decisions) — nothing is borrowed from another product.</div>}
+      </>
+    );
+  }
   // components grouped by the bounded context that OWNS them (comp.bc — the
   // sovereignty grouping), not by arch domain (which spans BCs)
   const comps = (A.domains || []).flatMap(dm => (dm.components || []));

@@ -11,7 +11,10 @@ const { Ref: DDRef } = window;
 // the event-flow canvas (embedded @flowai/canvas) — client-only, heavy, load on demand
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
 // which bounded contexts have a modelled event flow
-const FLOW_BY_CONTEXT = { 'BC-DEC': 'decisioning', 'BC-CASE': 'casemgmt', 'BC-NOTIFY': 'notify' };
+const FLOW_BY_CONTEXT = {
+  'BC-DEC': 'decisioning', 'BC-CASE': 'casemgmt', 'BC-NOTIFY': 'notify',
+  'CTX-FNOL': 'cc-fnol', 'CTX-COVERAGE': 'cc-coverage', 'CTX-AB': 'cc-ab', 'CTX-TOTAL-LOSS': 'cc-totalloss',
+};
 
 /* ============================================================
    Cynergis — Design surfaces (D-026 / D-027), in method order:
@@ -943,7 +946,7 @@ function DesignContextMap({ product, prd }) {
           <div className="asc-sec-sub">Bounded contexts as expandable containers · seam nodes = the published-language contracts</div>
         </div>
         <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
-          <FlowEmbed flowId="contextmap" variant="contextmap" />
+          <FlowEmbed flowId={D.contextMapId || 'contextmap'} variant="contextmap" />
         </div>
       </div>
     </div>
@@ -1009,7 +1012,7 @@ function DesignSystemMap({ product, prd }) {
           <div className="asc-sec-sub">Actors · the product (expandable to its contexts) · external systems, in the same visual language as the flows</div>
         </div>
         <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
-          <FlowEmbed flowId="systemmap" variant="systemmap" />
+          <FlowEmbed flowId={D.systemMapId || 'systemmap'} variant="systemmap" />
         </div>
       </div>
     </div>
