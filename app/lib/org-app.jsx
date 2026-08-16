@@ -3,6 +3,7 @@ import './org-data';
 import './org-prio';
 import './org-envision';
 import './kg-mesh.gen';
+import './org-meridian';
 import { kgSearch } from './kg-query';
 const { ORG, PrioritizePortfolios, PrioritizeProducts } = window;
 /* ============================================================
@@ -30,12 +31,16 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       sub: q.get('sub') || 'dashboard', phase: q.get('phase') || 'Envision',
       entry: q.get('entry') || 'overview', ctx: q.get('ctx') || null,
       tab: (tab && tab !== 'rels') ? tab : 'flow',   // legacy ?tab=rels links land on Event flow
+      dom: q.get('dom') || null, bc: q.get('bc') || null,   // Meridian v4 altitude (D-094)
     };
   };
   window.cynBuildUrl = (n) => {
     const q = new URLSearchParams();
     q.set('v', n.v);
-    if (n.v === 'org') { if (n.sub && n.sub !== 'dashboard') q.set('sub', n.sub); }
+    if (n.v === 'org') {
+      if (n.sub && n.sub !== 'dashboard') q.set('sub', n.sub);
+      if (n.sub === 'meridian') { if (n.dom) q.set('dom', n.dom); if (n.bc) q.set('bc', n.bc); }
+    }
     else if (n.v === 'pf') { if (n.pf) q.set('pf', n.pf); if (n.sub && n.sub !== 'dashboard') q.set('sub', n.sub); }
     else if (n.v === 'prod') {
       if (n.pf) q.set('pf', n.pf);
@@ -382,7 +387,8 @@ function OrgApp() {
     }
     const nav = { v: view === 'portfolio' ? 'pf' : view === 'product' ? 'prod' : 'org',
       pf: pid, prod: prod ? prod.id : null, sub: n.sub,
-      phase: n.phase, entry: n.entry, ctx: n.ctx, tab: n.tab };
+      phase: n.phase, entry: n.entry, ctx: n.ctx, tab: n.tab,
+      dom: n.dom, bc: n.bc };
     window.__cynNav = nav;   // plain assignment only — no setState/ping during render
     return { view, pid, prod, sub: n.sub };
   }, []);
@@ -490,9 +496,11 @@ function OrgApp() {
         : view === 'org'
           ? <div className="asc-body">
               <NavRail sect="Organization" active={sub} onSelect={navSub}
-                items={[{ id:'dashboard', label:'Dashboard', icon:'dash' }, { id:'prioritize', label:'Prioritize portfolios', icon:'board' }]} />
+                items={[{ id:'dashboard', label:'Dashboard', icon:'dash' }, { id:'meridian', label:'Meridian org (v4)', icon:'org' }, { id:'prioritize', label:'Prioritize portfolios', icon:'board' }]} />
               <main className="asc-main">
-                {sub === 'dashboard' ? <OrgDashboard onOpenPortfolio={openPortfolio} /> : <PrioritizePortfolios onOpenPortfolio={openPortfolio} />}
+                {sub === 'dashboard' ? <OrgDashboard onOpenPortfolio={openPortfolio} />
+                  : sub === 'meridian' ? React.createElement(window.MeridianOrg)
+                  : <PrioritizePortfolios onOpenPortfolio={openPortfolio} />}
               </main>
             </div>
           : <div className="asc-body">
