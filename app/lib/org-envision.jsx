@@ -125,7 +125,11 @@ function phaseEntryStatus(phase, key, product, prd) {
 }
 
 /* ---- data helpers ---- */
-function prdFor(product) { return product && product.studio && window.__PRD__ ? window.__PRD__ : null; }
+function prdFor(product) {
+  if (!product) return null;
+  if (product.studio && window.__PRD__) return window.__PRD__;
+  return (window.__PRD4__ && window.__PRD4__[product.id]) || null;   // Meridian PRDs (R2, D-106)
+}
 
 function phaseStatus(product, ph) {
   const edge = ORG.phaseIndex(product.phase);

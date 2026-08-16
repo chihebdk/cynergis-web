@@ -302,7 +302,7 @@ const derivedPolicies = () => seedFlows.flatMap(f =>
    that evidence its use cases. Any use case with no citation surfaces as an *assumed* gap —
    we never invent a source. */
 function groundingFor(c, prd) {
-  const ev = window.prdEvidence;
+  const ev = (prd && prd.evidence) || window.prdEvidence;   // a Meridian PRD grounds in ITS evidence (D-106)
   const ucTitle = id => { const u = ((prd && prd.usecases) || []).find(x => x.id === id); return u ? u.title : id; };
   if (!ev) return { sources: [], gaps: [] };
   const byId = id => ev.sources.find(s => s.id === id);

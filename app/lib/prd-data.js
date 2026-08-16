@@ -218,3 +218,262 @@ window.__PRD__ = {
     {term:'Feature Store', definition:'The low-latency store of pre-computed features, with lineage, that feeds the model.'}
   ]
 };
+
+
+/* ============================================================
+   Meridian PRD registry (R2, D-106) — window.__PRD4__.
+   PRDs for v4 products, keyed by product id. Each is a PROJECTION
+   of the product's lifecycle spec (kg/org/products/*.js) and the
+   claims member graph into the Studio PRD grammar — the graphs
+   stay the source of truth. `evidence` rides inside the PRD so
+   Sources/grounding never leak another product's citations.
+   ============================================================ */
+window.__PRD4__ = {
+  'PROD-CLAIMSCORE': {
+    overview:{
+      projectName:'ClaimsCore — the Claims domain\u2019s transactional backbone',
+      author:'Atlas', date:'2026-08-16',
+      problem:'Claim facts were scattered across intake spreadsheets, an aging adjudication suite and vendor portals: no single file of record, coverage checked by phone against live policy systems, SABS clocks tracked by hand. Cycle time, leakage and claimant trust all pay for it.',
+      background:'One deployable, four service modules, each owned by its context\u2019s team: the claim file becomes an evented model the whole domain works against — workbenches deploy separately on top, and splitting the deployable later is a repackaging decision, not a reorganization.',
+      objectives:[
+        'Make the claim file the single, evented record every module works against.',
+        'Adjudicate against the immutable coverage snapshot — temporal correctness by construction.',
+        'Put SABS clocks in the model, not in adjusters\u2019 heads — a conduct risk becomes an SLO.'
+      ],
+      vision:'The claim file as the fastest, truest record in Ontario auto: one loss event, one report; one claim, one snapshot; every reserve move evented; every statutory clock watched.',
+      differentiator:'Temporal correctness as architecture: the immutable as-at-date-of-loss snapshot removes the run-time dependency on Underwriting entirely — the reference corpus\u2019 canonical design-time-versus-run-time seam, made real.',
+      targetUsers:'Claimants (often not the insured), the ~600-person claims operations leg — intake, desk, field and AB adjusters — total-loss specialists, and the first-line risk seats embedded in the stream teams.',
+      criteria:[
+        {id:'SC1', text:'Median days from loss report to file close: 24 → 14', metric:'<= 14 days'},
+        {id:'SC2', text:'Indemnity paid beyond entitlement (leakage): 3.1% → 2.0% of incurred', metric:'<= 2.0%'},
+        {id:'SC3', text:'Post-close claimant NPS: +18 → +40', metric:'>= +40'},
+        {id:'SC4', text:'Losses reported digitally without a phone call: 22% → 60%', metric:'>= 60%'},
+        {id:'SC5', text:'SABS decisions missed into deemed approval: → ~zero per quarter', metric:'0 / quarter'}
+      ],
+      hypothesis:'We believe that one evented claim model — snapshot-adjudicated, clock-guarded, with supplements tracked rather than overwritten — will take cycle time from 24 to 14 days, leakage from 3.1% to 2.0%, and deemed approvals from 11 a quarter to zero; we will know when SC1–SC5 hold for a full quarter. Mid-ramp truth: 17.2 days · 2.4% · +31 · 47% · 3/quarter.',
+      exit:{
+        decisionRight:'Chief Claims Officer, with the quarterly outcome review (evidence in, trade-offs out).',
+        killCriteria:[
+          'Bind\u2019s snapshot event schema churns faster than the customer–supplier seam can absorb — adjudication correctness exposed (risk R1).',
+          'HCAI conformance drift converts to a rising deemed-approval rate that the ACL cannot hold (risk R2).',
+          'Module boundaries erode inside the single deployable — module→context stops being exactly one (risk R3, invariant I1).'
+        ],
+        reviewCadence:'Phase-gate review at each lifecycle transition; the domain\u2019s quarterly outcome review governs the envelope.'
+      }
+    },
+    valueDrivers:[
+      {id:'VD1', name:'Faster files', metric:'SC1', weight:0.3, measured:true,
+        kpi:{current:'17.2 days', target:'14 days', unit:'days', direction:'down'}},
+      {id:'VD2', name:'Accurate indemnity', metric:'SC2', weight:0.3, measured:true,
+        kpi:{current:'2.4%', target:'2.0%', unit:'%', direction:'down'}},
+      {id:'VD3', name:'Claimant trust', metric:'SC3', weight:0.2, measured:true,
+        kpi:{current:'+31', target:'+40', unit:'NPS', direction:'up'}},
+      {id:'VD4', name:'Regulatory safety', metric:'SC5', weight:0.2, measured:true,
+        kpi:{current:'3 / quarter', target:'0', unit:'deemed approvals', direction:'down'}}
+    ],
+    portfolio:{
+      domain:'Claims — pay the loss, recover and learn',
+      capability:'The claim file of record: intake, coverage adjudication, statutory benefits, salvage disposition',
+      valueStream:'Report → Adjudicate → Repair or settle → Close — turning a loss event into a fast, fair, statutorily safe outcome.',
+      position:'ClaimsCore sits at the centre of the Claims domain: it consumes the immutable coverage snapshot from Underwriting & Policy (customer–supplier) and party records from the platform band, publishes payment instructions to Billing & Money Movement and loss experience to Product & Pricing, and conforms to HCAI behind an ACL. The workbenches and portals are separate deployables on top.',
+      owners:[
+        {role:'Accountable Executive', name:'Chief Claims Officer'},
+        {role:'Owning group', name:'Four Claims stream teams (one domain group)'},
+        {role:'Notice of loss', name:'Notice of loss team (8)'},
+        {role:'Coverage & adjudication', name:'Coverage & adjudication team (9)'},
+        {role:'Accident benefits', name:'Accident benefits team (9)'},
+        {role:'First-line risk', name:'Embedded control seats (heaviest in AB)'}
+      ],
+      dependencies:[
+        {id:'D1', product:'Underwriting & Policy — snapshot', direction:'upstream', nature:'The immutable coverage snapshot as at date of loss, consumed as an event (CoverageSnapshot v3).', status:'Available', notes:'The canonical design-time-only seam; no live calls at adjudication time.'},
+        {id:'D2', product:'Party, vehicle & driver platform', direction:'upstream', nature:'Canonical party and vehicle records for claimants, drivers and third parties.', status:'Available', notes:'Open host + published language.'},
+        {id:'D3', product:'HCAI (industry gateway)', direction:'upstream', nature:'OCF forms and invoices for all Ontario med/rehab billing.', status:'Available', notes:'Non-negotiable schema — conformist behind our ACL; watched by SLO3.'},
+        {id:'D4', product:'Billing & Money Movement', direction:'downstream', nature:'Payment instructions for indemnity and expense; void/reissue and recovery receipts flow back.', status:'Available', notes:'Published events (PaymentInstruction v2).'},
+        {id:'D5', product:'Product & Pricing — loss experience', direction:'downstream', nature:'Reserve movements and closed-claim outcomes feeding rate indications.', status:'Available', notes:'The long feedback loop that prices next year\u2019s risk.'}
+      ],
+      objectives:[
+        {id:'O1', objective:'Make the claim file the fastest, truest record in Ontario auto', owner:'Chief Claims Officer', keyResults:[
+          {id:'KR1', kr:'Cycle time to 14 days by Q4', contribution:'Every handoff that becomes an event shortens the file.', metric:'SC1'},
+          {id:'KR2', kr:'Leakage under 2.0% for two consecutive quarters', contribution:'Snapshot adjudication + tracked supplements are where leakage dies.', metric:'SC2'}
+        ]},
+        {id:'O2', objective:'Statutory safety as an operating property', owner:'First-line risk & control', keyResults:[
+          {id:'KR3', kr:'Digital FNOL over 60% with NPS ≥ +40', contribution:'One front door, status transparency, kept cycle promises.', metric:'SC4'},
+          {id:'KR4', kr:'Zero deemed approvals per quarter', contribution:'SABS clocks in the model; escalation at 80% cannot be muted.', metric:'SC5'}
+        ]}
+      ]
+    },
+    personas:[
+      {id:'P1', name:'Dana Whitfield', role:'Claimant', tier:'Primary', situation:'Rear-ended on the 401; needs her car repaired and her treatment covered — she may not even be the insured.', goal:'Report once, be kept honestly informed, get repaired or paid without chasing anyone.', obstacle:'Historically: phone queues, re-telling the story per department, silence between milestones.', solution:'Digital first notice into one report, status events at every state change, a cycle promise the shop actually committed to.', successMetric:'Claim handled inside the promise; NPS +40.', permissions:'Sees only her own file; confirms or disputes via the portal.', frequency:'Rare — a claim every few years.', volume:'One file.', authority:'Provides facts; accepts settlements.', collaboration:'Portal + her adjuster.', touchpoints:'Customer Portal (Claims status & digital FNOL).', tools:'Mobile / web.', regulatory:'Fair-treatment and privacy obligations.', quote:'Tell me what happens next — and mean it.'},
+      {id:'P2', name:'Omar Haddad', role:'Intake adjuster', tier:'Primary', situation:'Licensed intake on rotation from operations into the stream team; first notice shapes the whole claim.', goal:'Capture a complete report and route it to the right lane, fast.', obstacle:'Channel fragmentation used to mean duplicate files and lost facts.', solution:'One loss-report model behind every channel, with model-assisted severity (Operate tier, audited).', successMetric:'Report completeness at handoff; first-contact resolution.', permissions:'Creates and completes reports; overrides severity with reason.', frequency:'All shift.', volume:'~30 first notices a day.', authority:'Judgement-heavy intake; overrides audited at 10%.', collaboration:'Ops workforce management; desk lanes.', touchpoints:'Intake workbench.', tools:'FNOL intake, triage service.', regulatory:'Licensing; recorded-line obligations.', quote:'The first conversation is where the claim is won or lost.'},
+      {id:'P3', name:'Priya Raman', role:'Desk adjuster', tier:'Primary', situation:'Runs a lane of open claims: coverage, reserves, authority, payments.', goal:'Decide coverage correctly against the snapshot and keep reserves honest.', obstacle:'Four surfaces per decision, authority by email thread.', solution:'The Adjuster Workbench on ClaimsCore\u2019s claim module; reserve suggestions with drivers shown; authority checks in-flow.', successMetric:'Indemnity accuracy; settlement cycle by lane.', permissions:'Decides coverage, moves reserves, instructs payments inside her band.', frequency:'All shift.', volume:'~120 open files.', authority:'Settlement authority per band; breaches prevented in-flow.', collaboration:'Team lead, SIU on flags, Billing on instructions.', touchpoints:'Adjuster Workbench.', tools:'Coverage decision service, reserve module.', regulatory:'Fault rules; conduct expectations.', quote:'Give me the snapshot and the facts — I\u2019ll make the call.'},
+      {id:'P4', name:'Grace Osei', role:'AB adjuster', tier:'Primary', situation:'Licensed accident-benefits handling under SABS clocks and HCAI.', goal:'Decide treatment plans inside every statutory clock.', obstacle:'A missed clock IS a deemed approval — the loss event itself.', solution:'Clocks in the model: OCF intake classified, escalation at 80% that cannot be muted, payments only on approved plans.', successMetric:'Deemed approvals ~zero; med/rehab cycle time.', permissions:'Decides plans; authorizes payments on approved plans.', frequency:'All shift.', volume:'~80 open plans.', authority:'SABS adjudication — never delegated to the agent.', collaboration:'First-line risk seat in the team; HCAI providers.', touchpoints:'AB adjudication workbench.', tools:'Treatment plan service, SABS rules module.', regulatory:'SABS, LAT exposure, FSRA conduct.', quote:'The statute sets the clock; the model has to carry it.'},
+      {id:'P5', name:'Viktor Milos', role:'Total-loss specialist', tier:'Secondary', situation:'Handles write-offs: valuation, owner settlement, lienholders, salvage.', goal:'Settle fairly on a defensible ACV and recover from the asset.', obstacle:'Valuation disputes and split files between settlement and salvage.', solution:'One disposition file: ACV with comparables attached, brand filings, auction proceeds — never two files.', successMetric:'ACV dispute rate; days threshold → settlement.', permissions:'Prepares offers; humans settle.', frequency:'Daily.', volume:'~25 dispositions in flight.', authority:'Offer preparation; settlement is his call within band.', collaboration:'Estimating on threshold handoffs; Billing on payoffs.', touchpoints:'Total loss workbench.', tools:'Valuation ACL, salvage disposal module.', regulatory:'Title branding; lienholder obligations.', quote:'One vehicle, one file — settlement and salvage together.'}
+    ],
+    stakeholders:[
+      {id:'ST1', name:'Chief Claims Officer', role:'Executive', interest:'One scoreboard across both legs: cycle time, accuracy, leakage, complaints.', govLink:'G1'},
+      {id:'ST2', name:'Claims Operations (~600)', role:'Operations', interest:'The daily tools ride this core; capacity, licensing, surge.', govLink:'G2'},
+      {id:'ST3', name:'First-line risk & control', role:'Risk', interest:'SABS clocks, LAT exposure and FSRA conduct as in-flow controls, not end-of-line checklists.', govLink:'G1'}
+    ],
+    product:{
+      approach:'Modular monolith on the walls: four service modules in one deployable, each owned by its context\u2019s team; workbenches and portals deploy separately on top. Splitting later is a repackaging decision, not a reorganization.',
+      inScope:['Multi-channel loss capture into one report','Snapshot-based coverage adjudication','Reserve management, every move evented','SABS-versioned benefit adjudication with HCAI ACL','ACV settlement and salvage disposition','Claim status event stream for the portals'],
+      outScope:['Repair-network operations (Repair Network Portal, same wall, separate product)','Recovery & subrogation (its own context)','Fraud scoring (Fraud & SIU observes via events)','Policy administration (a different domain)'],
+      mvp:['Intake slice: channels into one report','Adjudication slice: snapshot, coverage, reserves','AB slice: SABS rules, HCAI ACL, clocks','Money & disposition slice','Status stream'],
+      growth:['Photo-AI estimate assist deepening','Repair cycle promises surfaced to claimants','Recovery-potential spotting'],
+      vision:['The claim file as the domain\u2019s single evented truth, with every workbench a projection']
+    },
+    journeys:[
+      {id:'J1', title:'Have my claim handled', personaId:'P1', opening:'A collision on the 401; Dana reports the loss in the app in eleven minutes.', rising:'One report opens one claim against the frozen snapshot; triage routes it; the shop commits a window she can see.', climax:'Coverage decided, repair under way, treatment plan approved inside its clock.', resolution:'The file closes inside the cycle promise; every state change reached her as it happened.', capabilities:'Digital FNOL, snapshot adjudication, clock guard, status stream'}
+    ],
+    usecases:[
+      {id:'UC1', driverRef:'VD3', title:'Report a loss digitally', journeyId:'J1', primaryActor:'P1', supportingActors:'Party platform, Underwriting & Policy (snapshot request)', frs:['FR1'],
+        trigger:'A claimant or broker opens digital FNOL in the portal pane.',
+        preconditions:'A policy-in-force check succeeds; party resolution identifies the claimant.',
+        orchestration:'Portal pane → guided intake → channel merge (one report) → snapshot request keyed to date of loss.',
+        repeatability:'Once per loss event — later channel inputs MERGE into the same report.',
+        postconditions:'One loss report exists with parties, vehicles and circumstances; the snapshot request is on its way.',
+        mainFlow:['Guided intake captures circumstances, parties, vehicles.','Party resolution attaches canonical records.','The channel-merge rule lands the input on one report.','The snapshot request is keyed to the date of loss.'],
+        acceptance:[
+          {title:'One loss event, one report', given:['a claimant reports a collision in the app'], when:['the police feed later references the same loss'], then:['both land on one loss report','no duplicate file exists']}
+        ]},
+      {id:'UC2', driverRef:'VD1', title:'Take first notice by phone with model-assisted triage', journeyId:'J1', primaryActor:'P2', supportingActors:'Telephony platform (vendor), operations workforce management', frs:['FR2'],
+        trigger:'A first-notice conversation completes on the recorded line.',
+        preconditions:'The report is complete enough to score.',
+        orchestration:'Intake workbench → severity model (SKL-FNOL-triage, Operate per APR-2) → lane rules → initial reserve suggestion.',
+        repeatability:'Severity is recalculated as facts land — never frozen at intake.',
+        postconditions:'The report carries a severity score and a lane; overrides are audited at a 10% sample.',
+        mainFlow:['The intake adjuster completes the guided conversation.','The severity model scores the report and proposes a lane.','Lane rules route to desk, field, AB or fast-track.','An initial reserve suggestion attaches.'],
+        acceptance:[
+          {title:'Injury indicators route to the AB lane', given:['a phoned-in first notice with injury indicators'], when:['intake completes the guided conversation'], then:['a severity score is attached','the file routes to the AB lane with an initial reserve suggestion']}
+        ]},
+      {id:'UC3', driverRef:'VD2', title:'Open the claim against the coverage snapshot', journeyId:'J1', primaryActor:'P3', supportingActors:'Underwriting & Policy (CoverageSnapshot v3)', frs:['FR3'],
+        trigger:'The completed loss report event arrives.',
+        preconditions:'The snapshot event was recorded at intake.',
+        orchestration:'Loss report event → open claim → engage coverages from the stored snapshot — no live policy call, ever.',
+        repeatability:'Once per claim.',
+        postconditions:'The claim exists with its coverage basis frozen as at date of loss.',
+        mainFlow:['The loss report event opens the claim.','Coverages engage from the stored snapshot.','Later policy changes never touch the open claim.'],
+        workflow:'flowchart TD\n  A([loss.reported]) --> B[Open claim]\n  B --> C[Engage coverages from snapshot]\n  C --> D{Post-loss endorsement?}\n  D -- arrives later --> E([No effect on open claim])',
+        acceptance:[
+          {title:'Temporal correctness holds', given:['a policy endorsed AFTER the date of loss'], when:['the claim opens'], then:['adjudication uses the snapshot as at date of loss','the later endorsement has no effect on coverage basis']}
+        ]},
+      {id:'UC4', driverRef:'VD2', title:'Decide coverage and set reserves', journeyId:'J1', primaryActor:'P3', supportingActors:'Fraud & SIU (holds), actuarial (reserve events)', frs:['FR4','FR5'],
+        trigger:'Facts land on an open claim.',
+        preconditions:'The snapshot is engaged; no unresolved SIU hold.',
+        orchestration:'Reserve.suggest (drivers shown) → the adjuster decides coverage and moves reserves → every move evented.',
+        repeatability:'Reserves move as facts develop; each move is a new event.',
+        postconditions:'Coverage response recorded with limits, deductibles and endorsement effects; reserve events flow to actuarial.',
+        mainFlow:['The agent suggests a reserve with its drivers shown.','The adjuster decides coverage — limits, deductibles, 47R election effects.','The reserve move is evented for actuarial consumption.','Authority is checked in-flow before any payment.'],
+        acceptance:[
+          {title:'Election effects apply from the snapshot alone', given:['a snapshot carrying an OPCF 47R election and a $1,000 deductible'], when:['the desk adjuster records the coverage decision'], then:['limits, deductible and election effects are applied from the snapshot alone','the reserve move is evented for actuarial consumption']}
+        ]},
+      {id:'UC5', driverRef:'VD4', title:'Adjudicate a treatment plan inside the SABS clock', journeyId:'J1', primaryActor:'P4', supportingActors:'HCAI (via the ACL), first-line risk seat', frs:['FR7','FR8'],
+        trigger:'An OCF-18 arrives via the HCAI ACL.',
+        preconditions:'The AB claim is engaged with its elections applied.',
+        orchestration:'OCF intake + classify → clock ledger (SKL-AB-clockwatch escalates at 80%) → human plan decision → payment authorization.',
+        repeatability:'Per treatment plan; every decision timestamped against its clock.',
+        postconditions:'The plan is decided inside its clock — or escalated before any deemed approval can occur.',
+        mainFlow:['The OCF-18 is classified and queued from HCAI.','The clock ledger starts; the watch skill escalates at 80%.','The AB adjuster decides the plan — SABS adjudication is never delegated.','Payment authorizes only on the approved plan.'],
+        workflow:'flowchart TD\n  A([OCF-18 via HCAI ACL]) --> B[Classify + queue]\n  B --> C[Clock ledger starts]\n  C --> D{80% of clock?}\n  D -- yes, undecided --> E([Escalate to queue head + risk seat])\n  D -- decided --> F([Timestamped decision])\n  F --> G[Authorize payment on approved plan]',
+        acceptance:[
+          {title:'The clock guard escalates before a deemed approval', given:['an OCF-18 received via HCAI'], when:['the adjournment clock reaches 80% with no decision'], then:['the file escalates to the AB adjuster\u2019s queue head','the risk seat is notified before any deemed approval can occur']}
+        ]},
+      {id:'UC6', driverRef:'VD1', title:'Issue an indemnity payment', journeyId:'J1', primaryActor:'P3', supportingActors:'Billing & Money Movement', frs:['FR6'],
+        trigger:'An approved indemnity payment on the claim.',
+        preconditions:'The payment is inside the adjuster\u2019s authority band.',
+        orchestration:'Build instruction → publish PaymentInstruction v2 → ledger holds instructed-not-yet-settled until the outcome event returns.',
+        repeatability:'Per payment; void/reissue arrives as events.',
+        postconditions:'Billing acknowledged; the claim ledger is consistent with the money\u2019s true state.',
+        mainFlow:['The instruction is built from the approved payment.','It publishes to Billing as PaymentInstruction v2.','The ledger holds instructed-not-yet-settled until the outcome event returns.'],
+        acceptance:[
+          {title:'The ledger tracks the instruction lifecycle', given:['an approved indemnity payment'], when:['the instruction is published'], then:['Billing acknowledges the event','the claim ledger reflects instructed-not-yet-settled until the outcome event returns']}
+        ]},
+      {id:'UC7', driverRef:'VD1', title:'Settle a total loss and dispose of the salvage', journeyId:'J1', primaryActor:'P5', supportingActors:'Estimating & repair (threshold event), valuation vendors (ACL), Billing (payoffs)', frs:['FR9'],
+        trigger:'Repair estimate revisions cross the total-loss threshold.',
+        preconditions:'The estimate of record and teardown facts ride the threshold-breach event.',
+        orchestration:'Threshold event → ACV from the valuation ACL → human settlement offer → brand filing + salvage disposal on the SAME file.',
+        repeatability:'Once per vehicle — one disposition, ever.',
+        postconditions:'Owner settled, title branded, salvage proceeds credited against indemnity.',
+        mainFlow:['The threshold-breach event hands the vehicle over.','ACV is determined from the valuation ACL, comparables attached.','The specialist settles with the owner; lienholders are paid off.','Brand is filed; salvage is disposed; proceeds credit the file.'],
+        acceptance:[
+          {title:'The handoff carries the estimate of record', given:['repair estimate revisions crossing the total-loss threshold'], when:['the threshold-breach event fires'], then:['the vehicle moves to salvage disposition with the estimate of record attached','the repair job closes']}
+        ]},
+      {id:'UC8', driverRef:'VD3', title:'Track my claim\u2019s status', journeyId:'J1', primaryActor:'P1', supportingActors:'Integration & API platform (event backbone)', frs:['FR10'],
+        trigger:'Any module changes file state.',
+        preconditions:'The claim exists; the claimant is entitled to the file.',
+        orchestration:'State change → status projection → the portal pane owned by Notice of loss.',
+        repeatability:'Per state change.',
+        postconditions:'The claimant sees the change within the freshness SLO.',
+        mainFlow:['A module changes file state.','The status projection updates.','The portal pane renders the change within its freshness SLO.'],
+        acceptance:[
+          {title:'Status freshness holds', given:['an open claim'], when:['any module changes file state'], then:['a status event reaches the portal pane within its freshness SLO']}
+        ]}
+    ],
+    specs:{
+      functional:[
+        {id:'FR1', area:'Intake', text:'Multi-channel loss capture into a single report — one loss event, one report.', traceJ:'J1', traceSC:'SC4'},
+        {id:'FR2', area:'Intake', text:'Severity scoring and lane assignment, recalculated as facts land.', traceJ:'J1', traceSC:'SC1'},
+        {id:'FR3', area:'Adjudication', text:'Snapshot consumption and local storage keyed to date of loss — no live policy calls.', traceJ:'J1', traceSC:'SC2'},
+        {id:'FR4', area:'Adjudication', text:'Coverage determination with endorsement effects (OPCF 47R elections) from the snapshot alone.', traceJ:'J1', traceSC:'SC2'},
+        {id:'FR5', area:'Adjudication', text:'Reserve and authority management — every move evented for actuarial consumption.', traceJ:'J1', traceSC:'SC2'},
+        {id:'FR6', area:'Money', text:'Payment instruction events to Billing with the instructed-not-yet-settled ledger state.', traceJ:'J1', traceSC:'SC1'},
+        {id:'FR7', area:'Benefits', text:'SABS-versioned benefit adjudication with HCAI intake behind the ACL.', traceJ:'J1', traceSC:'SC5'},
+        {id:'FR8', area:'Benefits', text:'Adjournment-clock guard: no silent deemed approvals — escalation at 80%.', traceJ:'J1', traceSC:'SC5'},
+        {id:'FR9', area:'Disposition', text:'ACV settlement and salvage disposition on one file.', traceJ:'J1', traceSC:'SC1'},
+        {id:'FR10', area:'Status', text:'Claim status event stream for the portals.', traceJ:'J1', traceSC:'SC3'}
+      ],
+      nonfunctional:[
+        {id:'NFR1', cat:'Availability', text:'Digital FNOL intake availability ≥ 99.9% — the front door stays open.'},
+        {id:'NFR2', cat:'Freshness', text:'Snapshot event consumption lag < 5 minutes — temporal correctness needs a fresh copy.'},
+        {id:'NFR3', cat:'Conformance', text:'HCAI round-trip success ≥ 99.5% — conformance drift converts to deemed-approval risk.'}
+      ],
+      policies:[
+        {id:'POL1', name:'Clock escalation cannot be muted', statement:'Adjournment-clock escalations at 80% reach the queue head and the risk seat, always.', traceFR:'FR8'},
+        {id:'POL2', name:'Snapshot-only adjudication', statement:'No module may call live policy systems at adjudication time; the snapshot is the coverage truth.', traceFR:'FR3'}
+      ]
+    },
+    release:{
+      strategy:'Slice-by-slice on the walls: intake first (the front door), then adjudication, then the statutory AB slice, then money & disposition — each slice owned end-to-end by its context\u2019s team, workbenches deploying separately on top.',
+      milestones:[
+        {id:'M1', name:'Intake slice: channels into one report', date:'2026-Q1', status:'Done', notes:'UC1/UC2 — digital FNOL + phone intake on one model.'},
+        {id:'M2', name:'Adjudication slice: snapshot, coverage, reserves', date:'2026-Q2', status:'Done', notes:'UC3/UC4 — the temporal-correctness core.'},
+        {id:'M3', name:'AB slice: SABS rules, HCAI ACL, clocks', date:'2026-Q2', status:'Done', notes:'UC5 — deemed approvals 11 → 3/quarter and falling.'},
+        {id:'M4', name:'Money & disposition slice', date:'2026-Q3', status:'Done', notes:'UC6/UC7 — PaymentInstruction v2 + one-file salvage.'},
+        {id:'M5', name:'Status stream & portal panes', date:'2026-Q3', status:'Shipped', notes:'UC8 — digital share climbing ~4 pts/quarter since.'}
+      ]
+    },
+    governance:[
+      {id:'G1', type:'Compliance', item:'SABS clocks as in-flow controls', owner:'First-line risk & control', status:'Active', notes:'The risk seat is a team member, not a reviewer; escalations cannot be muted.'},
+      {id:'G2', type:'Decision', item:'Fast-track settlement authority $7,500', owner:'Chief Claims Officer', status:'Active', notes:'APR-1: lane leakage audited monthly; auto-revert above 2.2%.'},
+      {id:'G3', type:'Approval', item:'Trust-ladder promotions (severity triage at Operate)', owner:'Chief Claims Officer', status:'Active', notes:'APR-2: 10% audit sample; auto-revert below 90% severity-band agreement.'},
+      {id:'G4', type:'Ownership', item:'Module → context is exactly one (I1)', owner:'Engineering chapter', status:'Active', notes:'The modular monolith survives only if the walls hold inside the deployable.'}
+    ],
+    risk:[
+      {id:'R1', cat:'Technical', title:'Snapshot contract slip', likelihood:'Low', impact:'High', mitigation:'The customer–supplier seam is versioned (CoverageSnapshot v3) and contract-tested; churn is a partnership conversation, not a surprise.', owner:'Coverage & adjudication team'},
+      {id:'R2', cat:'Regulatory', title:'HCAI conformance drift → deemed approvals', likelihood:'Medium', impact:'High', mitigation:'The ACL is watched by SLO3; the clock guard escalates before any deemed approval; INC-1/INC-2 hardened the retry policy.', owner:'Accident benefits team'},
+      {id:'R3', cat:'Technical', title:'Module boundary erosion inside one deployable', likelihood:'Medium', impact:'Medium', mitigation:'I1 gate-checked (module → exactly one context); splitting the deployable stays a repackaging option.', owner:'Engineering chapter'}
+    ],
+    glossary:[
+      {term:'Policy (in Claims)', definition:'The coverage snapshot as at date of loss: frozen, never the current contract — the polyseme the walls exist for.'},
+      {term:'Customer (in Claims)', definition:'A claimant — who may not be the insured at all.'},
+      {term:'Date (in Claims)', definition:'Date of loss: the moment that fixes coverage, SABS wording and rate version for the file.'},
+      {term:'Snapshot', definition:'The immutable coverage picture consumed as an event from Bind & issuance; the canonical design-time-only seam.'},
+      {term:'Deemed approval', definition:'A SABS decision missed past its adjournment clock — converted from conduct risk to SLO by the clock guard.'},
+      {term:'Supplement', definition:'A post-teardown addition to an estimate: tracked, never overwritten — the leakage signal.'}
+    ],
+    /* evidence rides INSIDE the PRD (D-106): sources + citation map, so
+       Sources/grounding never read another product's registry */
+    evidence:{
+      sources:[
+        {id:'S3', name:'Auto-insurer org site — Claims pages', type:'doc', status:'current', origin:'ddd/auto-insurer-org-site_3.html',
+         summary:'The Claims domain page and its seven context pages: models, applications, contracts, outcome measures, posture notes — the corpus this product\u2019s walls are cited to.'}
+      ],
+      cites:{
+        SC1:['S3'], SC2:['S3'], SC3:['S3'], SC4:['S3'], SC5:['S3'],
+        P1:['S3'], P2:['S3'], P3:['S3'], P4:['S3'], P5:['S3'],
+        J1:['S3'],
+        UC1:['S3'], UC2:['S3'], UC3:['S3'], UC4:['S3'], UC5:['S3'], UC6:['S3'], UC7:['S3'], UC8:['S3']
+      }
+    }
+  },
+};

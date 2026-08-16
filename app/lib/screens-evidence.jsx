@@ -114,7 +114,10 @@ function prdGraph(prd) {
   const nodes = [];
   const edges = [];
   const byId = {};
-  const cites = PRD_EVIDENCE.cites;
+  /* a PRD may carry its OWN evidence (Meridian PRDs, D-106) — never leak
+     another product's citation registry into its graph */
+  const EV = (prd && prd.evidence) || PRD_EVIDENCE;
+  const cites = EV.cites;
   const N = (id, type, label, extra) => {
     if (byId[id]) return byId[id];
     const n = { id, type, label, sources: cites[id] || [], ...(extra || {}) };
@@ -132,8 +135,9 @@ function prdGraph(prd) {
   // source nodes — every referenced source plus the registry — and evidence edges
   const srcIds = new Set();
   nodes.slice().forEach(n => (n.sources || []).forEach(s => srcIds.add(s)));
-  PRD_EVIDENCE.sources.forEach(s => srcIds.add(s.id));
-  srcIds.forEach(sid => { const s = sourceById(sid); if (s) N(sid, 'src', s.name, { stype: s.type, status: s.status, origin: s.origin, summary: s.summary, supersededBy: s.supersededBy }); });
+  EV.sources.forEach(s => srcIds.add(s.id));
+  const srcById = id => EV.sources.find(s => s.id === id) || null;
+  srcIds.forEach(sid => { const s = srcById(sid); if (s) N(sid, 'src', s.name, { stype: s.type, status: s.status, origin: s.origin, summary: s.summary, supersededBy: s.supersededBy }); });
   nodes.slice().forEach(n => (n.sources || []).forEach(s => E(n.id, s, 'evidenced by', 'evidences', true)));
 
   return { nodes, edges, byId };
