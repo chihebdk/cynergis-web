@@ -1,11 +1,28 @@
 'use client';
 import React from 'react';
+import mermaid from 'mermaid';
 
-// The Meridian organization (v4) — every surface derived from the
-// knowledge graphs in window.__KG4__ (D-094…D-102). WealthGrow (v3)
-// retired at parity (D-102); its artifacts live in git history and
-// Optimus `as_of` still answers about them.
+// Load the ported modules in dependency order. Each populates `window` with its data/components
+// (the prototype's original cross-file sharing model); the explicit chain imports inside each
+// module also enforce ordering regardless of bundler.
+import './lib/prd-data';
+import './lib/arch-data';
+import './lib/org-data';
+import './lib/delivery-data';
+import './lib/ddd-data';
+import './lib/domain-model-data';
+import './lib/trace-core';
+import './lib/trace-details';
+import './lib/screens-evidence';
+import './lib/screens-disdes';
+import './lib/screens-delivery';
+import './lib/screens-design-ddd';
+import './lib/org-prio';
+import './lib/org-envision';
 import OrgApp from './lib/org-app';
+
+// Mermaid was a CDN global in the prototype; provide it the same way.
+if (typeof window !== 'undefined') window.mermaid = mermaid;
 
 export default function CynergisApp() {
   return <OrgApp />;
