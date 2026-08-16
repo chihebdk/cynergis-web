@@ -18,6 +18,7 @@ const ROUTES = {
   'incident.apply': 'cynergis/app/lib/ops-data.js',
   'incident.escalate': 'cynergis/app/lib/ops-data.js',
   'decision.record': 'cynergis/app/lib/realize-data.js',
+  'review.record': 'kg/org/domains/claims.js',   // Phase E (D-097): the quarterly outcome review — first v4 op
 };
 
 export async function POST(req) {

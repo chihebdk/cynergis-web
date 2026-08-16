@@ -1,5 +1,6 @@
 import React from 'react';
 import './kg-v4.gen';
+import { stageChange } from './kg-query';
 /* ============================================================
    Cynergis — the Meridian org altitude (v4, D-094).
    The two-axis IA from the org-site reference, rendered ENTIRELY
@@ -15,7 +16,7 @@ import './kg-v4.gen';
    Strangler: lives beside the WealthGrow dashboard until cutover.
    Routing rides the shell router: ?v=org&sub=meridian&dom=…&bc=…
    ============================================================ */
-const { useMemo } = React;
+const { useMemo, useState } = React;
 
 const K4 = typeof window !== 'undefined' ? window.__KG4__ : null;
 
@@ -76,9 +77,10 @@ const M = (() => {
     }
   }
   const claimsUnits = claims ? claims.nodes('OrgUnit') : [];
+  const claimsReviews = claims ? claims.nodes('OutcomeReview').slice().sort((a, b) => String(b.props.quarter).localeCompare(String(a.props.quarter))) : [];
 
   const ccoreGates = ccore ? ((ccore.nodes('Product')[0] || {}).props || {}).gates : null;
-  return { org, claims, ccore, domains, ctxDomain, products, chapters, journeys, seams, depth, claimsUnits, ccoreGates };
+  return { org, claims, ccore, domains, ctxDomain, products, chapters, journeys, seams, depth, claimsUnits, claimsReviews, ccoreGates };
 })();
 
 /* ---------- shared bits ---------- */
@@ -280,6 +282,100 @@ function MerChart() {
   );
 }
 
+/* ---------- funding & rhythm (Phase E, D-097): the first v4 two-way act ---------- */
+function FundingRhythm() {
+  const domainNode = M.claims ? M.claims.nodes('Domain')[0] : null;
+  const funding = domainNode ? domainNode.props.funding : null;
+  const [staged, setStaged] = useState([]);
+  const [form, setForm] = useState(null);   // null | {decision, rebalancePct, conditions}
+  if (!funding) return null;
+
+  /* evidence in — pulled LIVE from the lifecycle graph's outcomes, never typed */
+  const evidence = M.ccore ? M.ccore.nodes('Outcome').map(o => {
+    const sc = M.ccore.byId.get((M.ccore.out(o.id, 'actualizes')[0] || {}).to);
+    return `${sc ? sc.label : o.localId}: ${o.props.current}`;
+  }) : [];
+  const nextQuarter = '2026-Q3';
+  const already = M.claimsReviews.some(r => r.props.quarter === nextQuarter) || staged.some(r => r.quarter === nextQuarter);
+
+  const record = () => {
+    const rv = {
+      id: `OR-${nextQuarter.replace('-', '')}-CLAIMS`, quarter: nextQuarter, status: 'recorded', date: '2026-08-16',
+      decidedBy: 'Chief Claims Officer · quarterly outcome review',
+      evidence,
+      decision: form.rebalancePct === 0 ? 'hold' : 'rebalance', rebalancePct: form.rebalancePct,
+      tradeoffs: form.tradeoffs, conditions: form.conditions,
+    };
+    setStaged(s => [rv, ...s]);   // optimistic echo — the record returns from the KB after apply
+    stageChange('review.record', rv.id, rv);
+    setForm(null);
+  };
+
+  const Review = ({ r, isStaged }) => (
+    <div className="mer-panel">
+      <div className="mer-h-top">
+        <b>{r.quarter} outcome review</b>
+        <span style={{ display: 'flex', gap: 6 }}>
+          <span className={'badge ' + (r.rebalancePct ? '' : 'ok')}>{r.decision}{r.rebalancePct ? ` ${r.rebalancePct > 0 ? '+' : ''}${r.rebalancePct}%` : ''}</span>
+          {isStaged && <span className="badge err" title="Staged onto the gated write path (kg/changes/pending.jsonl). Run `node kg/apply.js` — the record lands in kg/org/domains/claims.js, regenerates, and returns from the derived KB.">staged · node kg/apply.js</span>}
+        </span>
+      </div>
+      <div className="mer-h-act">{r.decidedBy} · {r.date}</div>
+      <div className="mer-oms" style={{ margin: '8px 0' }}>{(r.evidence || []).map((e, i) => <span className="mer-om" key={i}>{e}</span>)}</div>
+      <div className="mer-h-act"><b>Trade-offs:</b> {r.tradeoffs}</div>
+      {r.conditions && <div className="mer-h-act" style={{ marginTop: 4 }}><b>Conditions:</b> {r.conditions}</div>}
+    </div>
+  );
+
+  return (
+    <div className="asc-section">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title">Funding &amp; rhythm — the envelope and its reviews</div>
+        <div className="asc-sec-sub">Evidence in, trade-offs out · rebalancing ≤10–15%/quarter · records ride the gated write path (doctrine 4)</div>
+      </div>
+      <div className="mer-facts">
+        <div className="mer-fact"><span className="k">Envelope · {funding.period}</span><span className="v">{funding.posture}</span></div>
+        <div className="mer-fact"><span className="k">Scope</span><span className="v">{funding.note}</span></div>
+      </div>
+
+      {!form && !already && (
+        <button type="button" className="asc-btn" onClick={() => setForm({ rebalancePct: 0, tradeoffs: '', conditions: '' })}>
+          Record the {nextQuarter} review
+        </button>
+      )}
+      {form && (
+        <div className="mer-panel mer-actform">
+          <div className="mer-k">Record the {nextQuarter} outcome review — evidence is read from the lifecycle graph, not typed</div>
+          <div className="mer-oms" style={{ margin: '6px 0 10px' }}>{evidence.map((e, i) => <span className="mer-om" key={i}>{e}</span>)}</div>
+          <label className="mer-formrow">Envelope decision
+            <select value={form.rebalancePct} onChange={e => setForm({ ...form, rebalancePct: Number(e.target.value) })}>
+              <option value={0}>Hold — run + change stays flat</option>
+              <option value={5}>Rebalance +5% — into the repair-cycle promise work</option>
+              <option value={-5}>Rebalance −5% — released to the strategic reserve</option>
+              <option value={12}>Rebalance +12% — accelerate the whole slice</option>
+            </select>
+          </label>
+          <label className="mer-formrow">Trade-offs out (what was NOT funded)
+            <input value={form.tradeoffs} onChange={e => setForm({ ...form, tradeoffs: e.target.value })}
+              placeholder="e.g. Repair-cycle promises before new AB tooling; SIU expansion stays deferred" />
+          </label>
+          <label className="mer-formrow">Conditions (optional)
+            <input value={form.conditions} onChange={e => setForm({ ...form, conditions: e.target.value })}
+              placeholder="e.g. SLO3 back to green before the +5% lands" />
+          </label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button type="button" className="asc-btn" disabled={!form.tradeoffs} onClick={record}>Record review</button>
+            <button type="button" className="mer-link" onClick={() => setForm(null)}>cancel</button>
+          </div>
+        </div>
+      )}
+
+      {staged.map(r => <Review r={r} isStaged key={r.id} />)}
+      {M.claimsReviews.map(r => <Review r={{ ...r.props, quarter: r.props.quarter }} key={r.id} />)}
+    </div>
+  );
+}
+
 /* ---------- domain page ---------- */
 function MerDomain({ id }) {
   const d = M.domains.find(x => x.node.localId === id);
@@ -327,6 +423,8 @@ function MerDomain({ id }) {
           </div>
         </div>
       )}
+
+      {isClaims && <FundingRhythm />}
 
       <div className="asc-section">
         <div className="asc-sec-head">
