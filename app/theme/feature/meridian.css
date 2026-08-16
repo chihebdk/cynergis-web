@@ -179,6 +179,9 @@
 .mer-gatelink { cursor:pointer; font:inherit; font-size:11px; border:none; }
 .mer-gatelink:hover { filter:brightness(.96); }
 
+.mer-timeline { margin-top:8px; padding:8px 11px; background:var(--panel-2); border-radius:var(--r-sm);
+  font-family:var(--font-mono); font-size:10.5px; color:var(--ink-3); line-height:1.8; }
+
 /* funding & rhythm act (Phase E, D-097) */
 .mer-actform { border-color:var(--accent); margin-top:12px; }
 .mer-formrow { display:flex; flex-direction:column; gap:4px; margin-top:10px; font-size:11.5px; font-weight:600; color:var(--ink-3); }

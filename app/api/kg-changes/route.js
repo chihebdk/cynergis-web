@@ -11,11 +11,15 @@
 import fs from 'fs';
 import path from 'path';
 
-/* op → the owning spec (the routing table update_route serves) */
+/* op → the owning spec (the routing table update_route serves).
+   Shared ops route by the acting register's graph (D-098): the same
+   approval/incident acts serve the v3 fraud register (ops-data.js)
+   and the v4 ClaimsCore register (its lifecycle spec). */
+const V4_SPECS = { claimscore: 'kg/org/products/claimscore.js' };
 const ROUTES = {
-  'approval.decide': 'cynergis/app/lib/ops-data.js',
+  'approval.decide': (p) => V4_SPECS[p && p.graph] || 'cynergis/app/lib/ops-data.js',
   'approval.create': 'cynergis/app/lib/ops-data.js',
-  'incident.apply': 'cynergis/app/lib/ops-data.js',
+  'incident.apply': (p) => V4_SPECS[p && p.graph] || 'cynergis/app/lib/ops-data.js',
   'incident.escalate': 'cynergis/app/lib/ops-data.js',
   'decision.record': 'cynergis/app/lib/realize-data.js',
   'review.record': 'kg/org/domains/claims.js',   // Phase E (D-097): the quarterly outcome review — first v4 op
@@ -33,7 +37,7 @@ export async function POST(req) {
     id: 'chg-' + Date.now().toString(36),
     ts: new Date().toISOString(),
     op, target, payload,
-    route: ROUTES[op],
+    route: typeof ROUTES[op] === 'function' ? ROUTES[op](payload) : ROUTES[op],
     apply: 'node kg/apply.js',
   };
   fs.appendFileSync(path.join(dir, 'pending.jsonl'), JSON.stringify(change) + '\n');

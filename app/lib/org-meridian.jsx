@@ -669,6 +669,138 @@ function MerContext({ id }) {
   );
 }
 
+/* ---------- Operate tab with the two-way acts (D-098) ----------
+   approval.decide (with node-level supersession, D-087) and
+   incident.apply ride the gated write path into the v4 lifecycle
+   spec; governance acts stay human-reserved (D-056). */
+function MerOperate({ cc, lbl }) {
+  const [acted, setActed] = useState({});          // id → optimistic act echo
+  const [aprForm, setAprForm] = useState(null);    // {id, conditions}
+  const STAGED = <span className="badge err" title="Staged onto the gated write path. Run `node kg/apply.js` — the routed spec edit lands in kg/org/products/claimscore.js, regenerates, and the record returns from the derived KB.">staged · node kg/apply.js</span>;
+
+  const decide = (a, status) => {
+    const decision = { by: 'Chief Claims Officer', at: '2026-08-16', conditions: aprForm && aprForm.id === a.localId ? aprForm.conditions : '' };
+    setActed(s => ({ ...s, [a.localId]: { status, decision } }));
+    stageChange('approval.decide', a.localId, { status, decision, graph: 'claimscore' });
+    setAprForm(null);
+  };
+  const applyRemediation = (inc) => {
+    const at = '2026-08-16 15:45';
+    setActed(s => ({ ...s, [inc.localId]: { applied: true, at } }));
+    stageChange('incident.apply', inc.localId, { appliedBy: 'A. Tremblay (console)', at, action: inc.props.remediation, graph: 'claimscore' });
+  };
+
+  return (<>
+    <div className="asc-section">
+      <div className="asc-sec-head"><div className="asc-sec-title">SLOs</div><div className="asc-sec-sub">Knowledge, not telemetry: the series live behind `observed_via` pointers (doctrine 1)</div></div>
+      <div className="mer-journeys">
+        {cc.nodes('Slo').map(s => (
+          <div className="mer-jr" key={s.id}>
+            <div className="mer-h-top"><b>{s.label}</b><span className={'badge ' + (s.props.health === 'green' ? 'ok' : 'err')}>{s.props.health}</span></div>
+            <div className="mer-jr-home">{s.props.current} against {s.props.target} · {lbl((cc.out(s.id, 'measures')[0] || {}).to)}</div>
+            <div className="mer-jr-meas">{((cc.out(s.id, 'observed_via')[0] || {}).props || {}).query}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div className="mer-two">
+      <div className="asc-section">
+        <div className="asc-sec-head"><div className="asc-sec-title">Incidents</div>
+          <div className="asc-sec-sub">Low-risk remediations prepared by the Operator; ONE human Apply</div></div>
+        {cc.nodes('Incident').map(inc => {
+          const act = acted[inc.localId];
+          const status = act ? 'monitoring' : inc.props.status;
+          const remStatus = act ? 'applied' : inc.props.remediationStatus;
+          const timeline = [...(inc.props.timeline || []), ...(act ? [`${act.at}  remediation applied (human-approved via console)`] : [])];
+          return (
+            <div className="mer-panel" key={inc.id}>
+              <div className="mer-h-top"><b>{inc.label}</b>
+                <span style={{ display: 'flex', gap: 6 }}>
+                  <span className={'badge ' + (status === 'resolved' ? 'ok' : '')}>{inc.props.severity} · {status}</span>
+                  {act && STAGED}
+                </span>
+              </div>
+              <div className="mer-fact"><span className="k">Discovery</span><span className="v">{inc.props.discovery}</span></div>
+              <div className="mer-fact"><span className="k">Finding</span><span className="v">{inc.props.finding}</span></div>
+              <div className="mer-fact"><span className="k">Remediation</span><span className="v">
+                {inc.props.remediation}
+                {inc.props.remediationStatus && <> · <b>{remStatus}</b>{(act || inc.props.appliedBy) && <> by {act ? 'A. Tremblay (console)' : inc.props.appliedBy}</>}</>}
+                {cc.out(inc.id, 'remediated_by').length > 0 && <> · runbook {(cc.byId.get(cc.out(inc.id, 'remediated_by')[0].to) || {}).localId}</>}
+              </span></div>
+              {timeline.length > 0 && (
+                <div className="mer-timeline">{timeline.map((l, i) => <div key={i}>{l}</div>)}</div>
+              )}
+              {remStatus === 'proposed' && (
+                <button type="button" className="asc-btn" style={{ marginTop: 8 }} onClick={() => applyRemediation(inc)}>
+                  Apply remediation — human-approved
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="asc-section">
+        <div className="asc-sec-head"><div className="asc-sec-title">Approvals</div>
+          <div className="asc-sec-sub">Governance acts are human-reserved at every tier (D-056) · decisions supersede, never overwrite (D-087)</div></div>
+        {cc.nodes('Approval').filter(a => a.status !== 'superseded').map(a => {
+          const act = acted[a.localId];
+          const status = act ? act.status : a.props.status;
+          const decision = act ? act.decision : a.props.decision;
+          const prior = cc.out(a.id, 'supersedes').length;
+          return (
+            <div className="mer-panel" key={a.id}>
+              <div className="mer-h-top"><b>{a.label}</b>
+                <span style={{ display: 'flex', gap: 6 }}>
+                  {prior > 0 && <span className="badge" title="The prior version is archived in the graph (superseded, validTo) — Optimus `history` walks the chain.">{prior} prior version{prior > 1 ? 's' : ''}</span>}
+                  <span className={'badge ' + (status === 'approved' ? 'ok' : status === 'pending' ? '' : 'err')}>{status}{a.props.approver ? ` · ${a.props.approver}` : ''}</span>
+                  {act && STAGED}
+                </span>
+              </div>
+              {a.props.kind && <div className="mer-h-act">{a.props.kind} · requested by {a.props.requestedBy}</div>}
+              {a.props.evidence && <div className="mer-fact"><span className="k">Evidence</span><span className="v">{a.props.evidence}</span></div>}
+              {a.props.ask && <div className="mer-fact"><span className="k">The ask</span><span className="v">{a.props.ask}</span></div>}
+              {a.props.conditions && <div className="mer-h-act"><b>Conditions:</b> {a.props.conditions}</div>}
+              {decision && <div className="mer-h-act"><b>Decision:</b> {decision.by} · {decision.at}{decision.conditions ? <> — {decision.conditions}</> : null}</div>}
+              {status === 'pending' && !act && (
+                aprForm && aprForm.id === a.localId ? (
+                  <div className="mer-actform" style={{ marginTop: 8, padding: 10 }}>
+                    <label className="mer-formrow">Conditions (recorded with the decision)
+                      <input value={aprForm.conditions} onChange={e => setAprForm({ ...aprForm, conditions: e.target.value })}
+                        placeholder="e.g. 10% audit sample reviewed weekly for the first quarter" />
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button type="button" className="asc-btn" onClick={() => decide(a, 'approved')}>Approve as Chief Claims Officer</button>
+                      <button type="button" className="mer-link" onClick={() => decide(a, 'rejected')}>reject</button>
+                      <button type="button" className="mer-link" onClick={() => setAprForm(null)}>cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="asc-btn" style={{ marginTop: 8 }} onClick={() => setAprForm({ id: a.localId, conditions: '' })}>
+                    Decide — human-reserved
+                  </button>
+                )
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+    <div className="asc-section">
+      <div className="asc-sec-head"><div className="asc-sec-title">Runbooks — skills with named executors</div></div>
+      <div className="mer-two">
+        {cc.nodes('Runbook').map(rb => (
+          <div className="mer-panel" key={rb.id}>
+            <div className="mer-h-top"><b>{rb.label}</b><span className="mer-pat pn">{(cc.byId.get((cc.out(rb.id, 'uses_skill')[0] || {}).to) || {}).localId}</span></div>
+            <div className="mer-h-act">Trigger: {rb.props.trigger}</div>
+            <ol className="mer-steps">{(rb.props.steps || []).map((s, i) => <li key={i}>{s}</li>)}</ol>
+            <div className="mer-oms">{(rb.props.mcp || []).map(m => <span className="mer-om" key={m}><code style={{ fontSize: 10 }}>{m}</code></span>)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </>);
+}
+
 /* ---------- product lifecycle page (six phases from claimscore:*) ---------- */
 const PHASES4 = [['envision', 'Envision'], ['discover', 'Discover'], ['design', 'Design'], ['build', 'Build'], ['operate', 'Operate'], ['realize', 'Realize']];
 
@@ -843,50 +975,7 @@ function MerProduct({ id, tab }) {
         </div>
       </>)}
 
-      {t === 'operate' && (<>
-        <div className="asc-section">
-          <div className="asc-sec-head"><div className="asc-sec-title">SLOs</div><div className="asc-sec-sub">Knowledge, not telemetry: the series live behind `observed_via` pointers (doctrine 1)</div></div>
-          <div className="mer-journeys">
-            {cc.nodes('Slo').map(s => (
-              <div className="mer-jr" key={s.id}>
-                <div className="mer-h-top"><b>{s.label}</b><span className={'badge ' + (s.props.health === 'green' ? 'ok' : 'err')}>{s.props.health}</span></div>
-                <div className="mer-jr-home">{s.props.current} against {s.props.target} · {lbl((cc.out(s.id, 'measures')[0] || {}).to)}</div>
-                <div className="mer-jr-meas">{((cc.out(s.id, 'observed_via')[0] || {}).props || {}).query}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="mer-two">
-          <div className="asc-section">
-            <div className="asc-sec-head"><div className="asc-sec-title">Incidents</div></div>
-            {cc.nodes('Incident').map(inc => (
-              <div className="mer-panel" key={inc.id}>
-                <div className="mer-h-top"><b>{inc.label}</b><span className="badge">{inc.props.severity} · {inc.props.status}</span></div>
-                <div className="mer-fact"><span className="k">Discovery</span><span className="v">{inc.props.discovery}</span></div>
-                <div className="mer-fact"><span className="k">Finding</span><span className="v">{inc.props.finding}</span></div>
-                <div className="mer-fact"><span className="k">Remediation</span><span className="v">{inc.props.remediation} · runbook {(cc.byId.get((cc.out(inc.id, 'remediated_by')[0] || {}).to) || {}).localId}</span></div>
-              </div>
-            ))}
-            {cc.nodes('Approval').map(a => (
-              <div className="mer-panel" key={a.id}>
-                <div className="mer-h-top"><b>{a.label}</b><span className="badge ok">{a.props.status} · {a.props.approver}</span></div>
-                <div className="mer-h-act">Conditions: {a.props.conditions}</div>
-              </div>
-            ))}
-          </div>
-          <div className="asc-section">
-            <div className="asc-sec-head"><div className="asc-sec-title">Runbooks — skills with named executors</div></div>
-            {cc.nodes('Runbook').map(rb => (
-              <div className="mer-panel" key={rb.id}>
-                <div className="mer-h-top"><b>{rb.label}</b><span className="mer-pat pn">{(cc.byId.get((cc.out(rb.id, 'uses_skill')[0] || {}).to) || {}).localId}</span></div>
-                <div className="mer-h-act">Trigger: {rb.props.trigger}</div>
-                <ol className="mer-steps">{(rb.props.steps || []).map((s, i) => <li key={i}>{s}</li>)}</ol>
-                <div className="mer-oms">{(rb.props.mcp || []).map(m => <span className="mer-om" key={m}><code style={{ fontSize: 10 }}>{m}</code></span>)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </>)}
+      {t === 'operate' && <MerOperate cc={cc} lbl={lbl} />}
 
       {t === 'realize' && (<>
         <div className="mer-panel">
