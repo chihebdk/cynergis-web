@@ -7,8 +7,6 @@ import './theme/feature/trace.css';
 import './theme/feature/delivery.css';
 import './theme/feature/design-ddd.css';
 import './theme/feature/meridian.css';
-import '@xyflow/react/dist/style.css';
-import './theme/feature/flow-canvas.css';
 import './theme/feature/inline.css';
 
 export const metadata = {
