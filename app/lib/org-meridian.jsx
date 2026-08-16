@@ -299,6 +299,21 @@ function FundingRhythm() {
   const already = M.claimsReviews.some(r => r.props.quarter === nextQuarter) || staged.some(r => r.quarter === nextQuarter);
 
   const record = () => {
+    if (form.rebalancePct > 15) {
+      /* beyond the corridor: not a review record — a strategic-reserve DRAW REQUEST.
+         The refusal path becomes productive: it stages approval.create into the
+         ClaimsCore approvals queue (the reserve process is the only other money door). */
+      const apr = {
+        id: 'APR-3', status: 'pending', name: `Strategic-reserve draw: +${form.rebalancePct}% into the Claims envelope`,
+        kind: 'strategic-reserve draw', requestedBy: 'Chief Claims Officer · quarterly outcome review',
+        evidence: evidence.join(' · '),
+        ask: `${form.tradeoffs}${form.conditions ? ` Conditions offered: ${form.conditions}` : ''}`,
+      };
+      setStaged(s => [{ reserveAsk: true, ...apr }, ...s]);
+      stageChange('approval.create', apr.id, { ...apr, graph: 'claimscore' });
+      setForm(null);
+      return;
+    }
     const rv = {
       id: `OR-${nextQuarter.replace('-', '')}-CLAIMS`, quarter: nextQuarter, status: 'recorded', date: '2026-08-16',
       decidedBy: 'Chief Claims Officer · quarterly outcome review',
@@ -338,10 +353,19 @@ function FundingRhythm() {
         <div className="mer-fact"><span className="k">Scope</span><span className="v">{funding.note}</span></div>
       </div>
 
-      {!form && !already && (
-        <button type="button" className="asc-btn" onClick={() => setForm({ rebalancePct: 0, tradeoffs: '', conditions: '' })}>
-          Record the {nextQuarter} review
-        </button>
+      {!form && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {!already && (
+            <button type="button" className="asc-btn" onClick={() => setForm({ rebalancePct: 0, tradeoffs: '', conditions: '' })}>
+              Record the {nextQuarter} review
+            </button>
+          )}
+          {!(staged.some(r => r.reserveAsk) || (M.ccore && M.ccore.byLocal.get('APR-3'))) && (
+            <button type="button" className="mer-link" onClick={() => setForm({ rebalancePct: 20, tradeoffs: '', conditions: '' })}>
+              Request a strategic-reserve draw (beyond the corridor) →
+            </button>
+          )}
+        </div>
       )}
       {form && (
         <div className="mer-panel mer-actform">
@@ -353,8 +377,14 @@ function FundingRhythm() {
               <option value={5}>Rebalance +5% — into the repair-cycle promise work</option>
               <option value={-5}>Rebalance −5% — released to the strategic reserve</option>
               <option value={12}>Rebalance +12% — accelerate the whole slice</option>
+              <option value={20}>Ask +20% — beyond the corridor: a strategic-reserve draw request</option>
             </select>
           </label>
+          {form.rebalancePct > 15 && (
+            <div className="mer-h-act" style={{ marginTop: 6 }}>
+              Beyond the ≤15% corridor this is not a review record — recording stages a <b>strategic-reserve draw request</b> into the ClaimsCore approvals queue instead (the reserve is the only other money door).
+            </div>
+          )}
           <label className="mer-formrow">Trade-offs out (what was NOT funded)
             <input value={form.tradeoffs} onChange={e => setForm({ ...form, tradeoffs: e.target.value })}
               placeholder="e.g. Repair-cycle promises before new AB tooling; SIU expansion stays deferred" />
@@ -370,7 +400,17 @@ function FundingRhythm() {
         </div>
       )}
 
-      {staged.map(r => <Review r={r} isStaged key={r.id} />)}
+      {staged.map(r => r.reserveAsk
+        ? <div className="mer-panel" key={r.id}>
+            <div className="mer-h-top"><b>{r.name}</b>
+              <span style={{ display: 'flex', gap: 6 }}>
+                <span className="badge">pending · approvals queue</span>
+                <span className="badge err" title="Staged onto the gated write path — the draw request lands in ClaimsCore's approvals register.">staged · node kg/apply.js</span>
+              </span>
+            </div>
+            <div className="mer-h-act">{r.kind} · requested by {r.requestedBy} — decided in the reserve process, not the review.</div>
+          </div>
+        : <Review r={r} isStaged key={r.id} />)}
       {M.claimsReviews.map(r => <Review r={{ ...r.props, quarter: r.props.quarter }} key={r.id} />)}
     </div>
   );
@@ -689,6 +729,11 @@ function MerOperate({ cc, lbl }) {
     setActed(s => ({ ...s, [inc.localId]: { applied: true, at } }));
     stageChange('incident.apply', inc.localId, { appliedBy: 'A. Tremblay (console)', at, action: inc.props.remediation, graph: 'claimscore' });
   };
+  const escalate = (inc) => {
+    const at = '2026-08-16 15:52';
+    setActed(s => ({ ...s, [inc.localId]: { escalated: true, at } }));
+    stageChange('incident.escalate', inc.localId, { at, graph: 'claimscore' });
+  };
 
   return (<>
     <div className="asc-section">
@@ -708,25 +753,35 @@ function MerOperate({ cc, lbl }) {
         <div className="asc-sec-head"><div className="asc-sec-title">Incidents</div>
           <div className="asc-sec-sub">Low-risk remediations prepared by the Operator; ONE human Apply</div></div>
         {cc.nodes('Incident').map(inc => {
-          const act = acted[inc.localId];
-          const status = act ? 'monitoring' : inc.props.status;
-          const remStatus = act ? 'applied' : inc.props.remediationStatus;
-          const timeline = [...(inc.props.timeline || []), ...(act ? [`${act.at}  remediation applied (human-approved via console)`] : [])];
+          const act = acted[inc.localId] || {};
+          const status = act.applied ? 'monitoring' : inc.props.status;
+          const remStatus = act.applied ? 'applied' : inc.props.remediationStatus;
+          const escalated = act.escalated || inc.props.escalationRequested;
+          const timeline = [...(inc.props.timeline || []),
+            ...(act.applied ? [`${act.at}  remediation applied (human-approved via console)`] : []),
+            ...(act.escalated ? [`${act.at}  deep-investigation session launched in the agentic harness (Claude Code) with the incident context`] : [])];
           return (
             <div className="mer-panel" key={inc.id}>
               <div className="mer-h-top"><b>{inc.label}</b>
                 <span style={{ display: 'flex', gap: 6 }}>
                   <span className={'badge ' + (status === 'resolved' ? 'ok' : '')}>{inc.props.severity} · {status}</span>
-                  {act && STAGED}
+                  {(act.applied || act.escalated) && STAGED}
                 </span>
               </div>
               <div className="mer-fact"><span className="k">Discovery</span><span className="v">{inc.props.discovery}</span></div>
               <div className="mer-fact"><span className="k">Finding</span><span className="v">{inc.props.finding}</span></div>
-              <div className="mer-fact"><span className="k">Remediation</span><span className="v">
-                {inc.props.remediation}
-                {inc.props.remediationStatus && <> · <b>{remStatus}</b>{(act || inc.props.appliedBy) && <> by {act ? 'A. Tremblay (console)' : inc.props.appliedBy}</>}</>}
-                {cc.out(inc.id, 'remediated_by').length > 0 && <> · runbook {(cc.byId.get(cc.out(inc.id, 'remediated_by')[0].to) || {}).localId}</>}
-              </span></div>
+              {inc.props.remediation && (
+                <div className="mer-fact"><span className="k">Remediation</span><span className="v">
+                  {inc.props.remediation}
+                  {inc.props.remediationStatus && <> · <b>{remStatus}</b>{(act.applied || inc.props.appliedBy) && <> by {act.applied ? 'A. Tremblay (console)' : inc.props.appliedBy}</>}</>}
+                  {cc.out(inc.id, 'remediated_by').length > 0 && <> · runbook {(cc.byId.get(cc.out(inc.id, 'remediated_by')[0].to) || {}).localId}</>}
+                </span></div>
+              )}
+              {(inc.props.hypotheses || []).length > 0 && (
+                <div className="mer-fact"><span className="k">Hypotheses</span><span className="v">
+                  {inc.props.hypotheses.map((h, i) => <div key={i}>· {h}</div>)}
+                </span></div>
+              )}
               {timeline.length > 0 && (
                 <div className="mer-timeline">{timeline.map((l, i) => <div key={i}>{l}</div>)}</div>
               )}
@@ -735,6 +790,11 @@ function MerOperate({ cc, lbl }) {
                   Apply remediation — human-approved
                 </button>
               )}
+              {inc.props.escalationNote && (escalated
+                ? <div className="mer-h-act" style={{ marginTop: 8 }}><span className="badge ok"><span className="dot ok"></span>deep investigation requested</span> {inc.props.escalationNote}</div>
+                : <button type="button" className="asc-btn" style={{ marginTop: 8 }} onClick={() => escalate(inc)} title={inc.props.escalationNote}>
+                    Launch deep investigation — in the harness
+                  </button>)}
             </div>
           );
         })}

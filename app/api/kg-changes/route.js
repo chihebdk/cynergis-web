@@ -18,9 +18,9 @@ import path from 'path';
 const V4_SPECS = { claimscore: 'kg/org/products/claimscore.js' };
 const ROUTES = {
   'approval.decide': (p) => V4_SPECS[p && p.graph] || 'cynergis/app/lib/ops-data.js',
-  'approval.create': 'cynergis/app/lib/ops-data.js',
+  'approval.create': (p) => V4_SPECS[p && p.graph] || 'cynergis/app/lib/ops-data.js',
   'incident.apply': (p) => V4_SPECS[p && p.graph] || 'cynergis/app/lib/ops-data.js',
-  'incident.escalate': 'cynergis/app/lib/ops-data.js',
+  'incident.escalate': (p) => V4_SPECS[p && p.graph] || 'cynergis/app/lib/ops-data.js',
   'decision.record': 'cynergis/app/lib/realize-data.js',
   'review.record': 'kg/org/domains/claims.js',   // Phase E (D-097): the quarterly outcome review — first v4 op
 };
