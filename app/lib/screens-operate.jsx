@@ -158,12 +158,17 @@ function OpsFleet() {
       f.paused = !f.paused;
       record(f.paused ? 'Agent paused — MCP server disabled (kill-switch)' : 'Agent resumed — MCP server re-enabled', f.id, 'RB-6');
     } else if (a === 'envelope') {
-      const id = 'APR-' + (105 + O.approvals.filter(x => x.kind === 'envelope change').length);
-      O.approvals.unshift({ id, status: 'pending', kind: 'envelope change', date: new Date().toISOString().slice(0, 10),
+      // D-085: the created approval goes to the SAME queue the surface reads
+      // (the KG view models) and is staged onto the gated write path
+      const aprs = kgApprovals() || O.approvals;
+      const id = 'APR-' + (105 + aprs.filter(x => x.kind === 'envelope change').length);
+      const apr = { id, status: 'pending', kind: 'envelope change', date: new Date().toISOString().slice(0, 10),
         title: 'Envelope change for ' + nm, requestedBy: 'You — console', approver: 'Regina Foss — Model Risk',
         evidence: 'Requested from the fleet view; scope and limits to be specified in review.',
-        links: {}, note: 'Envelope changes are governance acts (D-056) — routed for approval, never applied directly.' });
-      record('Envelope change routed for approval (' + id + ')', f.id, 'D-056');
+        links: {}, note: 'Envelope changes are governance acts (D-056) — routed for approval, never applied directly.' };
+      aprs.unshift(aprs === O.approvals ? apr : { ...apr, title: apr.title, _kg: true });
+      stageChange('approval.create', id, apr).catch(() => {});
+      record('Envelope change routed for approval (' + id + ') — staged for the write path', f.id, 'D-056');
     } else if (a === 'rollback') {
       record('Rollback to previous version requested', f.id, 'RB-3');
     } else {
@@ -456,12 +461,19 @@ function OpsIncidents() {
     inc.status = 'monitoring';
     inc.timeline = [...inc.timeline, now() + '  remediation applied (human-approved via console) — ' + inc.remediation.action];
     O.actionLog.unshift({ t: now(), actor: 'You — console (human-approved)', action: 'Remediation applied: ' + inc.title, target: inc.impacted[0], via: inc.id + ' · ' + inc.remediation.runbook });
+    // D-085: the optimistic echo above; the durable record travels the write path
+    stageChange('incident.apply', inc.id, { appliedBy: inc.remediation.appliedBy, at: inc.remediation.at, action: inc.remediation.action })
+      .then(res => { inc.staged = res; bump(n => n + 1); })
+      .catch(() => { inc.staged = { error: 'intake unreachable — the apply is in-memory only until re-staged' }; bump(n => n + 1); });
     bump(n => n + 1);
   };
   const escalate = (inc) => {
     inc.escalation.requested = true;
     inc.timeline = [...inc.timeline, now() + '  deep-investigation session launched in the agentic harness (Claude Code) with the incident context'];
     O.actionLog.unshift({ t: now(), actor: 'You — console', action: 'Deep investigation launched in the harness (Claude Code)', target: inc.impacted[0], via: inc.id });
+    stageChange('incident.escalate', inc.id, { at: now() })
+      .then(res => { inc.staged = res; bump(n => n + 1); })
+      .catch(() => { inc.staged = { error: 'intake unreachable — the escalation is in-memory only until re-staged' }; bump(n => n + 1); });
     bump(n => n + 1);
   };
   const sel = incidents.find(i => i.id === selId);
@@ -478,6 +490,12 @@ function OpsIncidents() {
         <span className={'ops-pipe ' + ps.k}>{ps.label}</span>
         {sel._kg && <span className="ops-kgchip" title="This page is a saved query over the derived knowledge graph — the Incident node carries the structured curated record (discovery · findings · triage · remediation · hypotheses); impacted set and matched runbook are impacts / remediated_by edges; the raw timeline is dereferenced through observed_via into DS-OBS.">KG · DS-OBS</span>}
       </div>
+      {sel.staged && (
+        <div className="ops-kgline">{sel.staged.error
+          ? <>⚠ {sel.staged.error}</>
+          : <>Act <b>staged for the gated write path</b> — change <b>{sel.staged.id}</b> routed to <b>{sel.staged.route}</b>. Apply with <b>node kg/apply.js</b>: spec → regenerate → the record returns from the derived KB and survives reload (D-066 doctrine 4).</>}
+        </div>
+      )}
       <div className="dd-idetail">
         <div className="dd-idef"><span className="dd-iext-k">opened</span><div className="dd-idef-v">{sel.opened}{sel.resolved && <> · resolved <b>{sel.resolved}</b></>}</div></div>
         <div className="dd-idef"><span className="dd-iext-k">impacted</span><div className="dd-idef-v" onClick={e => e.stopPropagation()}>{sel.impacted.map(id => <ORef id={id} key={id} />)}</div></div>

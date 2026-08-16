@@ -107,7 +107,7 @@ window.__OPS__ = {
        complex   → remediation hypotheses + deep-investigation escalation
                    into an agentic harness (Claude Code). */
   incidents: [
-    { id: 'INC-204', sev: 'SEV3', status: 'open', plane: 'workflow', opened: '2026-08-10', resolved: null,
+    { id: 'INC-204', sev: 'SEV3', status: 'monitoring', plane: 'workflow', opened: '2026-08-10', resolved: null,
       title: 'Feature freshness degrading — cache eviction pressure',
       impacted: ['C5'],
       impact: 'Freshness climbed 2.1 s → 4.2 s in three hours (target < 5 s). No decision impact yet; the burn rate would breach SLO-6 by tonight.',
@@ -118,13 +118,14 @@ window.__OPS__ = {
         'No schema drift; quality checks passing — capacity pressure, not corruption.',
       ]},
       triage: 'low-risk',
-      remediation: { status: 'proposed', runbook: 'RB-7',
+      remediation: { status: 'applied', appliedBy: "You — console", at: "2026-08-16 00:27", runbook: 'RB-7',
         action: 'Throttle the backfill job to 25% and raise feature-cache memory one notch; resume the backfill off-peak (22:00).',
         why: 'Reversible in one step, no data loss, matches RB-7; the agent prepared it — one human approval applies it.' },
       timeline: [
         '2026-08-10 07:40  Operator: SLO-6 burn signal fires; incident opened',
         '2026-08-10 07:42  Operator: investigation — cache hit rate, job schedule and quality checks correlated',
         '2026-08-10 07:44  Operator: matched RB-7; remediation prepared and routed for human apply',
+        "2026-08-16 00:27  remediation applied (human-approved via console) — Throttle the backfill job to 25% and raise feature-cache memory one notch; resume the backfill off-peak (22:00).",
       ],
       runbook: 'RB-7' },
     { id: 'INC-203', sev: 'SEV3', status: 'monitoring', plane: 'agent', opened: '2026-08-04', resolved: null,
@@ -143,13 +144,14 @@ window.__OPS__ = {
         { h: 'Prompt regression — the timeline scan stops at the first customer response', likelihood: 'plausible; a fix is drafted', fix: 'Ship the timeline-scan prompt fix, re-run on the same dataset', risk: 'low' },
         { h: 'Knowledge-pack gap — step-up outcomes under-weighted in the case model', likelihood: 'possible, matches the 23 over-weightings', fix: 'Extend the pack — needs a Design-side review', risk: 'medium' },
       ],
-      escalation: { requested: false,
+      escalation: { requested: true,
         note: 'The hypotheses disagree on root cause. Recommended: run the full deep investigation in an agentic harness (Claude Code) with the incident context — the 79 failing transcripts, the case timelines, the knowledge pack and prompts. Deliverable: a root-cause note and one chosen remediation, recorded back onto this incident.' },
       timeline: [
         '2026-08-04 09:10  eval run disposition-golden completes: 84.2% (−3.9 pp) — verdict regressing',
         '2026-08-04 09:12  Operator raises the drift incident; recommends promotion freeze (RB-5)',
         '2026-08-04 10:05  Case squad + Case Agent triage the failure causes: 41 · 23 · 15',
         '2026-08-06 16:00  Three remediation hypotheses drafted; awaiting human direction',
+        "2026-08-16 00:27  deep-investigation session launched in the agentic harness (Claude Code) with the incident context",
       ],
       runbook: 'RB-5', followUp: 'If the next run regresses again, pause the skill (RB-6) — the off-switch invariant makes this safe.' },
     { id: 'INC-202', sev: 'SEV3', status: 'resolved', plane: 'workflow', opened: '2026-07-24', resolved: '2026-07-24',
@@ -194,6 +196,7 @@ window.__OPS__ = {
   /* Approvals queue (Block 3) — pending first; approvals are temporal,
      cited records (D-009). */
   approvals: [
+    {"id":"APR-105","status":"pending","kind":"envelope change","date":"2026-08-16","title":"Envelope change for Decisioning Agent","requestedBy":"You — console","approver":"Regina Foss — Model Risk","evidence":"Requested from the fleet view; scope and limits to be specified in review.","links":{},"note":"Envelope changes are governance acts (D-056) — routed for approval, never applied directly."},
     { id: 'APR-101', status: 'pending', kind: 'threshold change', date: '2026-08-06',
       title: 'Medium-band cutoff 0.62 → 0.65',
       requestedBy: 'Decisioning Agent · skill “Propose a threshold change” (Suggest)',
