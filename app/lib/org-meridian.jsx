@@ -80,7 +80,15 @@ const M = (() => {
   const claimsReviews = claims ? claims.nodes('OutcomeReview').slice().sort((a, b) => String(b.props.quarter).localeCompare(String(a.props.quarter))) : [];
 
   const ccoreGates = ccore ? ((ccore.nodes('Product')[0] || {}).props || {}).gates : null;
-  return { org, claims, ccore, domains, ctxDomain, products, chapters, journeys, seams, depth, claimsUnits, claimsReviews, ccoreGates };
+
+  /* every product lifecycle graph, keyed by the product's localId (D-100) */
+  const prods4 = {};
+  if (K4.products) for (const [ns, graph] of Object.entries(K4.products)) {
+    const idx = indexGraph(graph);
+    const pNode = idx.nodes('Product')[0];
+    if (pNode) prods4[pNode.localId] = { idx, ns };
+  }
+  return { org, claims, ccore, domains, ctxDomain, products, chapters, journeys, seams, depth, claimsUnits, claimsReviews, ccoreGates, prods4 };
 })();
 
 /* ---------- shared bits ---------- */
@@ -532,11 +540,15 @@ function MerDomain({ id }) {
             <div className="mer-prod" key={p.node.id}>
               <div className="mer-prod-top">
                 <b>{p.node.label}</b><span className="mer-prod-kind">{p.node.props.kind}</span>
-                {M.ccore && (M.ccore.nodes('Product')[0] || {}).localId === p.node.localId && (
-                  <button type="button" className="badge ok mer-gatelink" title={M.ccoreGates ? Object.entries(M.ccoreGates).map(([k, v]) => `${k}: ${v}`).join('\n') : ''}
-                    onClick={() => goProduct(p.node.localId)}>
-                    <span className="dot ok"></span>six-phase lifecycle · {Object.keys(M.ccoreGates || {}).length} gates ✓ →</button>
-                )}
+                {M.prods4[p.node.localId] && (() => {
+                  const gts = (M.prods4[p.node.localId].idx.nodes('Product')[0].props || {}).gates || {};
+                  const n = Object.keys(gts).length;
+                  return (
+                    <button type="button" className="badge ok mer-gatelink" title={Object.entries(gts).map(([k, v]) => `${k}: ${v}`).join('\n')}
+                      onClick={() => goProduct(p.node.localId)}>
+                      <span className="dot ok"></span>lifecycle · {n} gate{n === 1 ? '' : 's'} ✓{n < 4 ? ` of 4 — depth is honest` : ''} →</button>
+                  );
+                })()}
               </div>
               <div className="mer-prod-owner">Owner: {p.owner ? p.owner.label : '—'}</div>
               <p className="mer-prod-note">{p.node.props.note}</p>
@@ -864,10 +876,24 @@ function MerOperate({ cc, lbl }) {
 /* ---------- product lifecycle page (six phases from claimscore:*) ---------- */
 const PHASES4 = [['envision', 'Envision'], ['discover', 'Discover'], ['design', 'Design'], ['build', 'Build'], ['operate', 'Operate'], ['realize', 'Realize']];
 
+function EmptyPhase({ phase, ns }) {
+  return (
+    <div className="asc-panel asc-panel-pad" style={{ textAlign: 'center', padding: '42px 24px' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Not authored yet — and the graph says so</div>
+      <div style={{ fontSize: 12.5, color: 'var(--ink-3)', maxWidth: '52ch', margin: '0 auto', lineHeight: 1.6 }}>
+        The owning team hasn’t done this phase’s work, so nothing derives here and the gate is honestly red (D-074/D-079):
+        <div style={{ marginTop: 8 }}><code style={{ fontSize: 11 }}>node kg/gate.js kg/out/v4/{ns}/graph.json {phase}</code></div>
+        Depth arrives via the authoring skills — never fabricated to fill a page.
+      </div>
+    </div>
+  );
+}
+
 function MerProduct({ id, tab }) {
-  const cc = M.ccore;
+  const entry = M.prods4[id];
+  const cc = entry ? entry.idx : null;
   const P = cc ? cc.nodes('Product')[0] : null;
-  if (!P || P.localId !== id) {
+  if (!P) {
     return <div className="asc-page"><div className="asc-panel asc-panel-pad">No lifecycle graph for this product yet — only packaging exists. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
   }
   const orgP = M.org.byLocal.get(id);
@@ -951,7 +977,8 @@ function MerProduct({ id, tab }) {
         </div>
       </>)}
 
-      {t === 'discover' && (<>
+      {t === 'discover' && ucs.length === 0 && <EmptyPhase phase="discover" ns={entry.ns} />}
+      {t === 'discover' && ucs.length > 0 && (<>
         {cc.nodes('Journey').map(j => (
           <div className="mer-panel" key={j.id}><div className="mer-k">The journey</div><p><b>{j.label}</b> — {j.props.note}</p></div>
         ))}
@@ -970,7 +997,8 @@ function MerProduct({ id, tab }) {
         </div>
       </>)}
 
-      {t === 'design' && (<>
+      {t === 'design' && comps.length === 0 && <EmptyPhase phase="design" ns={entry.ns} />}
+      {t === 'design' && comps.length > 0 && (<>
         <div className="asc-section">
           <div className="asc-sec-head"><div className="asc-sec-title">The modules — furniture on the walls</div><div className="asc-sec-sub">Each component is a packaged module `part_of` exactly one context (I1 at lifecycle depth)</div></div>
           <div className="mer-subgrid">
@@ -1012,7 +1040,8 @@ function MerProduct({ id, tab }) {
         </div>
       </>)}
 
-      {t === 'build' && (<>
+      {t === 'build' && cc.nodes('DeliveryItem').length === 0 && <EmptyPhase phase="build" ns={entry.ns} />}
+      {t === 'build' && cc.nodes('DeliveryItem').length > 0 && (<>
         <div className="asc-section">
           <div className="asc-sec-head"><div className="asc-sec-title">Delivery slices</div><div className="asc-sec-sub">Every use case tracked; suite green before the gate</div></div>
           {cc.nodes('DeliveryItem').map(dl => (
@@ -1035,9 +1064,10 @@ function MerProduct({ id, tab }) {
         </div>
       </>)}
 
-      {t === 'operate' && <MerOperate cc={cc} lbl={lbl} />}
+      {t === 'operate' && (cc.nodes('Slo').length > 0 ? <MerOperate cc={cc} lbl={lbl} /> : <EmptyPhase phase="build" ns={entry.ns} />)}
 
-      {t === 'realize' && (<>
+      {t === 'realize' && cc.nodes('Outcome').length === 0 && <EmptyPhase phase="build" ns={entry.ns} />}
+      {t === 'realize' && cc.nodes('Outcome').length > 0 && (<>
         <div className="mer-panel">
           <div className="mer-k">Value rollup</div>
           <p><b>{(P.props.valueRollup || {}).annualized}</b> annualized against a {(P.props.valueRollup || {}).target} target · {(P.props.valueRollup || {}).rampQuarter} · {(P.props.valueRollup || {}).basis}</p>
@@ -1076,7 +1106,7 @@ function MerProduct({ id, tab }) {
         </div>
       </>)}
 
-      <DerivedStrip graph={cc.g} extra={<>gates recorded: {Object.entries(gates).map(([k, v]) => `${k} ✓`).join(' · ')} · <code>kg/org/products/claimscore.js</code></>} />
+      <DerivedStrip graph={cc.g} extra={<>gates recorded: {Object.keys(gates).length ? Object.keys(gates).map(k => `${k} ✓`).join(' · ') : 'none yet'} · <code>kg/org/products/{entry.ns}.js</code></>} />
     </div>
   );
 }
@@ -1100,13 +1130,13 @@ function kg4Search(needle) {
   };
   scan(M.org, 'org');
   if (M.claims) scan(M.claims, 'claims');
-  if (M.ccore) scan(M.ccore, 'claimscore');
+  for (const [pid, { idx }] of Object.entries(M.prods4)) scan(idx, 'prod:' + pid);
   const goFor = ({ n, graphKey }) => {
     if (graphKey === 'org') {
       if (n.type === 'Domain') return () => goDomain(n.localId);
       if (n.type === 'BoundedContext') return () => goContext(n.localId);
       if (n.type === 'Product') {
-        if (M.ccore && (M.ccore.nodes('Product')[0] || {}).localId === n.localId) return () => goProduct(n.localId);
+        if (M.prods4[n.localId]) return () => goProduct(n.localId);
         const pk = M.products.find(p => p.node.id === n.id);
         const dom = pk && pk.packages[0] && pk.packages[0].ctx ? M.ctxDomain.get(pk.packages[0].ctx.id) : null;
         return dom ? () => goDomain(dom.localId) : goChart;
@@ -1123,8 +1153,8 @@ function kg4Search(needle) {
       if (ctxId.startsWith('CTX-')) return () => goContext(ctxId);
       return () => goDomain('DOM-CLAIMS');
     }
-    const pid = (M.ccore.nodes('Product')[0] || {}).localId;
-    return () => goProduct(pid, PHASE_OF_TYPE[n.type] || 'envision');
+    const pid = graphKey.startsWith('prod:') ? graphKey.slice(5) : null;
+    return pid ? () => goProduct(pid, PHASE_OF_TYPE[n.type] || 'envision') : goChart;
   };
   return hits.slice(0, 8).map(h => ({
     type: h.n.type, id: h.n.id, localId: h.n.localId, label: h.n.label, graphKey: h.graphKey, go: goFor(h),
