@@ -12,8 +12,8 @@ import './theme/feature/flow-canvas.css';
 import './theme/feature/inline.css';
 
 export const metadata = {
-  title: 'Cynergis — WealthGrow Bank',
-  description: 'Product lifecycle management across the portfolio.',
+  title: 'Cynergis — Meridian Auto Insurance',
+  description: 'The DDD organization: domains, bounded contexts, durable teams — every surface derived from the knowledge graph.',
 };
 
 export default function RootLayout({ children }) {

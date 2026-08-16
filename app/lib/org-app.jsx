@@ -28,7 +28,9 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
     const tab = q.get('tab');
     return {
       v: q.get('v') || 'org', pf: q.get('pf') || null, prod: q.get('prod') || null,
-      sub: q.get('sub') || 'dashboard', phase: q.get('phase') || 'Envision',
+      /* D-096 cutover: Meridian is the default org altitude; WealthGrow lives at sub=dashboard (legacy v3) */
+      sub: q.get('sub') || (q.get('v') && q.get('v') !== 'org' ? 'dashboard' : 'meridian'),
+      phase: q.get('phase') || 'Envision',
       entry: q.get('entry') || 'overview', ctx: q.get('ctx') || null,
       tab: (tab && tab !== 'rels') ? tab : 'flow',   // legacy ?tab=rels links land on Event flow
       dom: q.get('dom') || null, bc: q.get('bc') || null,   // Meridian v4 altitude (D-094)
@@ -39,8 +41,8 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
     const q = new URLSearchParams();
     q.set('v', n.v);
     if (n.v === 'org') {
-      if (n.sub && n.sub !== 'dashboard') q.set('sub', n.sub);
-      if (n.sub === 'meridian') {
+      if (n.sub && n.sub !== 'meridian') q.set('sub', n.sub);
+      if (n.sub === 'meridian' || !n.sub) {
         if (n.dom) q.set('dom', n.dom); if (n.bc) q.set('bc', n.bc);
         if (n.mprod) { q.set('mprod', n.mprod); if (n.mtab && n.mtab !== 'envision') q.set('mtab', n.mtab); }
       }
@@ -233,6 +235,7 @@ function OrgDashboard({ onOpenPortfolio }) {
           <p className="asc-page-sub">{ORG.org.desc} Each portfolio is a book of AI-augmented products moving through the Envision → Realize lifecycle.</p>
         </div>
         <div className="asc-head-actions">
+          <span className="badge" title="The v3 demo org: its product graphs still carry the full two-way machinery (write path, agents, evals). Retires when Meridian reaches product-depth parity — it stays queryable via as_of either way.">legacy v3 · retires at parity</span>
           <button className="asc-btn"><Ico k="portfolio" w={14} /> New portfolio</button>
         </div>
       </div>
@@ -450,6 +453,11 @@ function OrgApp() {
     setTimeout(scrollTop, 0);
   }, []);
   const goOrg = useCallback(() => {
+    setSub('meridian'); setView('org');
+    window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', ...RESET });
+    setTimeout(scrollTop, 0);
+  }, []);
+  const goLegacyOrg = useCallback(() => {
     setSub('dashboard'); setView('org');
     window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'dashboard', ...RESET });
     setTimeout(scrollTop, 0);
@@ -482,7 +490,7 @@ function OrgApp() {
       <header className="asc-topbar">
         <div className="asc-brand" onClick={goOrg}>
           <div className="asc-mark">C</div>
-          <div><b>Cynergis</b><span>{ORG.org.name}</span></div>
+          <div><b>Cynergis</b><span>{(window.__KG4__ && window.__KG4__.org) ? window.__KG4__.org.org.name : ORG.org.name}</span></div>
         </div>
 
         <button className="asc-backbtn" disabled={!canBack} onClick={() => window.history.back()}
@@ -512,17 +520,17 @@ function OrgApp() {
         : view === 'org'
           ? <div className="asc-body">
               <NavRail sect="Organization" active={sub} onSelect={navSub}
-                items={[{ id:'dashboard', label:'Dashboard', icon:'dash' }, { id:'meridian', label:'Meridian org (v4)', icon:'org' }, { id:'prioritize', label:'Prioritize portfolios', icon:'board' }]} />
+                items={[{ id:'meridian', label:'Meridian org', icon:'org' }, { id:'dashboard', label:'WealthGrow (legacy v3)', icon:'dash' }, { id:'prioritize', label:'Prioritize portfolios', icon:'board' }]} />
               <main className="asc-main">
                 {sub === 'dashboard' ? <OrgDashboard onOpenPortfolio={openPortfolio} />
-                  : sub === 'meridian' ? React.createElement(window.MeridianOrg)
-                  : <PrioritizePortfolios onOpenPortfolio={openPortfolio} />}
+                  : sub === 'prioritize' ? <PrioritizePortfolios onOpenPortfolio={openPortfolio} />
+                  : React.createElement(window.MeridianOrg)}
               </main>
             </div>
           : <div className="asc-body">
               <NavRail sect={pf ? pf.name : 'Portfolio'} active={sub} onSelect={navSub}
                 items={[{ id:'dashboard', label:'Dashboard', icon:'dash' }, { id:'prioritize', label:'Prioritize products', icon:'board' }]}
-                foot={<div className="asc-nav" style={{ marginTop:'8px' }} onClick={goOrg}><Ico k="back" w={15} /> All portfolios</div>} />
+                foot={<div className="asc-nav" style={{ marginTop:'8px' }} onClick={goLegacyOrg}><Ico k="back" w={15} /> All portfolios</div>} />
               <main className="asc-main">
                 {sub === 'dashboard' ? <PortfolioPage id={pid} onBack={goOrg} onOpenProduct={openProduct} /> : <PrioritizeProducts portfolioId={pid} />}
               </main>
