@@ -60,5 +60,59 @@ window.__DOMAIN__ = {
       // Policies tab and the knowledge pack.
 
     },
+
+    /* ════════ ClaimsCore (Meridian, R2 — D-105) ════════
+       The behavioral half of the four walls' models — commands, events,
+       invariants — mirroring kg/org/domains/claims.js; invariants trace to
+       the lifecycle spec's FRs (kg/org/products/claimscore.js). */
+    'PROD-CLAIMSCORE': {
+      aggregates: [
+        {
+          id: 'AGG-LOSSREPORT', name: 'Loss report', context: 'CTX-FNOL', ucs: ['UC1', 'UC2', 'UC8'],
+          commands: ['Register report', 'Merge channel input', 'Score severity', 'Assign lane'],
+          events: ['Loss reported', 'Severity scored', 'Report assigned', 'Report handed to claim'],
+          invariants: [
+            { text: 'One loss event, one report — phone, app, web, broker and police feeds are channels into the same model, never separate models', fr: 'FR1' },
+            { text: 'Severity is recalculated as facts land — never frozen at intake', fr: 'FR2' },
+          ],
+        },
+        {
+          id: 'AGG-CLAIM', name: 'Claim', context: 'CTX-COVERAGE', ucs: ['UC3', 'UC4', 'UC6'],
+          commands: ['Open claim against snapshot', 'Record coverage decision', 'Move reserve', 'Instruct payment', 'Apply investigation hold'],
+          events: ['Claim opened', 'Coverage decided', 'Reserve moved', 'Payment instructed', 'Settlement held'],
+          invariants: [
+            { text: 'A claim exists only against a coverage snapshot fixed as at the date of loss — later policy changes never alter an open claim\u2019s coverage basis', fr: 'FR3' },
+            { text: 'Every coverage decision carries limits, deductibles and endorsement effects (OPCF 47R elections)', fr: 'FR4' },
+            { text: 'Every reserve move is evented for actuarial consumption', fr: 'FR5' },
+            { text: 'The ledger reflects instructed-not-yet-settled until Billing\u2019s outcome event returns', fr: 'FR6' },
+          ],
+        },
+        {
+          id: 'AGG-ABCLAIM', name: 'AB claim', context: 'CTX-AB', ucs: ['UC5'],
+          commands: ['Engage benefit streams', 'Apply elections', 'Net offsets'],
+          events: ['Benefits engaged', 'Election applied', 'Offset netted'],
+          invariants: [
+            { text: 'Benefits adjudicate against the SABS in force at the date of loss plus the insured\u2019s elected options, never against current wording', fr: 'FR7' },
+          ],
+        },
+        {
+          id: 'AGG-TREATPLAN', name: 'Treatment plan', context: 'CTX-AB', ucs: ['UC5'],
+          commands: ['Intake OCF', 'Decide plan', 'Authorize payment', 'Escalate clock'],
+          events: ['OCF received', 'Plan decided', 'Payment authorized', 'Clock escalated at 80%'],
+          invariants: [
+            { text: 'No payment without an approved plan or a statutory exception', fr: 'FR7' },
+            { text: 'Every plan decision is timestamped against SABS clocks — a miss is a deemed approval', fr: 'FR8' },
+          ],
+        },
+        {
+          id: 'AGG-SALVAGE', name: 'Salvage disposition', context: 'CTX-TOTAL-LOSS', ucs: ['UC7'],
+          commands: ['Determine ACV', 'Offer settlement', 'File brand', 'Dispose salvage'],
+          events: ['Threshold breached', 'ACV determined', 'Owner settled', 'Salvage returned'],
+          invariants: [
+            { text: 'One vehicle, one disposition — settlement to the owner and recovery from the asset are the same file, never two', fr: 'FR9' },
+          ],
+        },
+      ],
+    },
   },
 };

@@ -862,7 +862,7 @@ function DesignContexts({ product, prd }) {
     window.__cynSetSel = id => { window.__cynCtxSel = id; setSel(id); };      // raw apply for Back/Forward (no URL push)
     return () => { delete window.__cynSelectCtx; delete window.__cynSetSel; };
   });
-  if (!prd || !D) return <div className="ddd-empty">No bounded contexts yet — they emerge from the domain model.</div>;
+  if (!D) return <div className="ddd-empty">No bounded contexts yet — they emerge from the domain model.</div>;
 
   const selCtx = sel && D.contexts.find(c => c.id === sel);
   if (selCtx) return <ContextDetail c={selCtx} D={D} M={M} prd={prd} onBack={() => navSel(null)} />;
@@ -891,7 +891,41 @@ function DesignContexts({ product, prd }) {
 /* the context map — its own Design page: how the contexts relate (one per product) */
 function DesignContextMap({ product, prd }) {
   const D = dddData(product);
-  if (!prd || !D) return <div className="ddd-empty">No context map yet — it appears once bounded contexts are identified.</div>;
+  if (!D) return <div className="ddd-empty">No context map yet — it appears once bounded contexts are identified.</div>;
+  /* products without an interactive canvas yet (canvas:false, e.g. ClaimsCore — R2, D-105)
+     still get the REAL map: every seam typed, from the same relations register */
+  if (D.canvas === false) {
+    return (
+      <div className="ddd-wrap">
+        <div className="ddd-intro">
+          <div className="ddd-eyebrow"><DDPico d={DDI.flow} w={12} /> DESIGN · CONTEXT MAP</div>
+          <p className="ddd-lead">
+            How this product's bounded contexts relate — every standing relationship, <b>typed by pattern</b>:
+            the relationship type IS the management. The interactive canvas for this product arrives with a
+            later rehoming pass; the seams below are the same register it will draw.
+          </p>
+        </div>
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Context map — the seams, typed</div>
+            <div className="asc-sec-sub">Pattern · upstream end · what crosses — mirrored from the Claims member graph</div>
+          </div>
+          {(D.relations || []).map((r, i) => (
+            <div className="dm-rel" key={i}>
+              <div className="dm-rel-h">
+                <span className="dm-chip event">{r.from}</span>
+                <span className="dm-pol-arrow"><DDPico d={DDI.arrow} w={14} /></span>
+                <span className="dm-chip event">{r.to}</span>
+                <span className="dm-chip policy">{r.pattern}</span>
+                <span className="dm-rel-carries">carries: {r.label} · upstream: {r.upstream}</span>
+              </div>
+              <p className="dm-rel-flow">{r.flow}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="ddd-wrap">
       <div className="ddd-intro">
@@ -922,7 +956,42 @@ function DesignContextMap({ product, prd }) {
    map: System map → product → contexts → (Context map) → event flows → cards. */
 function DesignSystemMap({ product, prd }) {
   const D = dddData(product);
-  if (!prd || !D) return <div className="ddd-empty">No system map yet — it appears once the architecture is authored.</div>;
+  if (!D) return <div className="ddd-empty">No system map yet — it appears once the architecture is authored.</div>;
+  /* canvas-less products (R2, D-105): the system-context view as the external
+     parties register — who feeds and consumes this product, over which seam */
+  if (D.canvas === false) {
+    const externals = (D.relations || []).filter(r => !String(r.from).startsWith('CTX-') || !String(r.to).startsWith('CTX-'));
+    return (
+      <div className="ddd-wrap">
+        <div className="ddd-intro">
+          <div className="ddd-eyebrow"><DDPico d={DDI.flow} w={12} /> DESIGN · SYSTEM MAP</div>
+          <p className="ddd-lead">
+            The product in its world — <b>who feeds it and who consumes it</b>, each over a typed seam.
+            The interactive C4 canvas for this product arrives with a later rehoming pass; the register
+            below is the same set of boundaries it will draw.
+          </p>
+        </div>
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> External parties &amp; cross-domain seams</div>
+            <div className="asc-sec-sub">Everything crossing this product's boundary — vendors behind ACLs, domains behind published language</div>
+          </div>
+          {externals.map((r, i) => (
+            <div className="dm-rel" key={i}>
+              <div className="dm-rel-h">
+                <span className="dm-chip event">{r.from}</span>
+                <span className="dm-pol-arrow"><DDPico d={DDI.arrow} w={14} /></span>
+                <span className="dm-chip event">{r.to}</span>
+                <span className="dm-chip policy">{r.pattern}</span>
+                <span className="dm-rel-carries">carries: {r.label}</span>
+              </div>
+              <p className="dm-rel-flow">{r.flow}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="ddd-wrap">
       <div className="ddd-intro">
