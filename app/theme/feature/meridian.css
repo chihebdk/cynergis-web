@@ -21,6 +21,7 @@
 .mer-fact .k { color:var(--ink-3); font-size:12px; font-weight:600; }
 .mer-fact .v { color:var(--ink-2); line-height:1.5; }
 .mer-fact.warn .k { color:var(--warn); }
+.mer-fact.stack { grid-template-columns:1fr; gap:4px; padding:8px 0 0; margin-top:8px; border-bottom:none; border-top:1px solid var(--line); }
 
 /* ---------- pattern chips (context map vocabulary) ---------- */
 .mer-pat { flex:none; font-family:var(--font-mono); font-size:10px; font-weight:500; padding:2.5px 8px;

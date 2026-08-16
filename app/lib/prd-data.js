@@ -230,6 +230,7 @@ window.__PRD__ = {
    ============================================================ */
 window.__PRD4__ = {
   'PROD-CLAIMSCORE': {
+    productId:'PROD-CLAIMSCORE',   // v4 marker: Build/Operate/Realize entries derive from THIS product's graph (D-107)
     overview:{
       projectName:'ClaimsCore — the Claims domain\u2019s transactional backbone',
       author:'Atlas', date:'2026-08-16',

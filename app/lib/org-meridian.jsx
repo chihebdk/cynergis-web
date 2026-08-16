@@ -760,7 +760,7 @@ function MerContext({ id }) {
    approval.decide (with node-level supersession, D-087) and
    incident.apply ride the gated write path into the v4 lifecycle
    spec; governance acts stay human-reserved (D-056). */
-function MerOperate({ cc, lbl }) {
+function MerOperate({ cc, lbl, only }) {
   const [acted, setActed] = useState({});          // id → optimistic act echo
   const [aprForm, setAprForm] = useState(null);    // {id, conditions}
   const STAGED = <span className="badge err" title="Staged onto the gated write path. Run `node kg/apply.js` — the routed spec edit lands in kg/org/products/claimscore.js, regenerates, and the record returns from the derived KB.">staged · node kg/apply.js</span>;
@@ -782,8 +782,9 @@ function MerOperate({ cc, lbl }) {
     stageChange('incident.escalate', inc.localId, { at, graph: 'claimscore' });
   };
 
+  const show = k => !only || only === k;
   return (<>
-    <div className="asc-section">
+    {show('slos') && <div className="asc-section">
       <div className="asc-sec-head"><div className="asc-sec-title">SLOs</div><div className="asc-sec-sub">Knowledge, not telemetry: the series live behind `observed_via` pointers (doctrine 1)</div></div>
       <div className="mer-journeys">
         {cc.nodes('Slo').map(s => (
@@ -794,9 +795,9 @@ function MerOperate({ cc, lbl }) {
           </div>
         ))}
       </div>
-    </div>
+    </div>}
     <div className="mer-two">
-      <div className="asc-section">
+      {show('incidents') && <div className="asc-section">
         <div className="asc-sec-head"><div className="asc-sec-title">Incidents</div>
           <div className="asc-sec-sub">Low-risk remediations prepared by the Operator; ONE human Apply</div></div>
         {cc.nodes('Incident').map(inc => {
@@ -845,8 +846,8 @@ function MerOperate({ cc, lbl }) {
             </div>
           );
         })}
-      </div>
-      <div className="asc-section">
+      </div>}
+      {show('approvals') && <div className="asc-section">
         <div className="asc-sec-head"><div className="asc-sec-title">Approvals</div>
           <div className="asc-sec-sub">Governance acts are human-reserved at every tier (D-056) · decisions supersede, never overwrite (D-087)</div></div>
         {cc.nodes('Approval').filter(a => a.status !== 'superseded').map(a => {
@@ -890,9 +891,9 @@ function MerOperate({ cc, lbl }) {
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
-    <div className="asc-section">
+    {show('runbooks') && <div className="asc-section">
       <div className="asc-sec-head"><div className="asc-sec-title">Runbooks — skills with named executors</div></div>
       <div className="mer-two">
         {cc.nodes('Runbook').map(rb => (
@@ -904,7 +905,7 @@ function MerOperate({ cc, lbl }) {
           </div>
         ))}
       </div>
-    </div>
+    </div>}
   </>);
 }
 
@@ -1145,6 +1146,125 @@ function MerProduct({ id, tab }) {
     </div>
   );
 }
+
+/* ---------- Build/Operate/Realize entries on the PRODUCT PAGE (D-107) ----------
+   The v3 product page's registers, derived from the product's OWN v4 graph —
+   never another product's. Rendered via DisDesContent's v4 branch when the
+   PRD carries `productId`. Entries with no v4 content return null and the
+   page shows its honest phase-status empty state. */
+function Kg4RealizeEntry({ cc, entry }) {
+  const P = cc.nodes('Product')[0];
+  if (entry === 'value') {
+    const v = (P.props || {}).valueRollup;
+    if (!v) return null;
+    return (
+      <div className="mer-panel">
+        <div className="mer-k">Value rollup — from the lifecycle graph</div>
+        <p><b>{v.annualized}</b> annualized against a {v.target} target · {v.rampQuarter} · {v.basis}</p>
+        <div className="mer-h-act" style={{ marginTop: 6 }}>Rolls into the domain envelope trends that feed the quarterly outcome review (D-097).</div>
+      </div>
+    );
+  }
+  if (entry === 'decision') {
+    return (<>
+      {cc.nodes('Decision').filter(d => d.props.decided).map(d => (
+        <div className="mer-panel" key={d.id}>
+          <div className="mer-h-top"><b>{d.label}</b><span className="badge ok">{d.props.status}</span></div>
+          <div className="mer-h-act">Options weighed: {(d.props.options || []).join(' · ')}</div>
+          <div className="mer-h-act" style={{ marginTop: 6 }}><b>Conditions:</b> {d.props.conditions}</div>
+        </div>
+      ))}
+      {cc.nodes('Learning').map(l => (
+        <div className="mer-health" key={l.id}><div className="mer-h-top"><b>{l.label}</b><span className="badge">learning</span></div><div className="mer-h-act">{l.props.note}</div></div>
+      ))}
+    </>);
+  }
+  /* outcomes */
+  return (<>
+    {cc.nodes('Outcome').map(o => {
+      const sc = cc.byId.get((cc.out(o.id, 'actualizes')[0] || {}).to);
+      return (
+        <div className="mer-seam" key={o.id}>
+          <span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{sc ? sc.label : o.label}</b></span>
+          <span className="mer-pat other">{o.props.current} vs {sc ? sc.props.target : '—'}</span>
+          <span className="mer-seam-what">{o.props.note} {cc.out(o.id, 'attributed_to').map(e => `${(cc.byId.get(e.to) || {}).localId} ${Math.round((e.props.share || 0) * 100)}%`).join(' · ')}</span>
+        </div>
+      );
+    })}
+  </>);
+}
+function Kg4BuildEntry({ cc, entry }) {
+  if (entry === 'tests') {
+    return (<>
+      {cc.nodes('AcceptanceTest').map(at => (
+        <div className="mer-gherkin" key={at.id}>
+          <div className="mer-gh-top"><b>{at.localId}</b><span>{(cc.byId.get((cc.out(at.id, 'tests')[0] || {}).to) || {}).label}</span><span className={'badge ' + (at.props.status === 'pass' ? 'ok' : 'err')}>{at.props.status}</span></div>
+          <pre>{at.props.gherkin}</pre>
+        </div>
+      ))}
+    </>);
+  }
+  if (entry === 'backlog') {
+    const rows = cc.nodes('DeliveryItem');
+    if (!rows.length) return null;
+    return (<>
+      {rows.map(dl => (
+        <div className="mer-seam" key={dl.id}>
+          <span className="mer-seam-ends" style={{ minWidth: 280 }}><b>{dl.label}</b></span>
+          <span className={'badge ' + (dl.props.status === 'done' ? 'ok' : '')}>{dl.props.status}</span>
+          <span className="mer-seam-what">tracks {cc.out(dl.id, 'tracks').map(e => (cc.byId.get(e.to) || {}).localId).join(', ')}</span>
+        </div>
+      ))}
+    </>);
+  }
+  if (entry === 'agents') {
+    /* the D-065 pairs on this product's walls, from the claims member graph */
+    const ctxIds = new Set(cc.nodes('Component').map(c => (cc.byId.get((cc.out(c.id, 'part_of')[0] || {}).to) || {}).localId).filter(Boolean));
+    const walls = [...ctxIds].map(id => ({ id, dep: M.depth.get(id) })).filter(w => w.dep && (w.dep.agents || []).length);
+    if (!walls.length) return null;
+    return (<>
+      {walls.map(w => (
+        <div className="asc-section" key={w.id}>
+          <div className="asc-sec-head"><div className="asc-sec-title">{w.dep.node.label}</div>
+            <div className="asc-sec-sub">The two agents on this wall (D-065) — <button type="button" className="mer-link" onClick={() => goContext(w.id)}>open the context page →</button></div></div>
+          <div className="mer-two">
+            {w.dep.agents.map(a => (
+              <div className="mer-panel" key={a.id}>
+                <div className="mer-h-top"><b>{a.label}</b>
+                  <span className={'badge ' + (a.props.kind === 'operations' ? 'ok' : '')}>{a.props.kind === 'operations' ? `deployed · ${a.props.tier}` : 'harness · builder'}</span>
+                </div>
+                {a.props.knows && <div className="mer-h-act">{a.props.knows}</div>}
+                {a.props.tierNote && <div className="mer-h-act" style={{ marginTop: 4 }}>{a.props.tierNote}</div>}
+                {(a.props.guardrails || []).length > 0 && (
+                  <div className="mer-fact stack"><span className="k">Guardrails</span><span className="v">{a.props.guardrails.map((x, i) => <div key={i}>· {x}</div>)}</span></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>);
+  }
+  return null;   // infra / integ / evals: no v4 content yet — the page's honest empty state renders
+}
+function Kg4PhaseEntry({ phase, entry, productId }) {
+  const p4 = M && M.prods4[productId];
+  if (!p4) return null;
+  const cc = p4.idx;
+  const lbl = nId => (cc.byId.get(nId) || {}).label;
+  if (phase === 'Operate') {
+    const sect = { fleet: 'slos', incidents: 'incidents', approvals: 'approvals', runbooks: 'runbooks' }[entry];
+    if (!sect || !cc.nodes('Slo').length) return null;
+    return <MerOperate cc={cc} lbl={lbl} only={sect} />;
+  }
+  if (phase === 'Realize') {
+    if (!cc.nodes('Outcome').length) return null;
+    return <Kg4RealizeEntry cc={cc} entry={entry} />;
+  }
+  if (phase === 'Build') return <Kg4BuildEntry cc={cc} entry={entry} />;
+  return null;
+}
+if (typeof window !== 'undefined') window.Kg4PhaseEntry = Kg4PhaseEntry;
 
 /* ---------- ⌘K search over the v4 graphs ---------- */
 const PHASE_OF_TYPE = {

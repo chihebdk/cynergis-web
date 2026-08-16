@@ -1877,6 +1877,12 @@ function BuildBacklog({ prd }) {
 /* ===================== dispatcher ===================== */
 function DisDesContent({ phase, entry, prd }) {
   if (!prd) return null;
+  /* v4 products (D-107): Build/Operate/Realize registers derive from the
+     product's OWN lifecycle graph — never another product's KG. Entries with
+     no v4 content return null and the caller renders its honest empty state. */
+  if (prd.productId && ['Build', 'Operate', 'Realize'].includes(phase) && typeof window !== 'undefined' && window.Kg4PhaseEntry) {
+    return window.Kg4PhaseEntry({ phase, entry, productId: prd.productId });
+  }
   const map = {
     // Discover (the validated-problem artifacts)
     'Discover/personas':     DiscoverPersonas,
