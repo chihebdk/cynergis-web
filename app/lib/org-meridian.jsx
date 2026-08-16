@@ -106,6 +106,7 @@ function nav(n) {
 const goChart = () => nav({});
 const goDomain = id => nav({ dom: id });
 const goContext = id => nav({ bc: id });
+const goProduct = (id, tab) => nav({ mprod: id, mtab: tab || 'envision' });
 function DerivedStrip({ graph, extra }) {
   return (
     <div className="mer-derived">
@@ -393,9 +394,10 @@ function MerDomain({ id }) {
             <div className="mer-prod" key={p.node.id}>
               <div className="mer-prod-top">
                 <b>{p.node.label}</b><span className="mer-prod-kind">{p.node.props.kind}</span>
-                {p.node.localId === 'PROD-CLAIMSCORE' && M.ccoreGates && (
-                  <span className="badge ok" title={Object.entries(M.ccoreGates).map(([k, v]) => `${k}: ${v}`).join('\n')}>
-                    <span className="dot ok"></span>six-phase · {Object.keys(M.ccoreGates).length} gates ✓</span>
+                {M.ccore && (M.ccore.nodes('Product')[0] || {}).localId === p.node.localId && (
+                  <button type="button" className="badge ok mer-gatelink" title={M.ccoreGates ? Object.entries(M.ccoreGates).map(([k, v]) => `${k}: ${v}`).join('\n') : ''}
+                    onClick={() => goProduct(p.node.localId)}>
+                    <span className="dot ok"></span>six-phase lifecycle · {Object.keys(M.ccoreGates || {}).length} gates ✓ →</button>
                 )}
               </div>
               <div className="mer-prod-owner">Owner: {p.owner ? p.owner.label : '—'}</div>
@@ -569,6 +571,320 @@ function MerContext({ id }) {
   );
 }
 
+/* ---------- product lifecycle page (six phases from claimscore:*) ---------- */
+const PHASES4 = [['envision', 'Envision'], ['discover', 'Discover'], ['design', 'Design'], ['build', 'Build'], ['operate', 'Operate'], ['realize', 'Realize']];
+
+function MerProduct({ id, tab }) {
+  const cc = M.ccore;
+  const P = cc ? cc.nodes('Product')[0] : null;
+  if (!P || P.localId !== id) {
+    return <div className="asc-page"><div className="asc-panel asc-panel-pad">No lifecycle graph for this product yet — only packaging exists. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
+  }
+  const orgP = M.org.byLocal.get(id);
+  const homeDomain = orgP ? M.ctxDomain.get((M.org.out(orgP.id, 'packages')[0] || {}).to) : null;
+  const gates = P.props.gates || {};
+  const t = PHASES4.some(([k]) => k === tab) ? tab : 'envision';
+
+  const scs = cc.nodes('SuccessMetric'), vds = cc.nodes('ValueDriver'), ucs = cc.nodes('UseCase');
+  const comps = cc.nodes('Component'), frs = cc.nodes('FunctionalRequirement');
+  const lbl = nId => (cc.byId.get(nId) || {}).label;
+  const scOf = vd => cc.out(vd.id, 'measured_by').map(e => cc.byId.get(e.to));
+  const ctxOfComp = cmp => cc.byId.get((cc.out(cmp.id, 'part_of')[0] || {}).to);
+
+  return (
+    <div className="asc-page">
+      <div className="mer-crumb">
+        <button type="button" className="mer-link" onClick={goChart}>Meridian org</button> / {homeDomain && <><button type="button" className="mer-link" onClick={() => goDomain(homeDomain.localId)}>{homeDomain.label}</button> / </>}<b>{P.label}</b>
+      </div>
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Product · {P.props.kind} · owner {P.props.owner}</div>
+          <h1 className="asc-page-title">{P.label}</h1>
+          <p className="asc-page-sub">{P.props.bet}</p>
+        </div>
+        <div className="asc-head-actions">
+          <span className="badge ok" title={Object.entries(gates).map(([k, v]) => `${k}: ${v}`).join('\n')}><span className="dot ok"></span>{Object.keys(gates).length} gates recorded</span>
+        </div>
+      </div>
+
+      <div className="mer-tabs">
+        {PHASES4.map(([k, name]) => (
+          <button type="button" key={k} className={'mer-tab' + (t === k ? ' on' : '')} onClick={() => goProduct(id, k)}>
+            {name}{gates[k] && <span className="tick">✓</span>}
+          </button>
+        ))}
+      </div>
+
+      {t === 'envision' && (<>
+        <div className="mer-two">
+          <div className="mer-panel"><div className="mer-k">The problem</div><p>{P.props.problem}</p></div>
+          <div className="mer-panel"><div className="mer-k">The bet</div><p>{P.props.bet}</p></div>
+        </div>
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">Success criteria</div><div className="asc-sec-sub">Baseline → target, each with an outcome tracking it in Realize</div></div>
+          {scs.map(sc => (
+            <div className="mer-seam" key={sc.id}>
+              <span className="mer-seam-ends" style={{ minWidth: 220 }}><b>{sc.label}</b></span>
+              <span className="mer-pat other">{sc.props.baseline} → {sc.props.target}</span>
+              <span className="mer-seam-what">{sc.props.statement}</span>
+            </div>
+          ))}
+        </div>
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">Value drivers</div></div>
+          <div className="mer-journeys">
+            {vds.map(vd => (
+              <div className="mer-jr" key={vd.id}><b>{vd.label}</b>
+                <div className="mer-jr-home">{vd.props.statement}</div>
+                <div className="mer-jr-meas">measured by {scOf(vd).map(s => s.label).join(' · ')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mer-two">
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">People</div></div>
+            {cc.nodes('Persona').map(p => <div className="mer-health" key={p.id}><div className="mer-h-top"><b>{p.label}</b><span className="badge">persona</span></div><div className="mer-h-act">{p.props.note}</div></div>)}
+            {cc.nodes('Stakeholder').map(s => <div className="mer-health" key={s.id}><div className="mer-h-top"><b>{s.label}</b><span className="badge">stakeholder</span></div><div className="mer-h-act">{s.props.stake}</div></div>)}
+          </div>
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">Alignment &amp; risk</div></div>
+            {cc.nodes('Objective').map(o => (
+              <div className="mer-panel" key={o.id}><div className="mer-k">Objective</div><p><b>{o.label}</b></p>
+                {cc.out(o.id, 'has').map(e => cc.byId.get(e.to)).map(kr => (
+                  <div className="mer-kr" key={kr.id}>{kr.label} <span className="mer-pat other">targets {lbl((cc.out(kr.id, 'targets')[0] || {}).to)}</span></div>
+                ))}
+              </div>
+            ))}
+            {cc.nodes('Risk').map(r => <div className="mer-health" key={r.id}><div className="mer-h-top"><b>{r.label}</b><span className="badge err">risk</span></div><div className="mer-h-act">{r.props.note}</div></div>)}
+          </div>
+        </div>
+      </>)}
+
+      {t === 'discover' && (<>
+        {cc.nodes('Journey').map(j => (
+          <div className="mer-panel" key={j.id}><div className="mer-k">The journey</div><p><b>{j.label}</b> — {j.props.note}</p></div>
+        ))}
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">Use cases</div><div className="asc-sec-sub">Every one belongs to the journey, has an actor, advances a driver, and cites its evidence</div></div>
+          <div className="mer-subgrid">
+            {ucs.map(uc => (
+              <div className="mer-sub" key={uc.id} style={{ cursor: 'default' }}>
+                <div className="mer-sub-top"><span className="mer-pat other">{uc.localId}</span><h3>{uc.label}</h3></div>
+                <div className="mer-sub-bc">{lbl((cc.out(uc.id, 'performed_by')[0] || {}).to)} · advances {cc.out(uc.id, 'advances').map(e => lbl(e.to)).join(', ')}</div>
+                <p className="mer-sub-p">{uc.props.note}</p>
+                <div className="mer-sub-foot"><span>cites {cc.out(uc.id, 'cites').map(e => lbl(e.to)).join(', ') || '—'}</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>)}
+
+      {t === 'design' && (<>
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">The modules — furniture on the walls</div><div className="asc-sec-sub">Each component is a packaged module `part_of` exactly one context (I1 at lifecycle depth)</div></div>
+          <div className="mer-subgrid">
+            {comps.map(cmp => {
+              const ctx = ctxOfComp(cmp);
+              const frsOf = cc.out(cmp.id, 'implements').map(e => cc.byId.get(e.to));
+              const skill = cc.nodes('Skill').find(s => cc.out(s.id, 'realizes').some(e => e.to === cmp.id));
+              return (
+                <div className="mer-sub" key={cmp.id} style={{ cursor: 'default' }}>
+                  <div className="mer-sub-top"><h3>{cmp.label}</h3></div>
+                  <div className="mer-sub-bc">wall: {ctx ? <button type="button" className="mer-link" onClick={() => goContext(ctx.localId)}>{ctx.label}</button> : '—'}</div>
+                  <p className="mer-sub-p">{frsOf.map(f => f.label).join(' · ')}</p>
+                  <div className="mer-sub-foot"><code style={{ fontSize: 10 }}>{cmp.props.code}</code>{skill && <span className="mer-pat pn">{skill.localId} · {skill.props.tier}</span>}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="mer-two">
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">Decisions (ADRs)</div></div>
+            {cc.nodes('Decision').filter(d => d.localId.startsWith('ADR')).map(d => (
+              <div className="mer-health" key={d.id}><div className="mer-h-top"><b>{d.label}</b><span className="badge ok">{d.props.status}</span></div><div className="mer-h-act">{d.props.note}</div></div>
+            ))}
+            <div className="asc-sec-head" style={{ marginTop: 14 }}><div className="asc-sec-title">Contracts</div></div>
+            {cc.nodes('Contract').map(k => (
+              <div className="mer-health" key={k.id}><div className="mer-h-top"><b>{k.label}</b><span className="badge">{k.props.contractType} · {lbl((cc.out(k.id, 'owned_by')[0] || {}).to)}</span></div><div className="mer-h-act">{k.props.note}</div></div>
+            ))}
+          </div>
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">Acceptance — Gherkin on every use case</div></div>
+            {cc.nodes('AcceptanceTest').map(at => (
+              <div className="mer-gherkin" key={at.id}>
+                <div className="mer-gh-top"><b>{at.localId}</b><span>{lbl((cc.out(at.id, 'tests')[0] || {}).to)}</span><span className={'badge ' + (at.props.status === 'pass' ? 'ok' : 'err')}>{at.props.status}</span></div>
+                <pre>{at.props.gherkin}</pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>)}
+
+      {t === 'build' && (<>
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">Delivery slices</div><div className="asc-sec-sub">Every use case tracked; suite green before the gate</div></div>
+          {cc.nodes('DeliveryItem').map(dl => (
+            <div className="mer-seam" key={dl.id}>
+              <span className="mer-seam-ends" style={{ minWidth: 280 }}><b>{dl.label}</b></span>
+              <span className={'badge ' + (dl.props.status === 'done' ? 'ok' : '')}>{dl.props.status}</span>
+              <span className="mer-seam-what">tracks {cc.out(dl.id, 'tracks').map(e => (cc.byId.get(e.to) || {}).localId).join(', ')}</span>
+            </div>
+          ))}
+        </div>
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">As built</div><div className="asc-sec-sub">Every module carries its code ref — the no-fabrication rule (D-079)</div></div>
+          {comps.map(cmp => (
+            <div className="mer-seam" key={cmp.id}>
+              <span className="mer-seam-ends" style={{ minWidth: 280 }}><b>{cmp.label}</b></span>
+              <code style={{ fontSize: 11 }}>{cmp.props.code}</code>
+              {ctxOfComp(cmp) && <span className="mer-seam-what">on {ctxOfComp(cmp).label}</span>}
+            </div>
+          ))}
+        </div>
+      </>)}
+
+      {t === 'operate' && (<>
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">SLOs</div><div className="asc-sec-sub">Knowledge, not telemetry: the series live behind `observed_via` pointers (doctrine 1)</div></div>
+          <div className="mer-journeys">
+            {cc.nodes('Slo').map(s => (
+              <div className="mer-jr" key={s.id}>
+                <div className="mer-h-top"><b>{s.label}</b><span className={'badge ' + (s.props.health === 'green' ? 'ok' : 'err')}>{s.props.health}</span></div>
+                <div className="mer-jr-home">{s.props.current} against {s.props.target} · {lbl((cc.out(s.id, 'measures')[0] || {}).to)}</div>
+                <div className="mer-jr-meas">{((cc.out(s.id, 'observed_via')[0] || {}).props || {}).query}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mer-two">
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">Incidents</div></div>
+            {cc.nodes('Incident').map(inc => (
+              <div className="mer-panel" key={inc.id}>
+                <div className="mer-h-top"><b>{inc.label}</b><span className="badge">{inc.props.severity} · {inc.props.status}</span></div>
+                <div className="mer-fact"><span className="k">Discovery</span><span className="v">{inc.props.discovery}</span></div>
+                <div className="mer-fact"><span className="k">Finding</span><span className="v">{inc.props.finding}</span></div>
+                <div className="mer-fact"><span className="k">Remediation</span><span className="v">{inc.props.remediation} · runbook {(cc.byId.get((cc.out(inc.id, 'remediated_by')[0] || {}).to) || {}).localId}</span></div>
+              </div>
+            ))}
+            {cc.nodes('Approval').map(a => (
+              <div className="mer-panel" key={a.id}>
+                <div className="mer-h-top"><b>{a.label}</b><span className="badge ok">{a.props.status} · {a.props.approver}</span></div>
+                <div className="mer-h-act">Conditions: {a.props.conditions}</div>
+              </div>
+            ))}
+          </div>
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">Runbooks — skills with named executors</div></div>
+            {cc.nodes('Runbook').map(rb => (
+              <div className="mer-panel" key={rb.id}>
+                <div className="mer-h-top"><b>{rb.label}</b><span className="mer-pat pn">{(cc.byId.get((cc.out(rb.id, 'uses_skill')[0] || {}).to) || {}).localId}</span></div>
+                <div className="mer-h-act">Trigger: {rb.props.trigger}</div>
+                <ol className="mer-steps">{(rb.props.steps || []).map((s, i) => <li key={i}>{s}</li>)}</ol>
+                <div className="mer-oms">{(rb.props.mcp || []).map(m => <span className="mer-om" key={m}><code style={{ fontSize: 10 }}>{m}</code></span>)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>)}
+
+      {t === 'realize' && (<>
+        <div className="mer-panel">
+          <div className="mer-k">Value rollup</div>
+          <p><b>{(P.props.valueRollup || {}).annualized}</b> annualized against a {(P.props.valueRollup || {}).target} target · {(P.props.valueRollup || {}).rampQuarter} · {(P.props.valueRollup || {}).basis}</p>
+        </div>
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">Outcomes vs criteria</div><div className="asc-sec-sub">Mid-ramp truth with attribution shares — sourced from Operate, never asserted</div></div>
+          {cc.nodes('Outcome').map(o => {
+            const sc = cc.byId.get((cc.out(o.id, 'actualizes')[0] || {}).to);
+            return (
+              <div className="mer-seam" key={o.id}>
+                <span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{sc ? sc.label : o.label}</b></span>
+                <span className="mer-pat other">{o.props.current} vs {sc ? sc.props.target : '—'}</span>
+                <span className="mer-seam-what">{o.props.note} {cc.out(o.id, 'attributed_to').map(e => `${(cc.byId.get(e.to) || {}).localId} ${Math.round((e.props.share || 0) * 100)}%`).join(' · ')}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mer-two">
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">Learnings</div></div>
+            {cc.nodes('Learning').map(l => (
+              <div className="mer-health" key={l.id}><div className="mer-h-top"><b>{l.label}</b></div><div className="mer-h-act">{l.props.note}</div></div>
+            ))}
+          </div>
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">Go-forward</div></div>
+            {cc.nodes('Decision').filter(d => d.props.decided).map(d => (
+              <div className="mer-panel" key={d.id}>
+                <div className="mer-h-top"><b>{d.label}</b><span className="badge ok">{d.props.status}</span></div>
+                <div className="mer-h-act">Options weighed: {(d.props.options || []).join(' · ')}</div>
+                <div className="mer-h-act" style={{ marginTop: 6 }}><b>Conditions:</b> {d.props.conditions}</div>
+                <div className="mer-h-act" style={{ marginTop: 6 }}>informed by {cc.out(d.id, 'informed_by').map(e => (cc.byId.get(e.to) || {}).localId).join(', ')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>)}
+
+      <DerivedStrip graph={cc.g} extra={<>gates recorded: {Object.entries(gates).map(([k, v]) => `${k} ✓`).join(' · ')} · <code>kg/org/products/claimscore.js</code></>} />
+    </div>
+  );
+}
+
+/* ---------- ⌘K search over the v4 graphs ---------- */
+const PHASE_OF_TYPE = {
+  SuccessMetric: 'envision', ValueDriver: 'envision', Persona: 'envision', Stakeholder: 'envision', Objective: 'envision', KeyResult: 'envision', Risk: 'envision',
+  Journey: 'discover', UseCase: 'discover', Source: 'discover',
+  FunctionalRequirement: 'design', Component: 'design', Contract: 'design', Decision: 'design', AcceptanceTest: 'design', Skill: 'design', Nfr: 'design',
+  DeliveryItem: 'build',
+  Slo: 'operate', Incident: 'operate', Approval: 'operate', Runbook: 'operate', DataSource: 'operate',
+  Outcome: 'realize', Learning: 'realize',
+};
+function kg4Search(needle) {
+  if (!M) return [];
+  const hits = [];
+  const scan = (idx, graphKey) => {
+    for (const n of idx.g.nodes) {
+      if ((n.label || '').toLowerCase().includes(needle) || (n.localId || '').toLowerCase().includes(needle)) hits.push({ n, graphKey });
+    }
+  };
+  scan(M.org, 'org');
+  if (M.claims) scan(M.claims, 'claims');
+  if (M.ccore) scan(M.ccore, 'claimscore');
+  const goFor = ({ n, graphKey }) => {
+    if (graphKey === 'org') {
+      if (n.type === 'Domain') return () => goDomain(n.localId);
+      if (n.type === 'BoundedContext') return () => goContext(n.localId);
+      if (n.type === 'Product') {
+        if (M.ccore && (M.ccore.nodes('Product')[0] || {}).localId === n.localId) return () => goProduct(n.localId);
+        const pk = M.products.find(p => p.node.id === n.id);
+        const dom = pk && pk.packages[0] && pk.packages[0].ctx ? M.ctxDomain.get(pk.packages[0].ctx.id) : null;
+        return dom ? () => goDomain(dom.localId) : goChart;
+      }
+      if (n.type === 'Team') {
+        const dom = M.org.byId.get((M.org.out(n.id, 'part_of')[0] || {}).to);
+        return dom ? () => goDomain(dom.localId) : goChart;
+      }
+      return goChart;
+    }
+    if (graphKey === 'claims') {
+      if (n.type === 'BoundedContext') return () => goContext(n.localId);
+      const ctxId = String(n.localId).split(':')[0];
+      if (ctxId.startsWith('CTX-')) return () => goContext(ctxId);
+      return () => goDomain('DOM-CLAIMS');
+    }
+    const pid = (M.ccore.nodes('Product')[0] || {}).localId;
+    return () => goProduct(pid, PHASE_OF_TYPE[n.type] || 'envision');
+  };
+  return hits.slice(0, 8).map(h => ({
+    type: h.n.type, id: h.n.id, localId: h.n.localId, label: h.n.label, graphKey: h.graphKey, go: goFor(h),
+  }));
+}
+if (typeof window !== 'undefined') window.__kg4Search = kg4Search;
+
 /* ---------- entry ---------- */
 function MeridianOrg() {
   const n = typeof window !== 'undefined' && window.cynParseUrl ? window.cynParseUrl() : {};
@@ -576,6 +892,7 @@ function MeridianOrg() {
     return <div className="asc-page"><div className="asc-panel asc-panel-pad">The v4 graphs are not generated yet — run <code>node kg/generate-v4.js</code>.</div></div>;
   }
   if (n.bc) return <MerContext id={n.bc} />;
+  if (n.mprod) return <MerProduct id={n.mprod} tab={n.mtab || 'envision'} />;
   if (n.dom) return <MerDomain id={n.dom} />;
   return <MerChart />;
 }

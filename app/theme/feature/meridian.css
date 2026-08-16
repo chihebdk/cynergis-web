@@ -156,6 +156,29 @@
 .mer-posture b { display:block; margin-bottom:4px; }
 .mer-posture p { margin:0; color:var(--ink-3); line-height:1.55; }
 
+/* ---------- product lifecycle page (D-095) ---------- */
+.mer-tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:18px; }
+.mer-tab { background:none; border:none; border-bottom:2px solid transparent; padding:9px 14px; font:inherit;
+  font-size:13px; font-weight:500; color:var(--ink-3); cursor:pointer; display:flex; align-items:center; gap:6px; }
+.mer-tab:hover { color:var(--ink); }
+.mer-tab.on { color:var(--ink); border-bottom-color:var(--accent); font-weight:600; }
+.mer-tab .tick { color:var(--ok); font-size:11px; }
+
+.mer-panel { border:1px solid var(--line); border-radius:var(--r-lg); background:var(--panel); padding:13px 15px; margin-bottom:12px; font-size:13px; }
+.mer-panel p { margin:0; color:var(--ink-2); line-height:1.6; }
+.mer-panel .mer-k { font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-4); margin-bottom:6px; }
+.mer-kr { font-size:12.5px; color:var(--ink-2); padding:6px 0 0; display:flex; align-items:center; gap:8px; }
+
+.mer-gherkin { border:1px solid var(--line); border-radius:var(--r-md); background:var(--panel); margin-bottom:8px; overflow:hidden; }
+.mer-gh-top { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line); font-size:12px; }
+.mer-gh-top span { color:var(--ink-3); }
+.mer-gherkin pre { margin:0; padding:10px 12px; font-family:var(--font-mono); font-size:10.5px; line-height:1.65;
+  color:var(--ink-2); white-space:pre-wrap; background:var(--panel-2); }
+
+.mer-steps { margin:8px 0; padding-left:20px; font-size:12px; color:var(--ink-2); line-height:1.7; }
+.mer-gatelink { cursor:pointer; font:inherit; font-size:11px; border:none; }
+.mer-gatelink:hover { filter:brightness(.96); }
+
 @media (max-width: 1100px) {
   .mer-grid, .mer-chapters { grid-template-columns:repeat(2, 1fr); }
   .mer-band-ctxs { grid-template-columns:repeat(2, 1fr); }

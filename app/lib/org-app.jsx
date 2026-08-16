@@ -32,6 +32,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       entry: q.get('entry') || 'overview', ctx: q.get('ctx') || null,
       tab: (tab && tab !== 'rels') ? tab : 'flow',   // legacy ?tab=rels links land on Event flow
       dom: q.get('dom') || null, bc: q.get('bc') || null,   // Meridian v4 altitude (D-094)
+      mprod: q.get('mprod') || null, mtab: q.get('mtab') || null,   // v4 product lifecycle (D-095)
     };
   };
   window.cynBuildUrl = (n) => {
@@ -39,7 +40,10 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
     q.set('v', n.v);
     if (n.v === 'org') {
       if (n.sub && n.sub !== 'dashboard') q.set('sub', n.sub);
-      if (n.sub === 'meridian') { if (n.dom) q.set('dom', n.dom); if (n.bc) q.set('bc', n.bc); }
+      if (n.sub === 'meridian') {
+        if (n.dom) q.set('dom', n.dom); if (n.bc) q.set('bc', n.bc);
+        if (n.mprod) { q.set('mprod', n.mprod); if (n.mtab && n.mtab !== 'envision') q.set('mtab', n.mtab); }
+      }
     }
     else if (n.v === 'pf') { if (n.pf) q.set('pf', n.pf); if (n.sub && n.sub !== 'dashboard') q.set('sub', n.sub); }
     else if (n.v === 'prod') {
@@ -114,7 +118,7 @@ function LifeStrip({ phase }) {
 
 /* ---------- Organization dashboard ---------- */
 /* ---------- ⌘K palette (D-073): the shell search probes the mesh ---------- */
-function KgPalette({ open, onClose, onOpenPortfolio, onOpenProduct }) {
+function KgPalette({ open, onClose, onOpenPortfolio, onOpenProduct, onOpenMeridian }) {
   const [q, setQ] = useState('');
   useEffect(() => { if (open) setQ(''); }, [open]);
   if (!open) return null;
@@ -127,6 +131,7 @@ function KgPalette({ open, onClose, onOpenPortfolio, onOpenProduct }) {
     });
   }
   const kg = needle ? kgSearch(needle) : [];
+  const v4 = needle && window.__kg4Search ? window.__kg4Search(needle) : [];
   return (
     <div className="kgp-backdrop" onClick={onClose}>
       <div className="kgp" onClick={e => e.stopPropagation()}>
@@ -156,7 +161,17 @@ function KgPalette({ open, onClose, onOpenPortfolio, onOpenProduct }) {
                 </button>
               );
             })}
-            {navHits.length === 0 && kg.length === 0 && <div className="kgp-none">No matches in the org or the mesh.</div>}
+            {v4.length > 0 && <div className="kgp-k">meridian v4 — the DDD org (derived)</div>}
+            {v4.map((h, i) => (
+              <button type="button" className="kgp-row" key={'v' + i}
+                onClick={() => { onOpenMeridian?.(); h.go(); onClose(); }}>
+                <span className="kgp-type">{h.type}</span>
+                <span className="kgp-id">{h.localId}</span>
+                <span className="kgp-lab">{h.label}</span>
+                <span className="kgp-go">open →</span>
+              </button>
+            ))}
+            {navHits.length === 0 && kg.length === 0 && v4.length === 0 && <div className="kgp-none">No matches in the org or the mesh.</div>}
           </div>
         )}
         <div className="kgp-foot">Every hit is a node in the derived knowledge graph — the same index Optimus serves (<code>kg/mcp-server.js</code> · D-066).</div>
@@ -388,7 +403,7 @@ function OrgApp() {
     const nav = { v: view === 'portfolio' ? 'pf' : view === 'product' ? 'prod' : 'org',
       pf: pid, prod: prod ? prod.id : null, sub: n.sub,
       phase: n.phase, entry: n.entry, ctx: n.ctx, tab: n.tab,
-      dom: n.dom, bc: n.bc };
+      dom: n.dom, bc: n.bc, mprod: n.mprod, mtab: n.mtab };
     window.__cynNav = nav;   // plain assignment only — no setState/ping during render
     return { view, pid, prod, sub: n.sub };
   }, []);
@@ -489,7 +504,8 @@ function OrgApp() {
         <div className="asc-userav">AT</div>
       </header>
 
-      <KgPalette open={palOpen} onClose={() => setPalOpen(false)} onOpenPortfolio={openPortfolio} onOpenProduct={openProduct} />
+      <KgPalette open={palOpen} onClose={() => setPalOpen(false)} onOpenPortfolio={openPortfolio} onOpenProduct={openProduct}
+        onOpenMeridian={() => { setView('org'); setSub('meridian'); }} />
 
       {view === 'product'
         ? <ProductPage product={prod} portfolio={pf} />
