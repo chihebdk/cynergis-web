@@ -43,6 +43,9 @@ window.__DDD__ = {
             value: ['Cut fraud losses ~55% (18 → 7 bps)', 'Halve false declines (6.2% → 2.5%)', 'Decide within the network timeout (p95 < 300 ms)'],
             skill: { id: 'decisioning-analyst', marketplace: 'https://marketplace.cynergis.ai/skills/decisioning-analyst', repo: 'https://github.com/cynergis/subdomain-analyst' },
             owns: ['Authorization', 'Step-up Challenge'],
+            /* D-029 via the extractor (D-086): the domain agent is the context's
+               compound skill — it composes the built capability skills */
+            composes: ['SKL-DEC-explain', 'SKL-DEC-reverse', 'SKL-DEC-tune', 'SKL-DEC-shadow'],
             slice: { aggregates: 2, invariants: 5, events: 7, policies: 4 },
             sources: [
               { label: 'Fraud strategy memo', type: 'doc', href: 'https://docs.cynergis.ai/wealthgrow/fraud-strategy-memo' },
@@ -104,6 +107,7 @@ window.__DDD__ = {
             value: ['Higher confirmed-fraud rate', 'Fewer false referrals', 'Defensible, audited dispositions'],
             skill: { id: 'case-management-analyst', marketplace: 'https://marketplace.cynergis.ai/skills/case-management-analyst', repo: 'https://github.com/cynergis/subdomain-analyst' },
             owns: ['Case'],
+            composes: ['SKL-CASE-assemble', 'SKL-CASE-draft'],
             slice: { aggregates: 1, invariants: 3, events: 4, policies: 1 },
             sources: [
               { label: 'Analyst ops runbook', type: 'doc', href: 'https://docs.cynergis.ai/wealthgrow/analyst-ops-runbook' },
