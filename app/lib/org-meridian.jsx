@@ -541,6 +541,9 @@ function MerDomain({ id }) {
             <div className="mer-prod" key={p.node.id}>
               <div className="mer-prod-top">
                 <b>{p.node.label}</b><span className="mer-prod-kind">{p.node.props.kind}</span>
+                <button type="button" className="badge mer-gatelink" title="The full product page: the six-phase journey with every section — Envision entries, Discover, Design (bounded contexts · context map · system design), Build, Operate, Realize (R1, D-104)."
+                  onClick={() => window.__cynOpenV4Product && window.__cynOpenV4Product(p.node.localId)}>
+                  open the product page →</button>
                 {M.prods4[p.node.localId] && (() => {
                   const gts = (M.prods4[p.node.localId].idx.nodes('Product')[0].props || {}).gates || {};
                   const n = Object.keys(gts).length;

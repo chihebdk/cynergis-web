@@ -305,7 +305,7 @@ function PhaseRail({ product, portfolio, prd, phase, entry, setEntry }) {
       <div className="asc-rail-foot">
         <div className="asc-rail-org">
           <div className="ico">{portfolio.name.slice(0, 1)}</div>
-          <div><div className="nm">{portfolio.name}</div><div className="sub">{ORG.org.name}</div></div>
+          <div><div className="nm">{portfolio.name}</div><div className="sub">{portfolio._v4 && window.__KG4__ && window.__KG4__.org ? window.__KG4__.org.org.name : ORG.org.name}</div></div>
         </div>
       </div>
     </aside>
@@ -507,6 +507,16 @@ function COwners({ prd }) {
 }
 function CPrio({ product }) {
   const w = product.wsjf;
+  /* v4 Meridian products arrive unscored (R1, D-104) — honest placeholder,
+     never fabricated numbers; scoring lands with the R2 depth pass */
+  if (!w) {
+    return (
+      <div className="env-doc">
+        <Block k="Thesis" full>{product.tagline}</Block>
+        <Block k="Prioritization" full>Not yet scored — WSJF and value/feasibility scoring for this product arrives with the R2 depth pass. The owning team is {product.sponsor || 'named on the domain page'}.</Block>
+      </div>
+    );
+  }
   const cod = w.bv + w.tc + w.rr;
   const wsjf = ORG.wsjf(product).toFixed(1);
   const rows = [
@@ -556,7 +566,8 @@ function CExit({ product, prd }) {
     { label: 'Named executive sponsor secured', ok: !!product.sponsor, note: product.sponsor || 'No sponsor assigned' },
     { label: 'Measurable value hypothesis with targets', ok: !!(o && o.criteria && o.criteria.length), note: o ? `${o.criteria.length} success criteria defined` : 'Studio PRD not opened' },
     { label: 'Upstream dependencies available', ok: depsOk, note: prd ? (depsOk ? 'all dependencies available' : 'a dependency is unresolved') : 'Studio PRD not opened' },
-    { label: 'Priority rank clears the bar', ok: ['Quick Win', 'Big Bet'].includes(product.quadrant), note: `${product.quadrant} · WSJF ${ORG.wsjf(product).toFixed(1)}` },
+    { label: 'Priority rank clears the bar', ok: ['Quick Win', 'Big Bet'].includes(product.quadrant),
+      note: product.wsjf ? `${product.quadrant} · WSJF ${ORG.wsjf(product).toFixed(1)}` : 'Not yet scored (R2)' },
   ];
   const passed = gate.filter(g => g.ok).length;
   const ready = !!product.sponsor;
@@ -666,7 +677,7 @@ function PhaseOverview({ product, portfolio, prd }) {
           <p className="asc-page-sub">{product.tagline}</p>
         </div>
         <div className="asc-head-actions">
-          <span className={'asc-quad ' + ORG.quadClass(product.quadrant)}>{product.quadrant}</span>
+          {product.quadrant && <span className={'asc-quad ' + ORG.quadClass(product.quadrant)}>{product.quadrant}</span>}
           {product.sponsor
             ? <span className="badge ok"><span className="dot ok"></span>{product.sponsor}</span>
             : <span className="badge err"><span className="dot err"></span>No sponsor</span>}

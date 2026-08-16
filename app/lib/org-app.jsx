@@ -72,13 +72,72 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
   window.cynRouterPing = ping;
 }
 
-// resolve a product id to its object + owning portfolio (for deep links / breadcrumb)
+/* ---------- R1 (D-103/D-104): Meridian products drive the FULL product page ----------
+   Rehome, never remove: the v4 org's products open the SAME ProductPage machinery
+   the v3 world uses. Each org-graph Product node synthesizes an ORG-shaped product
+   object (real facts only — owner as sponsor, phase from the recorded gates; WSJF
+   honestly unscored until R2), and its DOMAIN plays the portfolio's structural role. */
+function v4Catalog() {
+  if (window.__cynV4Cat !== undefined) return window.__cynV4Cat;
+  const K4 = window.__KG4__;
+  if (!K4 || !K4.org) { window.__cynV4Cat = null; return null; }
+  const g = K4.org;
+  const byId = Object.fromEntries(g.nodes.map(n => [n.id, n]));
+  const ctxDom = {};
+  for (const e of g.edges) if (e.type === 'contains') ctxDom[e.to] = e.from;
+  /* phase = where the product IS, read from its lifecycle graph's recorded gates */
+  const lifeNodes = Object.values(K4.products || {}).map(pr => pr.nodes.find(n => n.type === 'Product')).filter(Boolean);
+  const phaseOf = (localId) => {
+    const lc = lifeNodes.find(n => n.localId === localId);
+    if (!lc) return 'Operate';                                  // packaging-only: live systems per the corpus
+    const gates = (lc.props || {}).gates || {};
+    if (gates.build) return (lc.props || {}).valueRollup ? 'Realize' : 'Operate';
+    if (gates.design) return 'Build';
+    if (gates.discover) return 'Design';
+    if (gates.envision) return 'Discover';
+    return 'Envision';
+  };
+  const domains = {};   // domainLocalId -> pseudo-portfolio
+  for (const n of g.nodes) if (n.type === 'Domain')
+    domains[n.localId] = { id: n.localId, name: n.label, lead: n.props.owner, desc: n.props.summary, value: n.props.envelope || '', products: [], _v4: true };
+  const prods = g.nodes.filter(n => n.type === 'Product');
+  for (const n of prods) {
+    const pkg = g.edges.find(e => e.type === 'packages' && e.from === n.id);
+    const dom = pkg ? byId[ctxDom[pkg.to]] : null;
+    const ownerEdge = g.edges.find(e => e.type === 'owned_by' && e.from === n.id);
+    const owner = ownerEdge ? byId[ownerEdge.to] : null;
+    const product = {
+      id: n.localId, name: n.label, tagline: n.props.note || n.props.kind, phase: phaseOf(n.localId),
+      sponsor: (dom && dom.props.owner) || (owner && owner.label) || null,   // the domain's accountable executive
+      owner: owner ? owner.label : null,
+      quadrant: null, wsjf: null, value: null, feasibility: null,            // honestly unscored (R2)
+      valueAtStake: null, rationale: null, studio: false, _v4: true,
+    };
+    if (dom && domains[dom.localId]) { product._dom = dom.localId; domains[dom.localId].products.push(product); }
+  }
+  window.__cynV4Cat = { domains, products: Object.fromEntries(prods.map((n, i) => [n.localId, null])) };
+  window.__cynV4Cat.byProduct = {};
+  for (const d of Object.values(domains)) for (const p of d.products) window.__cynV4Cat.byProduct[p.id] = { prod: p, pid: p._dom };
+  return window.__cynV4Cat;
+}
+
+// resolve a product id to its object + owning portfolio/domain (for deep links / breadcrumb)
 function cynResolveProduct(id) {
   for (const pf of (window.ORG ? window.ORG.portfolios : [])) {
     const p = pf.products.find(x => x.id === id);
     if (p) return { prod: p, pid: pf.id };
   }
+  const cat = v4Catalog();
+  if (cat && cat.byProduct[id]) return cat.byProduct[id];
   return null;
+}
+// resolve a portfolio OR domain id to the object ProductPage's breadcrumb needs
+function cynResolveScope(pid) {
+  if (!pid) return null;
+  const pf = window.ORG && window.ORG.portfolio(pid);
+  if (pf) return pf;
+  const cat = v4Catalog();
+  return (cat && cat.domains[pid]) || null;
 }
 
 /* ---------- minimal icon set ---------- */
@@ -436,7 +495,7 @@ function OrgApp() {
   }, []);
   const canBack = window.cynCanBack?.() || false;
 
-  const pf = pid ? ORG.portfolio(pid) : null;
+  const pf = pid ? cynResolveScope(pid) : null;   // a portfolio (v3) or a DOMAIN (v4) — same structural role (R1, D-104)
   const scrollTop = () => document.querySelector('.asc-main')?.scrollTo(0, 0);
   const RESET = { phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' };
 
@@ -474,10 +533,22 @@ function OrgApp() {
     window.cynPushUrl({ v: view === 'portfolio' ? 'pf' : 'org', pf: pid, prod: null, sub: s, ...RESET });
   };
   const goPortfolioView = () => {
-    if (!pid) return; setSub('dashboard'); setView('portfolio');
+    if (!pid) return;
+    if (pf && pf._v4) {   // the middle tier is a DOMAIN: its page lives on the Meridian altitude
+      setSub('meridian'); setView('org');
+      window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: pid, ...RESET });
+      setTimeout(scrollTop, 0);
+      return;
+    }
+    setSub('dashboard'); setView('portfolio');
     window.cynPushUrl({ v: 'pf', pf: pid, prod: null, sub: 'dashboard', ...RESET });
     setTimeout(scrollTop, 0);
   };
+  /* the bridge org-meridian's domain pages call to open the FULL product page */
+  useEffect(() => {
+    window.__cynOpenV4Product = (id) => { const r = cynResolveProduct(id); if (r) openProduct(r.prod); };
+    return () => { delete window.__cynOpenV4Product; };
+  }, [openProduct]);
   const goProductView = () => {
     if (!prod) return; setSub('dashboard'); setView('product');
     window.__cynCtxSel = null; window.__cynCtxTab = 'flow';
@@ -499,8 +570,8 @@ function OrgApp() {
         <div className="asc-scope asc-scope-path">
           <button className={view === 'org' ? 'on' : ''} onClick={goOrg}><Ico k="org" w={13} /> Organization</button>
           <button className={view === 'portfolio' ? 'on' : ''} disabled={!pid} onClick={goPortfolioView}>
-            <Ico k="portfolio" w={13} />
-            <span className="lab2">Portfolio{pf && <><span className="sep">·</span><span className="ent">{pf.name}</span></>}</span>
+            <Ico k={pf && pf._v4 ? 'org' : 'portfolio'} w={13} />
+            <span className="lab2">{pf && pf._v4 ? 'Domain' : 'Portfolio'}{pf && <><span className="sep">·</span><span className="ent">{pf.name}</span></>}</span>
           </button>
           <button className={view === 'product' ? 'on' : ''} disabled={!prod} onClick={goProductView}>
             <Ico k="product" w={13} />
