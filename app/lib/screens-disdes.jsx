@@ -732,9 +732,50 @@ function DesignArchitecture({ prd }) {
           </DSec>
         ) : empty4('The product graph is not loaded — the contract registry derives from it.'))}
 
-        {tab === 'stack' && empty4('Not authored yet — and the graph says so: no resource or environment nodes exist in the claimscore graph. The stack register derives when the as-built layer is recorded (never borrowed from another product).')}
+        {tab === 'stack' && (cc && (cc.nodes('Resource').length || cc.nodes('Environment').length) ? (
+          <DSec icon="arch" title="Stack & resources" sub="As built, from the lifecycle graph — the environments and the resources each module binds to (D-112)">
+            {cc.nodes('Environment').map(e => (
+              <div className="dm-rel" key={e.id}>
+                <div className="dm-rel-h"><span className="dm-chip comp">env</span><b>{e.label}</b></div>
+                <p className="dm-rel-flow">{e.props.note}</p>
+              </div>
+            ))}
+            {cc.nodes('Resource').map(r => {
+              const users = cc.inn(r.id, 'uses').map(e => (cc.byId.get(e.from) || {}).localId).join(', ');
+              const owner = cc.byId.get((cc.out(r.id, 'owned_by')[0] || {}).to);
+              return (
+                <div className="dm-rel" key={r.id}>
+                  <div className="dm-rel-h">
+                    <span className="dm-chip comp">{r.props.kind}</span>
+                    <b>{r.label}</b>
+                    <span className="dm-chip event">{r.props.engine}</span>
+                    <span className="dm-rel-carries">used by {users}{owner ? ` · owned by ${owner.label}` : ''}</span>
+                  </div>
+                  <p className="dm-rel-flow">{r.props.note}</p>
+                </div>
+              );
+            })}
+          </DSec>
+        ) : empty4('Not authored yet — and the graph says so: no resource or environment nodes exist in this product’s graph.'))}
 
-        {tab === 'security' && empty4('Not authored yet — and the graph says so: no secret or posture nodes exist in the claimscore graph. The security register derives when the as-built layer is recorded (never borrowed from another product).')}
+        {tab === 'security' && (cc && cc.nodes('Secret').length ? (
+          <DSec icon="policy" title="Security & secrets" sub="Every credential the boundary needs, who uses it, and its rotation — governance acts stay human at every tier (D-056)">
+            {cc.nodes('Secret').map(s => {
+              const users = cc.inn(s.id, 'authenticates_with').map(e => (cc.byId.get(e.from) || {}).localId).join(', ');
+              return (
+                <div className="dm-rel" key={s.id}>
+                  <div className="dm-rel-h">
+                    <span className="dm-chip comp">{s.localId}</span>
+                    <b>{s.label}</b>
+                    <span className="dm-chip policy">{s.props.rotation}</span>
+                    <span className="dm-rel-carries">used by {users}</span>
+                  </div>
+                  <p className="dm-rel-flow">{s.props.note}</p>
+                </div>
+              );
+            })}
+          </DSec>
+        ) : empty4('Not authored yet — and the graph says so: no secret nodes exist in this product’s graph.'))}
       </>
     );
   }

@@ -1282,7 +1282,94 @@ function Kg4BuildEntry({ cc, entry }) {
       ))}
     </>);
   }
-  return null;   // infra / integ / evals: no v4 content yet — the page's honest empty state renders
+  if (entry === 'infra') {
+    /* the as-built layer (D-112): environments + resources from the graph */
+    const envs = cc.nodes('Environment'), res = cc.nodes('Resource');
+    if (!envs.length && !res.length) return null;
+    return (<>
+      <div className="asc-section">
+        <div className="asc-sec-head"><div className="asc-sec-title">Environments</div>
+          <div className="asc-sec-sub">As built — from the lifecycle graph, never hand-listed</div></div>
+        {envs.map(e => (
+          <div className="mer-seam" key={e.id}><span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{e.label}</b></span><span className="mer-seam-what">{e.props.note}</span></div>
+        ))}
+      </div>
+      <div className="asc-section">
+        <div className="asc-sec-head"><div className="asc-sec-title">Deployed resources</div>
+          <div className="asc-sec-sub">What each module binds to (`uses` edges) — platform-owned rails say so</div></div>
+        {res.map(r => {
+          const users = cc.inn(r.id, 'uses').map(e => (cc.byId.get(e.from) || {}).localId).join(', ');
+          const owner = cc.byId.get((cc.out(r.id, 'owned_by')[0] || {}).to);
+          return (
+            <div className="mer-seam" key={r.id}>
+              <span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{r.label}</b></span>
+              <span className="badge">{r.props.kind} · {r.props.engine}</span>
+              <span className="mer-seam-what">used by {users}{owner ? ` · owned by ${owner.label}` : ''} — {r.props.note}</span>
+            </div>
+          );
+        })}
+      </div>
+    </>);
+  }
+  if (entry === 'integ') {
+    /* the boundary as built: the Contract nodes + the credentials that cross it */
+    const cons = cc.nodes('Contract'), secs = cc.nodes('Secret');
+    if (!cons.length) return null;
+    return (<>
+      <div className="asc-section">
+        <div className="asc-sec-head"><div className="asc-sec-title">The boundary as built</div>
+          <div className="asc-sec-sub">Every surface crossing the product wall — the graph's Contract nodes with their owning modules</div></div>
+        {cons.map(k => {
+          const owner = cc.byId.get((cc.out(k.id, 'owned_by')[0] || {}).to);
+          return (
+            <div className="mer-seam" key={k.id}>
+              <span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{k.label}</b></span>
+              <span className="badge">{k.props.contractType}</span>
+              <span className="mer-seam-what">{owner ? `owned by ${owner.label} — ` : ''}{k.props.note}</span>
+            </div>
+          );
+        })}
+      </div>
+      {secs.length > 0 && (
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">Credentials at the boundary</div>
+            <div className="asc-sec-sub">Who authenticates where, and the rotation each credential lives by</div></div>
+          {secs.map(s => {
+            const users = cc.inn(s.id, 'authenticates_with').map(e => (cc.byId.get(e.from) || {}).localId).join(', ');
+            return (
+              <div className="mer-seam" key={s.id}>
+                <span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{s.label}</b></span>
+                <span className="badge">{s.props.rotation}</span>
+                <span className="mer-seam-what">used by {users} — {s.props.note}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>);
+  }
+  if (entry === 'evals') {
+    /* eval records on the product's skills — the promotion evidence, queryable */
+    const evs = cc.nodes('Eval');
+    if (!evs.length) return null;
+    return (<>
+      {evs.map(ev => {
+        const sk = cc.byId.get((cc.out(ev.id, 'evaluates')[0] || {}).to);
+        const aprs = cc.out(ev.id, 'evidences').map(e => cc.byId.get(e.to)).filter(Boolean);
+        return (
+          <div className="mer-panel" key={ev.id} style={{ marginBottom: 12 }}>
+            <div className="mer-h-top"><b>{ev.label}</b><span className="badge ok">{ev.props.pass}</span></div>
+            {sk && <div className="mer-h-act">evaluates <b>{sk.localId}</b> ({sk.props.tier}) — {sk.props.note}</div>}
+            <div className="mer-fact stack"><span className="k">Dataset · runs</span><span className="v">{ev.props.dataset} · {ev.props.runs} run{ev.props.runs === 1 ? '' : 's'}</span></div>
+            <div className="mer-fact stack"><span className="k">Judge</span><span className="v">{ev.props.judge}</span></div>
+            {aprs.length > 0 && <div className="mer-fact stack"><span className="k">Evidences</span><span className="v">{aprs.map(a => `${a.localId} — ${a.label}`).join(' · ')}</span></div>}
+            <div className="mer-fact stack"><span className="k">Note</span><span className="v">{ev.props.note}</span></div>
+          </div>
+        );
+      })}
+    </>);
+  }
+  return null;
 }
 function Kg4PhaseEntry({ phase, entry, productId }) {
   const p4 = M && M.prods4[productId];
