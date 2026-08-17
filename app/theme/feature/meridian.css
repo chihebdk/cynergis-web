@@ -218,3 +218,8 @@
    heading and intro ("3 · The chart", the h2note, the rule) hide — the app renders
    its own product-voice section head above the wrapper. */
 .ovw-refchart > h2, .ovw-refchart > .h2note, .ovw-refchart > .rule { display: none; }
+
+/* D-121: contributes-to product chips are buttons that open the product page */
+button.mer-om { font: inherit; }
+.mer-om.click { cursor: pointer; transition: border-color .12s, background .12s; }
+.mer-om.click:hover { border-color: var(--accent); background: var(--panel-2, #f8fafc); }

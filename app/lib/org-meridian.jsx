@@ -612,11 +612,12 @@ function MerDomain({ id }) {
 
 /* ---------- context page ---------- */
 function MerContext({ id }) {
-  /* R3 (D-109): when a product's DDD seed covers this wall, the full v3 BC
-     tabbed element mounts HERE too — the subdomain page absorbs it. Hooks
-     stay above the early return. */
-  const [bcTab, setBcTab] = useState('flow');
-  useEffect(() => { setBcTab('flow'); }, [id]);
+  /* R3 (D-109) → D-121: the subdomain is its own scope. The BC element's tabs
+     are RAIL-driven via the sbtab URL param (the product-page pattern); the
+     overview carries the member-graph sections. Hooks stay above the early
+     return. */
+  const n121 = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
+  const sbtab = n121.sbtab || 'overview';
   const dddProd = useMemo(() => {
     const reg = (typeof window !== 'undefined' && window.__DDD__ && window.__DDD__.byProduct) || {};
     for (const pid of Object.keys(reg)) {
@@ -639,6 +640,28 @@ function MerContext({ id }) {
   const packagedBy = M.products.filter(p => p.packages.some(pk => pk.ctx && pk.ctx.id === c.id));
   const seams = M.seams.filter(s => s.from.id === c.id || s.to.id === c.id);
   const isPlatform = !!c.props.publishes;
+  const pushSbtab = t => nav({ bc: id, sbtab: t && t !== 'overview' ? t : null });
+  if (sbtab !== 'overview' && dddProd && typeof window !== 'undefined' && window.CynBcTabs) {
+    const BcTabs = window.CynBcTabs;
+    const cc = dddProd.ddd.contexts.find(x => x.id === id);
+    return (
+      <div className="asc-page">
+        <div className="mer-crumb">
+          <button type="button" className="mer-link" onClick={goChart}>Meridian org</button> / {domain && <><button type="button" className="mer-link" onClick={() => goDomain(domain.localId)}>{domain.label}</button> / </>}<button type="button" className="mer-link" onClick={() => pushSbtab('overview')}>{c.label}</button>
+        </div>
+        <div className="asc-page-head">
+          <div>
+            <div className="asc-eyebrow">Subdomain · {domain ? domain.label : ''}</div>
+            <h1 className="asc-page-title">{c.label} <Chip c={c.props.classification} /></h1>
+          </div>
+        </div>
+        <BcTabs c={cc} D={dddProd.ddd}
+          M={((window.__DOMAIN__ || {}).byProduct || {})[dddProd.pid]}
+          prd={((window.__PRD4__ || {})[dddProd.pid]) || {}}
+          tab={sbtab} navTab={pushSbtab} />
+      </div>
+    );
+  }
   return (
     <div className="asc-page">
       <div className="mer-crumb">
@@ -659,23 +682,8 @@ function MerContext({ id }) {
         {dep && dep.node.props.origin && <div className="mer-fact"><span className="k">Origin</span><span className="v">{dep.node.props.origin}</span></div>}
       </div>
 
-      {dddProd && typeof window !== 'undefined' && window.CynBcTabs && (() => {
-        const BcTabs = window.CynBcTabs;
-        const cc = dddProd.ddd.contexts.find(x => x.id === id);
-        const prodNode = packagedBy.find(p => p.node.localId === dddProd.pid);
-        return (
-          <div className="asc-section">
-            <div className="asc-sec-head">
-              <div className="asc-sec-title">The bounded-context element{prodNode ? <> — {prodNode.node.label} on this wall</> : null}</div>
-              <div className="asc-sec-sub">The full v3 BC element, rehomed to the subdomain page (R3): event flow · agents · knowledge graph · aggregates · policies · capabilities · contracts · language — the same seeds the product page reads</div>
-            </div>
-            <BcTabs c={cc} D={dddProd.ddd}
-              M={((window.__DOMAIN__ || {}).byProduct || {})[dddProd.pid]}
-              prd={((window.__PRD4__ || {})[dddProd.pid]) || {}}
-              tab={bcTab} navTab={setBcTab} />
-          </div>
-        );
-      })()}
+      {/* D-121: the BC element lives behind the RAIL tabs (Event flow … Language)
+          — rehomed from the inline section to the subdomain's own navigation. */}
 
       {dep && dep.models.length > 0 && (
         <div className="asc-section">
@@ -813,7 +821,13 @@ function MerContext({ id }) {
           <div className="mer-oms">
             {packagedBy.map(p => {
               const mods = p.packages.filter(pk => pk.ctx && pk.ctx.id === c.id).flatMap(pk => pk.modules);
-              return <span className="mer-om prod" key={p.node.id} title={p.node.props.note}>{p.node.label} ({mods.join(', ')})</span>;
+              return (
+                <button type="button" className="mer-om prod click" key={p.node.id}
+                  title={`Open the ${p.node.label} product page`}
+                  onClick={() => window.__cynOpenV4Product && window.__cynOpenV4Product(p.node.localId)}>
+                  {p.node.label} ({mods.join(', ')}) →
+                </button>
+              );
             })}
           </div>
         </div>

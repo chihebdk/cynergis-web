@@ -35,6 +35,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       tab: (tab && tab !== 'rels') ? tab : 'flow',   // legacy ?tab=rels links land on Event flow
       dom: q.get('dom') || null, bc: q.get('bc') || null,   // Meridian v4 altitude (D-094)
       dtab: q.get('dtab') || null,   // domain-view tab (D-119: overview | map)
+      sbtab: q.get('sbtab') || null,   // subdomain-view tab (D-121: overview | the element tabs)
       mprod: q.get('mprod') || null, mtab: q.get('mtab') || null,   // v4 product lifecycle (D-095)
     };
   };
@@ -46,6 +47,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       if (n.sub === 'meridian' || n.sub === 'domains' || !n.sub) {
         if (n.dom) q.set('dom', n.dom); if (n.bc) q.set('bc', n.bc);
         if (n.dom && n.dtab) q.set('dtab', n.dtab);
+        if (n.bc && n.sbtab) q.set('sbtab', n.sbtab);
         if (n.mprod) { q.set('mprod', n.mprod); if (n.mtab && n.mtab !== 'envision') q.set('mtab', n.mtab); }
       }
     }
@@ -450,8 +452,34 @@ function merScopeFromUrl(q) {
   return {
     domId, domName: domId ? (byLocal(domId) || {}).label : null,
     prodId, prodName: prodId ? (byLocal(prodId) || {}).label : null,
+    bcId: q.bc || null, bcName: q.bc ? (byLocal(q.bc) || {}).label : null,
   };
 }
+
+/* subdomain metadata for the rail (D-121): does a DDD element cover it, and
+   which products package it (the "contributes to" list) */
+function merCtxMeta(bcId) {
+  const reg = (typeof window !== 'undefined' && window.__DDD__ && window.__DDD__.byProduct) || {};
+  let hasElement = false;
+  for (const pid of Object.keys(reg)) if (((reg[pid] || {}).contexts || []).some(c => c.id === bcId)) { hasElement = true; break; }
+  const K = typeof window !== 'undefined' && window.__KG4__;
+  const products = [];
+  if (K && K.org) {
+    const g = K.org;
+    const c = g.nodes.find(n => n.localId === bcId);
+    if (c) for (const e of g.edges) if (e.type === 'packages' && e.to === c.id) {
+      const pr = g.nodes.find(n => n.id === e.from);
+      if (pr) products.push({ id: pr.localId, label: pr.label });
+    }
+  }
+  return { hasElement, products };
+}
+const BC_TAB_ITEMS = [
+  { key: 'flow', label: 'Event flow' }, { key: 'agent', label: 'Agents' },
+  { key: 'kg', label: 'Knowledge graph' }, { key: 'aggregates', label: 'Aggregates' },
+  { key: 'policies', label: 'Policies' }, { key: 'capabilities', label: 'Capabilities' },
+  { key: 'contracts', label: 'Contracts' }, { key: 'lang', label: 'Ubiquitous Language' },
+];
 
 /* the domain's contexts, for the domain-view rail (D-119) */
 function merDomainContexts(domId) {
@@ -517,7 +545,7 @@ function OrgApp() {
     const nav = { v: view === 'portfolio' ? 'pf' : view === 'product' ? 'prod' : 'org',
       pf: pid, prod: prod ? prod.id : null, sub: n.sub,
       phase: n.phase, entry: n.entry, ctx: n.ctx, tab: n.tab,
-      dom: n.dom, bc: n.bc, mprod: n.mprod, mtab: n.mtab, dtab: n.dtab };
+      dom: n.dom, bc: n.bc, mprod: n.mprod, mtab: n.mtab, dtab: n.dtab, sbtab: n.sbtab };
     window.__cynNav = nav;   // plain assignment only — no setState/ping during render
     return { view, pid, prod, sub: n.sub };
   }, []);
@@ -642,11 +670,12 @@ function OrgApp() {
           const mer = view === 'org' ? merScopeFromUrl(q) : {};
           const legacyPf = pf && !pf._v4 && view !== 'org';
           const domName = view === 'org' ? mer.domName : (pf ? pf.name : null);
-          const domOn = (view === 'org' && !!(q.dom || q.bc) && !q.mprod) || view === 'portfolio';
+          const domOn = (view === 'org' && !!q.dom && !q.bc && !q.mprod) || view === 'portfolio';
           const domDisabled = view === 'org' ? !mer.domId : !pid;
           const prodName = view === 'org' ? mer.prodName : (prod ? prod.name : null);
           const prodOn = (view === 'org' && !!q.mprod) || view === 'product';
           const prodDisabled = view === 'org' ? !mer.prodId : !prod;
+          const subOpen = view === 'org' && !!q.bc;   // D-121: the subdomain is its own scope
           const orgOn = view === 'org' && !mer.domId && !mer.prodId;
           const onDomain = () => { if (view === 'org' && mer.domId) goMerDomain(mer.domId); else goPortfolioView(); };
           const onProduct = () => { if (view === 'org' && mer.prodId) goMerProduct(mer.prodId); else goProductView(); };
@@ -657,10 +686,15 @@ function OrgApp() {
                 <Ico k={legacyPf ? 'portfolio' : 'org'} w={13} />
                 <span className="lab2">{legacyPf ? 'Portfolio' : 'Domain'}{domName && <><span className="sep">·</span><span className="ent">{domName}</span></>}</span>
               </button>
-              <button className={prodOn ? 'on' : ''} disabled={prodDisabled} onClick={onProduct}>
-                <Ico k="product" w={13} />
-                <span className="lab2">Product{prodName && <><span className="sep">·</span><span className="ent">{prodName}</span></>}</span>
-              </button>
+              {subOpen
+                ? <button className="on">
+                    <Ico k="layers" w={13} />
+                    <span className="lab2">Subdomain<span className="sep">·</span><span className="ent">{mer.bcName}</span></span>
+                  </button>
+                : <button className={prodOn ? 'on' : ''} disabled={prodDisabled} onClick={onProduct}>
+                    <Ico k="product" w={13} />
+                    <span className="lab2">Product{prodName && <><span className="sep">·</span><span className="ent">{prodName}</span></>}</span>
+                  </button>}
             </div>
           );
         })()}
@@ -688,6 +722,31 @@ function OrgApp() {
                  Overview · Context map · the subdomains, like the product shell. */
               const merScope = merScopeFromUrl(q);
               const domScope = !q.mprod && (q.dom || q.bc) ? merScope.domId : null;
+              if (q.bc && domScope) {
+                /* D-121: the subdomain is its own workspace — Overview, the element
+                   tabs (when a DDD seed covers the wall), and the products it
+                   contributes to. Like portfolio → product in legacy. */
+                const meta = merCtxMeta(q.bc);
+                const sbActive = q.sbtab || 'overview';
+                const goSb = (t) => { setSub('meridian'); window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', bc: q.bc, sbtab: t === 'overview' ? null : t, ...RESET }); setTimeout(scrollTop, 0); };
+                return <div className="asc-body">
+                  <aside className="asc-rail">
+                    <div className="asc-rail-sect">{merScope.bcName}</div>
+                    <div className={'asc-nav' + (sbActive === 'overview' ? ' on' : '')} onClick={() => goSb('overview')}><Ico k="org" w={15} /> Overview</div>
+                    {meta.hasElement && BC_TAB_ITEMS.map(t => (
+                      <div key={t.key} className={'asc-nav' + (sbActive === t.key ? ' on' : '')} onClick={() => goSb(t.key)}><Ico k="dot" w={15} /> {t.label}</div>
+                    ))}
+                    {meta.products.length > 0 && <>
+                      <div className="asc-rail-sect" style={{ marginTop:'14px' }}>Contributes to</div>
+                      {meta.products.map(pr => (
+                        <div key={pr.id} className="asc-nav" onClick={() => { const r = cynResolveProduct(pr.id); if (r) openProduct(r.prod); }}><Ico k="product" w={15} /> {pr.label}</div>
+                      ))}
+                    </>}
+                    <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => goMerDomain(domScope)}><Ico k="back" w={15} /> {merScope.domName}</div>
+                  </aside>
+                  <main className="asc-main">{React.createElement(window.MeridianOrg)}</main>
+                </div>;
+              }
               if (domScope) {
                 const ctxs = merDomainContexts(domScope);
                 const dActive = q.bc ? q.bc : (q.dtab === 'map' ? 'map' : q.dtab === 'system' ? 'system' : 'overview');
