@@ -223,3 +223,21 @@
 button.mer-om { font: inherit; }
 .mer-om.click { cursor: pointer; transition: border-color .12s, background .12s; }
 .mer-om.click:hover { border-color: var(--accent); background: var(--panel-2, #f8fafc); }
+
+/* ── D-122: the Overview as an informational dashboard ──
+   The verbatim embed keeps ONLY the matrix; the platform band, specialist
+   teams and standing functions are re-designed as app sections below. */
+.asc-section .ovw-refchart .band, .asc-section .ovw-refchart .platnote,
+.asc-section .ovw-refchart .legend, .asc-section .ovw-refchart .standing { display: none; }
+.ovw-stats { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.ovw-stat { display:flex; flex-direction:column; gap:2px; padding:10px 16px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--panel); min-width:104px; }
+.ovw-stat b { font-size:20px; line-height:1.1; }
+.ovw-stat span { font-size:11px; color:var(--ink-3); letter-spacing:.04em; text-transform:uppercase; }
+.ovw-mini { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.ovw-mini2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+.ovw-minicard { padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--panel); }
+.ovw-minicard b { display:block; font-size:13px; }
+.ovw-minicard span { display:block; margin-top:4px; font-size:12px; color:var(--ink-3); line-height:1.45; }
+.ovw-subhead { font-size:12px; font-weight:650; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin:0 0 8px; }
+@media (max-width:1100px) { .ovw-mini { grid-template-columns:1fr 1fr; } .ovw-mini2 { grid-template-columns:1fr; } }
+@media (max-width:720px) { .ovw-mini { grid-template-columns:1fr; } }

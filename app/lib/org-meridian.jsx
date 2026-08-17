@@ -1524,6 +1524,14 @@ function MerOverview() {
           <div className="asc-eyebrow">Organization · overview</div>
           <h1 className="asc-page-title">{orgNode.label}</h1>
           <p className="asc-page-sub">How Meridian is structured: the value chain and the domains that own it, the chapters that staff them, and the platform band they stand on.</p>
+          <div className="ovw-stats">
+            <div className="ovw-stat"><b>{M.domains.filter(d => d.node.props.kind === 'stream').length}</b><span>stream domains</span></div>
+            <div className="ovw-stat"><b>{M.org.nodes('BoundedContext').length}</b><span>subdomains</span></div>
+            <div className="ovw-stat"><b>{M.org.nodes('Team').length}</b><span>durable teams</span></div>
+            <div className="ovw-stat"><b>{M.products.length}</b><span>products</span></div>
+            <div className="ovw-stat"><b>{M.chapters.length}</b><span>chapters</span></div>
+            <div className="ovw-stat"><b>≈270</b><span>prod &amp; eng seats</span></div>
+          </div>
         </div>
       </div>
 
@@ -1544,9 +1552,9 @@ function MerOverview() {
         </div>
       </div>
 
-      {/* D-116: the chart itself renders VERBATIM (markup + reference palette);
-          D-117: its doc-voice heading and intro are hidden via CSS and replaced
-          by this product-voice section head — the tables stay untouched. */}
+      {/* D-116: the MATRIX renders verbatim (markup + reference palette);
+          D-122: the doc bands below it (.band/.platnote/.legend/.standing) hide,
+          re-designed as the dashboard sections that follow. */}
       {typeof window !== 'undefined' && window.__REFCHART__ && (
         <div className="asc-section">
           <div className="asc-sec-head">
@@ -1557,7 +1565,62 @@ function MerOverview() {
         </div>
       )}
 
-      <DerivedStrip graph={M.org.g} extra={<>value chain + chart from the org model · domains derived from <code>meridian:*</code></>} />
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">The platform band</div>
+          <div className="asc-sec-sub">Six internal products whose customers are the stream teams — funded as products, measured on adoption. Vendor licences sit behind these teams, never in place of them.</div>
+        </div>
+        <div className="ovw-mini">
+          {(M.domains.find(d => d.node.props.kind === 'platform') || { contexts: [] }).contexts.map(c => {
+            const dep = M.depth.get(c.localId);
+            return (
+              <div className="ovw-minicard" key={c.id}>
+                <b>{c.label}</b>
+                <span>{dep ? dep.node.props.purpose : (c.props.publishes || '')}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Specialist teams</div>
+          <div className="asc-sec-sub">Two team shapes beside the streams and the band — each with a different survival rule.</div>
+        </div>
+        <div className="ovw-mini2">
+          <div>
+            <p className="ovw-subhead">Complicated-subsystem teams — justify each one</p>
+            <div className="ovw-mini" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="ovw-minicard"><b>Rating engine</b><span>Deterministic pricing execution — deep actuarial-engineering expertise behind a clean interface.</span></div>
+              <div className="ovw-minicard"><b>Fraud &amp; triage models</b><span>The model families behind claim triage and fraud signals — data-science depth the stream teams consume.</span></div>
+              <div className="ovw-minicard"><b>Reserving &amp; actuarial modelling</b><span>Reserve adequacy and indication models with their own craft and governance.</span></div>
+            </div>
+          </div>
+          <div>
+            <p className="ovw-subhead">Enabling teams — time-boxed, should shrink</p>
+            <div className="ovw-mini" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="ovw-minicard"><b>Security engineering</b><span>Raises the streams' security practice, then steps back.</span></div>
+              <div className="ovw-minicard"><b>SRE coaching</b><span>Operational maturity coaching for the stream teams — success is not being needed.</span></div>
+              <div className="ovw-minicard"><b>Legacy policy admin decomposition</b><span>Guides the strangler burn-down; retires with the legacy system.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Standing functions</div>
+          <div className="asc-sec-sub">First-line control organizations that operate OUTSIDE the domain matrix — they run controls, workforces and technology of their own, on the platform band's paved roads.</div>
+        </div>
+        <div className="ovw-mini">
+          <div className="ovw-minicard"><b>CISO office</b><span>Policy, standards and security architecture — owns the requirement and the control.</span></div>
+          <div className="ovw-minicard"><b>SOC / security operations</b><span>The 24/7 operational workforce — first line, not assurance.</span></div>
+          <div className="ovw-minicard"><b>Security engineering &amp; tooling</b><span>Deploys through the developer platform, so the function never drifts into a parallel IT shop.</span></div>
+        </div>
+      </div>
+
+      <DerivedStrip graph={M.org.g} extra={<>value chain + matrix from the org model · platform band and counts derived from <code>meridian:*</code></>} />
     </div>
   );
 }
