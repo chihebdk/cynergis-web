@@ -2026,13 +2026,18 @@ function BuildBacklog({ prd }) {
 
 /* ===================== dispatcher ===================== */
 function DisDesContent({ phase, entry, prd }) {
-  if (!prd) return null;
-  /* v4 products (D-107): Build/Operate/Realize registers derive from the
-     product's OWN lifecycle graph — never another product's KG. Entries with
-     no v4 content return null and the caller renders its honest empty state. */
-  if (prd.productId && ['Build', 'Operate', 'Realize'].includes(phase) && typeof window !== 'undefined' && window.Kg4PhaseEntry) {
-    return window.Kg4PhaseEntry({ phase, entry, productId: prd.productId });
+  /* v4 products (D-107, widened D-113): Build/Operate/Realize registers derive
+     from the product's OWN lifecycle graph — never another product's KG. Any
+     product with a lifecycle graph qualifies, PRD4 projection or not (so this
+     runs BEFORE the null-prd guard). Entries with no v4 content return null →
+     the caller's honest empty state. */
+  const nav113 = (typeof window !== 'undefined' && window.__cynNav) || {};
+  const p4id = (prd && prd.productId)
+    || (typeof window !== 'undefined' && window.__kg4Product && nav113.prod && window.__kg4Product(nav113.prod) ? nav113.prod : null);
+  if (p4id && ['Build', 'Operate', 'Realize'].includes(phase) && typeof window !== 'undefined' && window.Kg4PhaseEntry) {
+    return window.Kg4PhaseEntry({ phase, entry, productId: p4id });
   }
+  if (!prd) return null;
   const map = {
     // Discover (the validated-problem artifacts)
     'Discover/personas':     DiscoverPersonas,

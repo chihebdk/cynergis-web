@@ -33,7 +33,16 @@ function indexGraph(g) {
 const M = (() => {
   if (!K4) return null;
   const org = indexGraph(K4.org);
-  const claims = K4.members && K4.members.claims ? indexGraph(K4.members.claims) : null;
+  /* every domain member graph, keyed by BOTH namespace and Domain localId (D-113) */
+  const members = {};
+  if (K4.members) for (const [ns, graph] of Object.entries(K4.members)) {
+    const idx = indexGraph(graph);
+    idx.ns = ns;
+    members[ns] = idx;
+    const dNode = idx.nodes('Domain')[0];
+    if (dNode) members[dNode.localId] = idx;
+  }
+  const claims = members.claims || null;
   const ccore = K4.products && K4.products.claimscore ? indexGraph(K4.products.claimscore) : null;
 
   const domains = org.nodes('Domain').map(d => ({
@@ -61,24 +70,32 @@ const M = (() => {
     from: org.byId.get(e.from), to: org.byId.get(e.to), ...e.props,
   }));
 
-  /* Claims member-graph depth, keyed by context localId */
+  /* member-graph depth for EVERY domain, keyed by context localId (unique org-wide);
+     units and reviews keyed by Domain localId (D-113 generalization of the Claims shape) */
   const depth = new Map();
-  if (claims) {
-    for (const c of claims.nodes('BoundedContext')) {
-      const team = claims.byId.get((claims.out(c.id, 'owned_by')[0] || {}).to);
-      const models = claims.nodes('DomainModel').filter(m => claims.out(m.id, 'part_of').some(e => e.to === c.id))
-        .map(m => ({ node: m, aggregates: claims.inn(m.id, 'part_of').map(e => claims.byId.get(e.from)) }));
-      const apps = claims.nodes('Application').filter(a => claims.out(a.id, 'implements').some(e => e.to === c.id));
-      const contracts = [...claims.out(c.id, 'consumes'), ...claims.out(c.id, 'publishes_to')]
-        .map(e => claims.byId.get(e.to)).filter(k => k && k.type === 'Contract')
-        .map(k => ({ node: k, counterpart: claims.byId.get((claims.out(k.id, 'with')[0] || {}).to) }));
-      const oms = claims.out(c.id, 'measured_by').map(e => claims.byId.get(e.to)).filter(Boolean);
-      const agents = claims.nodes('Agent').filter(a => claims.out(a.id, 'serves').some(e => e.to === c.id));
-      depth.set(c.localId, { node: c, team, models, apps, contracts, oms, agents });
+  const memberUnits = {}, memberReviews = {};
+  for (const ns of Object.keys(K4.members || {})) {
+    const mg = members[ns];
+    for (const c of mg.nodes('BoundedContext')) {
+      const team = mg.byId.get((mg.out(c.id, 'owned_by')[0] || {}).to);
+      const models = mg.nodes('DomainModel').filter(m => mg.out(m.id, 'part_of').some(e => e.to === c.id))
+        .map(m => ({ node: m, aggregates: mg.inn(m.id, 'part_of').map(e => mg.byId.get(e.from)) }));
+      const apps = mg.nodes('Application').filter(a => mg.out(a.id, 'implements').some(e => e.to === c.id));
+      const contracts = [...mg.out(c.id, 'consumes'), ...mg.out(c.id, 'publishes_to')]
+        .map(e => mg.byId.get(e.to)).filter(k => k && k.type === 'Contract')
+        .map(k => ({ node: k, counterpart: mg.byId.get((mg.out(k.id, 'with')[0] || {}).to) }));
+      const oms = mg.out(c.id, 'measured_by').map(e => mg.byId.get(e.to)).filter(Boolean);
+      const agents = mg.nodes('Agent').filter(a => mg.out(a.id, 'serves').some(e => e.to === c.id));
+      depth.set(c.localId, { node: c, team, models, apps, contracts, oms, agents, member: mg });
+    }
+    const dNode = mg.nodes('Domain')[0];
+    if (dNode) {
+      memberUnits[dNode.localId] = mg.nodes('OrgUnit');
+      memberReviews[dNode.localId] = mg.nodes('OutcomeReview').slice().sort((a, b) => String(b.props.quarter).localeCompare(String(a.props.quarter)));
     }
   }
-  const claimsUnits = claims ? claims.nodes('OrgUnit') : [];
-  const claimsReviews = claims ? claims.nodes('OutcomeReview').slice().sort((a, b) => String(b.props.quarter).localeCompare(String(a.props.quarter))) : [];
+  const claimsUnits = memberUnits['DOM-CLAIMS'] || [];
+  const claimsReviews = memberReviews['DOM-CLAIMS'] || [];
 
   const ccoreGates = ccore ? ((ccore.nodes('Product')[0] || {}).props || {}).gates : null;
 
@@ -89,7 +106,7 @@ const M = (() => {
     const pNode = idx.nodes('Product')[0];
     if (pNode) prods4[pNode.localId] = { idx, ns };
   }
-  return { org, claims, ccore, domains, ctxDomain, products, chapters, journeys, seams, depth, claimsUnits, claimsReviews, ccoreGates, prods4 };
+  return { org, claims, ccore, members, memberUnits, memberReviews, domains, ctxDomain, products, chapters, journeys, seams, depth, claimsUnits, claimsReviews, ccoreGates, prods4 };
 })();
 
 /* ---------- shared bits ---------- */
@@ -292,20 +309,28 @@ function MerChart() {
 }
 
 /* ---------- funding & rhythm (Phase E, D-097): the first v4 two-way act ---------- */
-function FundingRhythm() {
-  const domainNode = M.claims ? M.claims.nodes('Domain')[0] : null;
+function FundingRhythm({ domainId = 'DOM-CLAIMS' }) {
+  const member = M.members[domainId];
+  const domainNode = member ? member.nodes('Domain')[0] : null;
   const funding = domainNode ? domainNode.props.funding : null;
+  const reviews = M.memberReviews[domainId] || [];
   const [staged, setStaged] = useState([]);
   const [form, setForm] = useState(null);   // null | {decision, rebalancePct, conditions}
   if (!funding) return null;
 
-  /* evidence in — pulled LIVE from the lifecycle graph's outcomes, never typed */
-  const evidence = M.ccore ? M.ccore.nodes('Outcome').map(o => {
-    const sc = M.ccore.byId.get((M.ccore.out(o.id, 'actualizes')[0] || {}).to);
-    return `${sc ? sc.label : o.localId}: ${o.props.current}`;
-  }) : [];
+  /* evidence in — pulled LIVE from the domain's product lifecycle graphs' outcomes, never typed */
+  const evidence = M.products
+    .filter(p => p.packages.some(pk => pk.ctx && (M.ctxDomain.get(pk.ctx.id) || {}).localId === domainId))
+    .flatMap(p => {
+      const p4 = M.prods4[p.node.localId];
+      if (!p4) return [];
+      return p4.idx.nodes('Outcome').map(o => {
+        const sc = p4.idx.byId.get((p4.idx.out(o.id, 'actualizes')[0] || {}).to);
+        return `${sc ? sc.label : o.localId}: ${o.props.current}`;
+      });
+    });
   const nextQuarter = '2026-Q3';
-  const already = M.claimsReviews.some(r => r.props.quarter === nextQuarter) || staged.some(r => r.quarter === nextQuarter);
+  const already = reviews.some(r => r.props.quarter === nextQuarter) || staged.some(r => r.quarter === nextQuarter);
 
   const record = () => {
     if (form.rebalancePct > 15) {
@@ -313,8 +338,8 @@ function FundingRhythm() {
          The refusal path becomes productive: it stages approval.create into the
          ClaimsCore approvals queue (the reserve process is the only other money door). */
       const apr = {
-        id: 'APR-3', status: 'pending', name: `Strategic-reserve draw: +${form.rebalancePct}% into the Claims envelope`,
-        kind: 'strategic-reserve draw', requestedBy: 'Chief Claims Officer · quarterly outcome review',
+        id: 'APR-3', status: 'pending', name: `Strategic-reserve draw: +${form.rebalancePct}% into the ${domainNode.label} envelope`,
+        kind: 'strategic-reserve draw', requestedBy: `${domainNode.props.executive} · quarterly outcome review`,
         evidence: evidence.join(' · '),
         ask: `${form.tradeoffs}${form.conditions ? ` Conditions offered: ${form.conditions}` : ''}`,
       };
@@ -324,14 +349,14 @@ function FundingRhythm() {
       return;
     }
     const rv = {
-      id: `OR-${nextQuarter.replace('-', '')}-CLAIMS`, quarter: nextQuarter, status: 'recorded', date: '2026-08-16',
-      decidedBy: 'Chief Claims Officer · quarterly outcome review',
+      id: `OR-${nextQuarter.replace('-', '')}-${domainId.replace('DOM-', '')}`, quarter: nextQuarter, status: 'recorded', date: '2026-08-16',
+      decidedBy: `${domainNode.props.executive} · quarterly outcome review`,
       evidence,
       decision: form.rebalancePct === 0 ? 'hold' : 'rebalance', rebalancePct: form.rebalancePct,
       tradeoffs: form.tradeoffs, conditions: form.conditions,
     };
     setStaged(s => [rv, ...s]);   // optimistic echo — the record returns from the KB after apply
-    stageChange('review.record', rv.id, rv);
+    stageChange('review.record', rv.id, { ...rv, graph: member.ns });
     setForm(null);
   };
 
@@ -420,7 +445,7 @@ function FundingRhythm() {
             <div className="mer-h-act">{r.kind} · requested by {r.requestedBy} — decided in the reserve process, not the review.</div>
           </div>
         : <Review r={r} isStaged key={r.id} />)}
-      {M.claimsReviews.map(r => <Review r={{ ...r.props, quarter: r.props.quarter }} key={r.id} />)}
+      {reviews.map(r => <Review r={{ ...r.props, quarter: r.props.quarter }} key={r.id} />)}
     </div>
   );
 }
@@ -430,6 +455,8 @@ function MerDomain({ id }) {
   const d = M.domains.find(x => x.node.localId === id);
   if (!d) return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown domain. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
   const isClaims = id === 'DOM-CLAIMS';
+  const member = M.members[id] || null;
+  const units = M.memberUnits[id] || [];
   const ctxIds = new Set(d.contexts.map(c => c.id));
   const slice = M.seams.filter(s => ctxIds.has(s.from.id) || ctxIds.has(s.to.id) || s.from.id === d.node.id || s.to.id === d.node.id);
   const portfolio = M.products.filter(p => p.packages.some(pk => pk.ctx && M.ctxDomain.get(pk.ctx.id) && M.ctxDomain.get(pk.ctx.id).id === d.node.id));
@@ -455,14 +482,14 @@ function MerDomain({ id }) {
         {d.node.props.journeyNote && <div className="mer-fact"><span className="k">Note</span><span className="v">{d.node.props.journeyNote}</span></div>}
       </div>
 
-      {isClaims && M.claimsUnits.length > 0 && (
+      {units.length > 0 && (
         <div className="asc-section">
           <div className="asc-sec-head">
             <div className="asc-sec-title">Sub-structure</div>
             <div className="asc-sec-sub">Two management logics inside one envelope — flat product side, hierarchical operations side</div>
           </div>
           <div className="mer-units">
-            {M.claimsUnits.map(u => (
+            {units.map(u => (
               <div className="mer-unit" key={u.id}>
                 <div className="mer-u-top"><b>{u.label}</b><span className="mer-u-size">{u.props.size}</span></div>
                 <div className="mer-u-shape">{u.props.shape}</div>
@@ -473,7 +500,7 @@ function MerDomain({ id }) {
         </div>
       )}
 
-      {isClaims && <FundingRhythm />}
+      {member && <FundingRhythm domainId={id} />}
 
       <div className="asc-section">
         <div className="asc-sec-head">
@@ -574,7 +601,7 @@ function MerDomain({ id }) {
         </div>
       </div>
 
-      <DerivedStrip graph={isClaims && M.claims ? M.claims.g : M.org.g} extra={isClaims ? <>member graph <code>claims:*</code> · walls gated "Walls hold?" ✓</> : null} />
+      <DerivedStrip graph={member ? member.g : M.org.g} extra={member ? <>member graph <code>{member.ns}:*</code> · walls gated "Walls hold?" ✓</> : null} />
     </div>
   );
 }
@@ -788,7 +815,7 @@ function MerContext({ id }) {
         </div>
       )}
 
-      <DerivedStrip graph={dep && M.claims ? M.claims.g : M.org.g} />
+      <DerivedStrip graph={dep && dep.member ? dep.member.g : M.org.g} />
     </div>
   );
 }
@@ -1411,7 +1438,7 @@ function kg4Search(needle) {
     }
   };
   scan(M.org, 'org');
-  if (M.claims) scan(M.claims, 'claims');
+  for (const [key, mg] of Object.entries(M.members || {})) if (mg.ns === key) scan(mg, key);
   for (const [pid, { idx }] of Object.entries(M.prods4)) scan(idx, 'prod:' + pid);
   const goFor = ({ n, graphKey }) => {
     if (graphKey === 'org') {
