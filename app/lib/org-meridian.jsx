@@ -1,5 +1,6 @@
 import React from 'react';
 import './kg-v4.gen';
+import './org-refchart';
 import { stageChange } from './kg-query';
 /* ============================================================
    Cynergis — the Meridian org altitude (v4, D-094).
@@ -1499,7 +1500,6 @@ const CHAIN_STRIP = [
 function MerOverview() {
   if (!M) return <div className="asc-page"><div className="asc-panel asc-panel-pad">The v4 graphs are not generated yet — run <code>node kg/generate-v4.js</code>.</div></div>;
   const orgNode = M.org.byLocal.get('ORG');
-  const streamDomains = M.domains.filter(d => d.node.props.kind === 'stream');
   return (
     <div className="asc-page">
       <div className="asc-page-head">
@@ -1515,25 +1515,49 @@ function MerOverview() {
           <div className="asc-sec-title">1 · The value chain, and the domains under it</div>
           <div className="asc-sec-sub">Start from how the business actually earns and pays out. Each step is dense enough in its own vocabulary and rules to justify its own group.</div>
         </div>
+        {/* D-116: read-only for now — navigation lives on the Domains entry */}
         <div className="ovw-strip">
           {CHAIN_STRIP.map((c, i) => (
-            <button type="button" className="ovw-cs" key={i} onClick={() => goDomain(c.id)} title={`Open the ${c.dom} domain page`}>
+            <div className="ovw-cs" key={i}>
               <span className="step">{c.step}</span>
               <span className="dom">{c.dom}</span>
               <span className="ex">{c.ex}</span>
-            </button>
+            </div>
           ))}
         </div>
       </div>
 
-      <div className="asc-section">
-        <div className="asc-sec-head">
-          <div className="asc-sec-title">The domains under it</div>
-          <div className="asc-sec-sub">Durable, cross-functional, persistently funded, one named accountable owner each — derived live from the org graph</div>
+      {/* D-116: Section 3 of the reference doc, VERBATIM — same markup, same colors
+          (scoped stylesheet org-refchart.css carries the reference palette) */}
+      {typeof window !== 'undefined' && window.__REFCHART__ && (
+        <div className="asc-section">
+          <div className="ovw-refchart" dangerouslySetInnerHTML={{ __html: window.__REFCHART__.html }} />
         </div>
+      )}
+
+      <DerivedStrip graph={M.org.g} extra={<>sections 1 and 3 of the reference doc rendered verbatim · the clickable domain index lives under Domains</>} />
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerOverview = MerOverview;
+
+/* the Domains entry (D-116): the detailed domain cards, clickable → the domain pages */
+function MerDomains() {
+  if (!M) return null;
+  const streamDomains = M.domains.filter(d => d.node.props.kind === 'stream');
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Organization · domains</div>
+          <h1 className="asc-page-title">Domains</h1>
+          <p className="asc-page-sub">Durable, cross-functional, persistently funded, one named accountable owner each — derived live from the org graph. Open a domain for its executive, funding rhythm, subdomains and portfolio.</p>
+        </div>
+      </div>
+      <div className="asc-section">
         <div className="ovw-domcards">
           {streamDomains.map(d => (
-            <button type="button" className="ovw-domcard" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
+            <button type="button" className="ovw-domcard click" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
               <div className="ovw-dc-top"><b>{d.node.label}</b><span className="badge">{d.node.props.valueChainStep}</span></div>
               <div className="ovw-dc-sum">{d.node.props.summary}</div>
               <div className="ovw-dc-meta">
@@ -1546,7 +1570,7 @@ function MerOverview() {
             </button>
           ))}
           {M.domains.filter(d => d.node.props.kind === 'platform').map(d => (
-            <button type="button" className="ovw-domcard plat" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
+            <button type="button" className="ovw-domcard plat click" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
               <div className="ovw-dc-top"><b>{d.node.label}</b><span className="badge">{d.node.props.valueChainStep}</span></div>
               <div className="ovw-dc-sum">{d.node.props.summary}</div>
               <div className="ovw-dc-meta"><span>{d.node.props.owner}</span><span>{d.contexts.length} platform contexts</span></div>
@@ -1554,12 +1578,15 @@ function MerOverview() {
           ))}
         </div>
       </div>
-
-      <DerivedStrip graph={M.org.g} extra={<>section 1 of the reference doc rendered in full · domains derived from <code>meridian:*</code></>} />
+      <div className="asc-panel asc-panel-pad" style={{ marginTop: 14 }}>
+        The DERIVED two-axis chart — chapters × domains with journeys, the typed context map, polysemes and health metrics, all from <code>meridian:*</code> — lives on its own page:{' '}
+        <button type="button" className="mer-link" onClick={() => nav({ sub: 'chart' })}>open the two-axis chart →</button>
+      </div>
+      <DerivedStrip graph={M.org.g} />
     </div>
   );
 }
-if (typeof window !== 'undefined') window.MerOverview = MerOverview;
+if (typeof window !== 'undefined') window.MerDomains = MerDomains;
 
 /* the Platforms section: the platform band as a first-class page */
 function MerPlatforms() {

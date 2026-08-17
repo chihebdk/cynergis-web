@@ -663,8 +663,9 @@ function OrgApp() {
               const q = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
               const drill = q.dom || q.bc || q.mprod;
               const sec = sub === 'meridian' ? (drill ? 'domains' : 'overview') : sub;
+              const railActive = sec === 'chart' ? 'domains' : sec;   // the derived chart lives under Domains (D-116)
               return <div className="asc-body">
-                <NavRail sect="Organization" active={sec} onSelect={navSub}
+                <NavRail sect="Organization" active={railActive} onSelect={navSub}
                   items={[
                     { id:'overview', label:'Overview', icon:'org' },
                     { id:'domains', label:'Domains', icon:'dash' },
@@ -682,7 +683,8 @@ function OrgApp() {
                   {sec === 'dashboard' ? <OrgDashboard onOpenPortfolio={openPortfolio} />
                     : sec === 'prioritize' ? <PrioritizePortfolios onOpenPortfolio={openPortfolio} />
                     : sec === 'overview' ? React.createElement(window.MerOverview || window.MeridianOrg)
-                    : sec === 'domains' ? React.createElement(window.MeridianOrg)
+                    : sec === 'domains' ? (drill ? React.createElement(window.MeridianOrg) : React.createElement(window.MerDomains || window.MeridianOrg))
+                    : sec === 'chart' ? React.createElement(window.MeridianOrg)
                     : sec === 'platforms' ? React.createElement(window.MerPlatforms)
                     : React.createElement(window.MerOrgSection, { section: sec })}
                 </main>
