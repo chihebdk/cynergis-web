@@ -417,6 +417,40 @@ function ProductCard({ p, onOpen }) {
 /* ---------- Product page now lives in org-envision.jsx (window.ProductPage) ---------- */
 const ProductPage = window.ProductPage;
 
+/* ---------- topbar scope: Organization > Domain > Product (D-115) ----------
+   Resolves the active domain/product scope from the org-altitude URL params
+   (dom / bc / mprod) against the org graph, so the header path stays in sync
+   with the Meridian drills. bc resolves to its containing domain; mprod to the
+   domain of its first packaged context. */
+function merScopeFromUrl(q) {
+  const K = typeof window !== 'undefined' && window.__KG4__;
+  if (!K || !K.org) return {};
+  const g = K.org;
+  const byLocal = id => g.nodes.find(n => n.localId === id);
+  const byId = id => g.nodes.find(n => n.id === id);
+  const domOfCtx = ctxNode => {
+    const e = g.edges.find(x => x.type === 'contains' && x.to === ctxNode.id);
+    return e ? byId(e.from) : null;
+  };
+  let domId = q.dom || null;
+  const prodId = q.mprod || null;
+  if (!domId && q.bc) {
+    const c = byLocal(q.bc);
+    const d = c && domOfCtx(c);
+    if (d) domId = d.localId;
+  }
+  if (!domId && prodId) {
+    const p = byLocal(prodId);
+    const pk = p && g.edges.find(x => x.type === 'packages' && x.from === p.id);
+    const d = pk && domOfCtx(byId(pk.to) || {});
+    if (d) domId = d.localId;
+  }
+  return {
+    domId, domName: domId ? (byLocal(domId) || {}).label : null,
+    prodId, prodName: prodId ? (byLocal(prodId) || {}).label : null,
+  };
+}
+
 /* ---------- left-rail nav ---------- */
 function NavRail({ sect, items, active, onSelect, foot }) {
   return (
@@ -525,6 +559,16 @@ function OrgApp() {
     window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'dashboard', ...RESET });
     setTimeout(scrollTop, 0);
   }, []);
+  const goMerDomain = useCallback((id) => {
+    setView('org'); setSub('meridian');
+    window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: id, ...RESET });
+    setTimeout(scrollTop, 0);
+  }, []);
+  const goMerProduct = useCallback((id) => {
+    setView('org'); setSub('meridian');
+    window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', mprod: id, ...RESET });
+    setTimeout(scrollTop, 0);
+  }, []);
   const openProduct = useCallback((p) => {
     const r = cynResolveProduct(p.id);
     setProd(p); if (r) setPid(r.pid); setSub('dashboard'); setView('product');
@@ -571,17 +615,36 @@ function OrgApp() {
         <button className="asc-backbtn" disabled={!canBack} onClick={() => window.history.back()}
           title="Back" aria-label="Back"><Ico k="back" w={15} /></button>
 
-        <div className="asc-scope asc-scope-path">
-          <button className={view === 'org' ? 'on' : ''} onClick={goOrg}><Ico k="org" w={13} /> Organization</button>
-          <button className={view === 'portfolio' ? 'on' : ''} disabled={!pid} onClick={goPortfolioView}>
-            <Ico k={pf && pf._v4 ? 'org' : 'portfolio'} w={13} />
-            <span className="lab2">{pf && pf._v4 ? 'Domain' : 'Portfolio'}{pf && <><span className="sep">·</span><span className="ent">{pf.name}</span></>}</span>
-          </button>
-          <button className={view === 'product' ? 'on' : ''} disabled={!prod} onClick={goProductView}>
-            <Ico k="product" w={13} />
-            <span className="lab2">Product{prod && <><span className="sep">·</span><span className="ent">{prod.name}</span></>}</span>
-          </button>
-        </div>
+        {(() => {
+          /* D-115: the path reads Organization > Domain > Product, synced with the
+             Meridian drills (dom/bc/mprod). "Portfolio" survives only on the legacy
+             WealthGrow surfaces. */
+          const q = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
+          const mer = view === 'org' ? merScopeFromUrl(q) : {};
+          const legacyPf = pf && !pf._v4 && view !== 'org';
+          const domName = view === 'org' ? mer.domName : (pf ? pf.name : null);
+          const domOn = (view === 'org' && !!(q.dom || q.bc) && !q.mprod) || view === 'portfolio';
+          const domDisabled = view === 'org' ? !mer.domId : !pid;
+          const prodName = view === 'org' ? mer.prodName : (prod ? prod.name : null);
+          const prodOn = (view === 'org' && !!q.mprod) || view === 'product';
+          const prodDisabled = view === 'org' ? !mer.prodId : !prod;
+          const orgOn = view === 'org' && !mer.domId && !mer.prodId;
+          const onDomain = () => { if (view === 'org' && mer.domId) goMerDomain(mer.domId); else goPortfolioView(); };
+          const onProduct = () => { if (view === 'org' && mer.prodId) goMerProduct(mer.prodId); else goProductView(); };
+          return (
+            <div className="asc-scope asc-scope-path">
+              <button className={orgOn ? 'on' : ''} onClick={goOrg}><Ico k="org" w={13} /> Organization</button>
+              <button className={domOn ? 'on' : ''} disabled={domDisabled} onClick={onDomain}>
+                <Ico k={legacyPf ? 'portfolio' : 'org'} w={13} />
+                <span className="lab2">{legacyPf ? 'Portfolio' : 'Domain'}{domName && <><span className="sep">·</span><span className="ent">{domName}</span></>}</span>
+              </button>
+              <button className={prodOn ? 'on' : ''} disabled={prodDisabled} onClick={onProduct}>
+                <Ico k="product" w={13} />
+                <span className="lab2">Product{prodName && <><span className="sep">·</span><span className="ent">{prodName}</span></>}</span>
+              </button>
+            </div>
+          );
+        })()}
 
         <button type="button" className="asc-search" onClick={() => setPalOpen(true)}><Ico k="search" w={13} /> <span className="stxt">Search org &amp; knowledge mesh</span> <span className="kbd">⌘K</span></button>
         <div className="asc-userav">AT</div>
