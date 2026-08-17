@@ -34,6 +34,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       entry: q.get('entry') || 'overview', ctx: q.get('ctx') || null,
       tab: (tab && tab !== 'rels') ? tab : 'flow',   // legacy ?tab=rels links land on Event flow
       dom: q.get('dom') || null, bc: q.get('bc') || null,   // Meridian v4 altitude (D-094)
+      dtab: q.get('dtab') || null,   // domain-view tab (D-119: overview | map)
       mprod: q.get('mprod') || null, mtab: q.get('mtab') || null,   // v4 product lifecycle (D-095)
     };
   };
@@ -44,6 +45,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       if (n.sub && n.sub !== 'meridian') q.set('sub', n.sub);
       if (n.sub === 'meridian' || n.sub === 'domains' || !n.sub) {
         if (n.dom) q.set('dom', n.dom); if (n.bc) q.set('bc', n.bc);
+        if (n.dom && n.dtab) q.set('dtab', n.dtab);
         if (n.mprod) { q.set('mprod', n.mprod); if (n.mtab && n.mtab !== 'envision') q.set('mtab', n.mtab); }
       }
     }
@@ -451,6 +453,18 @@ function merScopeFromUrl(q) {
   };
 }
 
+/* the domain's contexts, for the domain-view rail (D-119) */
+function merDomainContexts(domId) {
+  const K = typeof window !== 'undefined' && window.__KG4__;
+  if (!K || !K.org) return [];
+  const g = K.org;
+  const d = g.nodes.find(n => n.localId === domId);
+  if (!d) return [];
+  return g.edges.filter(e => e.type === 'contains' && e.from === d.id)
+    .map(e => g.nodes.find(n => n.id === e.to)).filter(Boolean)
+    .map(c => ({ id: c.localId, label: c.label }));
+}
+
 /* ---------- left-rail nav ---------- */
 function NavRail({ sect, items, active, onSelect, foot }) {
   return (
@@ -503,7 +517,7 @@ function OrgApp() {
     const nav = { v: view === 'portfolio' ? 'pf' : view === 'product' ? 'prod' : 'org',
       pf: pid, prod: prod ? prod.id : null, sub: n.sub,
       phase: n.phase, entry: n.entry, ctx: n.ctx, tab: n.tab,
-      dom: n.dom, bc: n.bc, mprod: n.mprod, mtab: n.mtab };
+      dom: n.dom, bc: n.bc, mprod: n.mprod, mtab: n.mtab, dtab: n.dtab };
     window.__cynNav = nav;   // plain assignment only — no setState/ping during render
     return { view, pid, prod, sub: n.sub };
   }, []);
@@ -562,6 +576,11 @@ function OrgApp() {
   const goMerDomain = useCallback((id) => {
     setView('org'); setSub('meridian');
     window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: id, ...RESET });
+    setTimeout(scrollTop, 0);
+  }, []);
+  const goMerContext = useCallback((id) => {
+    setView('org'); setSub('meridian');
+    window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', bc: id, ...RESET });
     setTimeout(scrollTop, 0);
   }, []);
   const goMerProduct = useCallback((id) => {
@@ -664,6 +683,33 @@ function OrgApp() {
               const drill = q.dom || q.bc || q.mprod;
               const sec = sub === 'meridian' ? (drill ? 'domains' : 'overview') : sub;
               const railActive = sec === 'chart' ? 'domains' : sec;   // the derived chart lives under Domains (D-116)
+              /* D-119: a domain is its OWN workspace — a domain-scoped rail replaces
+                 the org rail while a domain (or one of its subdomains) is open:
+                 Overview · Context map · the subdomains, like the product shell. */
+              const merScope = merScopeFromUrl(q);
+              const domScope = !q.mprod && (q.dom || q.bc) ? merScope.domId : null;
+              if (domScope) {
+                const ctxs = merDomainContexts(domScope);
+                const dActive = q.bc ? q.bc : (q.dtab === 'map' ? 'map' : 'overview');
+                const goDomTab = (dtab) => { setSub('meridian'); window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: domScope, dtab, ...RESET }); setTimeout(scrollTop, 0); };
+                return <div className="asc-body">
+                  <aside className="asc-rail">
+                    <div className="asc-rail-sect">{merScope.domName}</div>
+                    <div className={'asc-nav' + (dActive === 'overview' ? ' on' : '')} onClick={() => goMerDomain(domScope)}><Ico k="org" w={15} /> Overview</div>
+                    <div className={'asc-nav' + (dActive === 'map' ? ' on' : '')} onClick={() => goDomTab('map')}><Ico k="dash" w={15} /> Context map</div>
+                    <div className="asc-rail-sect" style={{ marginTop:'14px' }}>Subdomains</div>
+                    {ctxs.map(c => (
+                      <div key={c.id} className={'asc-nav' + (dActive === c.id ? ' on' : '')} onClick={() => goMerContext(c.id)}><Ico k="product" w={15} /> {c.label}</div>
+                    ))}
+                    <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => navSub('domains')}><Ico k="back" w={15} /> All domains</div>
+                  </aside>
+                  <main className="asc-main">
+                    {(!q.bc && q.dtab === 'map' && window.MerDomainMap)
+                      ? React.createElement(window.MerDomainMap, { id: domScope })
+                      : React.createElement(window.MeridianOrg)}
+                  </main>
+                </div>;
+              }
               return <div className="asc-body">
                 <NavRail sect="Organization" active={railActive} onSelect={navSub}
                   items={[

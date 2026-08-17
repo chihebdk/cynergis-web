@@ -1621,6 +1621,74 @@ function MerPlatforms() {
 }
 if (typeof window !== 'undefined') window.MerPlatforms = MerPlatforms;
 
+/* the domain's Context map page (D-119): every typed seam touching the
+   domain's contexts, from the org graph's context map */
+function MerDomainMap({ id }) {
+  if (!M) return null;
+  const d = M.domains.find(x => x.node.localId === id);
+  if (!d) return null;
+  /* derive from the MEMBER graph's typed contracts — far richer than the
+     org-level map slice: every consume/publish per subdomain, with pattern
+     and mechanism (D-119). */
+  const member = M.members[id];
+  const rows = [];
+  if (member) {
+    for (const c of member.nodes('BoundedContext')) {
+      for (const e of [...member.out(c.id, 'consumes'), ...member.out(c.id, 'publishes_to')]) {
+        const k = member.byId.get(e.to);
+        if (!k || k.type !== 'Contract') continue;
+        const cp = member.byId.get((member.out(k.id, 'with')[0] || {}).to);
+        const ends = k.props.dir === 'consumes' ? { from: cp, to: c } : { from: c, to: cp };
+        rows.push({ ...ends, pattern: k.props.pattern, what: k.props.mechanism, cpType: cp ? cp.type : null });
+      }
+    }
+  }
+  const isInternal = r => r.from && r.to && r.from.type === 'BoundedContext' && r.to.type === 'BoundedContext';
+  const seen = new Set();
+  const internal = rows.filter(isInternal).filter(r => {
+    const key = [r.from.localId, r.to.localId].sort().join('|') + '|' + r.pattern;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+  const crossing = rows.filter(r => !isInternal(r));
+  const Row = (s, i) => (
+    <div className="mer-seam" key={i}>
+      <span className="mer-seam-ends">
+        <b className={s.from && s.from.type === 'External' ? 'ext' : ''}>{s.from ? s.from.label : '—'}</b>
+        <span className="mer-arrow">→</span>
+        <b className={s.to && s.to.type === 'External' ? 'ext' : ''}>{s.to ? s.to.label : '—'}</b>
+      </span>
+      <Pattern p={s.pattern} />
+      <span className="mer-seam-what">{s.what}</span>
+    </div>
+  );
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">{d.node.label} · context map</div>
+          <h1 className="asc-page-title">Context map</h1>
+          <p className="asc-page-sub">How {d.node.label}'s subdomains relate — every standing relationship typed by pattern; upstream on the left. Open a subdomain from the left menu for its full element.</p>
+        </div>
+      </div>
+      {internal.length > 0 && (
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">Inside the domain</div>
+            <div className="asc-sec-sub">Seams between this domain's own subdomains</div></div>
+          <div className="mer-map">{internal.map(Row)}</div>
+        </div>
+      )}
+      <div className="asc-section">
+        <div className="asc-sec-head"><div className="asc-sec-title">Crossing the domain wall</div>
+          <div className="asc-sec-sub">Seams to other domains, the platform band and externals</div></div>
+        <div className="mer-map">{crossing.map(Row)}</div>
+      </div>
+      <DerivedStrip graph={member ? member.g : M.org.g} extra={<>typed contracts from the {d.node.label} member graph</>} />
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerDomainMap = MerDomainMap;
+
 /* honest scaffolds for the sections the redesign has not reached yet */
 const ORG_SECTION_NOTES = {
   capabilities: {
