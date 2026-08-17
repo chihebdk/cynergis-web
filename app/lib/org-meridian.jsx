@@ -1504,16 +1504,16 @@ function MerOverview() {
     <div className="asc-page">
       <div className="asc-page-head">
         <div>
-          <div className="asc-eyebrow">Organization · worked example — personal auto insurer</div>
+          <div className="asc-eyebrow">Organization · overview</div>
           <h1 className="asc-page-title">{orgNode.label}</h1>
-          <p className="asc-page-sub">The columns are not departments renamed. They are the places where the business language changes meaning — which is what makes them viable team boundaries.</p>
+          <p className="asc-page-sub">How Meridian is structured: the value chain and the domains that own it, the chapters that staff them, and the platform band they stand on.</p>
         </div>
       </div>
 
       <div className="asc-section">
         <div className="asc-sec-head">
-          <div className="asc-sec-title">1 · The value chain, and the domains under it</div>
-          <div className="asc-sec-sub">Start from how the business actually earns and pays out. Each step is dense enough in its own vocabulary and rules to justify its own group.</div>
+          <div className="asc-sec-title">The value chain, and the domains under it</div>
+          <div className="asc-sec-sub">How the business earns and pays out — and the domain accountable for each step.</div>
         </div>
         {/* D-116: read-only for now — navigation lives on the Domains entry */}
         <div className="ovw-strip">
@@ -1527,15 +1527,20 @@ function MerOverview() {
         </div>
       </div>
 
-      {/* D-116: Section 3 of the reference doc, VERBATIM — same markup, same colors
-          (scoped stylesheet org-refchart.css carries the reference palette) */}
+      {/* D-116: the chart itself renders VERBATIM (markup + reference palette);
+          D-117: its doc-voice heading and intro are hidden via CSS and replaced
+          by this product-voice section head — the tables stay untouched. */}
       {typeof window !== 'undefined' && window.__REFCHART__ && (
         <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">The chart — domains × chapters</div>
+            <div className="asc-sec-sub">Columns are the domain groups: durable, cross-functional, persistently funded, one named owner each. Rows are the chapters that supply people and set craft standards. Counts are product &amp; engineering seats — the operational workforce sits inside each domain's operations leg.</div>
+          </div>
           <div className="ovw-refchart" dangerouslySetInnerHTML={{ __html: window.__REFCHART__.html }} />
         </div>
       )}
 
-      <DerivedStrip graph={M.org.g} extra={<>sections 1 and 3 of the reference doc rendered verbatim · the clickable domain index lives under Domains</>} />
+      <DerivedStrip graph={M.org.g} extra={<>value chain + chart from the org model · domains derived from <code>meridian:*</code></>} />
     </div>
   );
 }
