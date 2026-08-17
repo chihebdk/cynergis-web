@@ -42,7 +42,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
     q.set('v', n.v);
     if (n.v === 'org') {
       if (n.sub && n.sub !== 'meridian') q.set('sub', n.sub);
-      if (n.sub === 'meridian' || !n.sub) {
+      if (n.sub === 'meridian' || n.sub === 'domains' || !n.sub) {
         if (n.dom) q.set('dom', n.dom); if (n.bc) q.set('bc', n.bc);
         if (n.mprod) { q.set('mprod', n.mprod); if (n.mtab && n.mtab !== 'envision') q.set('mtab', n.mtab); }
       }
@@ -153,6 +153,10 @@ const OI = {
   dot:      <circle cx="8" cy="8" r="2.4"/>,
   board:    <path d="M2 2v12h12M5 11V7M8.5 11V4.5M12 11V8.5"/>,
   dash:     <path d="M2.5 2.5h4v5h-4zM9.5 2.5h4v3h-4zM2.5 10h4v3.5h-4zM9.5 8h4v5.5h-4z"/>,
+  layers:   <path d="M8 2 14 5 8 8 2 5zM2 8l6 3 6-3M2 11l6 3 6-3"/>,
+  shield:   <path d="M8 2l5 2v4c0 3.2-2.1 5.2-5 6-2.9-.8-5-2.8-5-6V4z"/>,
+  risk:     <path d="M8 2.5 14.5 13.5H1.5zM8 7v3M8 11.8h.01"/>,
+  cap:      <path d="M8 3 1.5 6 8 9l6.5-3zM4 7.2V11c0 1 1.8 2 4 2s4-1 4-2V7.2"/>,
 };
 function Ico({ k, w=16 }) {
   return <svg width={w} height={w} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{OI[k] || OI.product}</svg>;
@@ -589,15 +593,38 @@ function OrgApp() {
       {view === 'product'
         ? <ProductPage product={prod} portfolio={pf} />
         : view === 'org'
-          ? <div className="asc-body">
-              <NavRail sect="Organization" active={sub} onSelect={navSub}
-                items={[{ id:'meridian', label:'Meridian org', icon:'org' }, { id:'dashboard', label:'WealthGrow (legacy v3)', icon:'dash' }, { id:'prioritize', label:'Prioritize portfolios', icon:'board' }]} />
-              <main className="asc-main">
-                {sub === 'dashboard' ? <OrgDashboard onOpenPortfolio={openPortfolio} />
-                  : sub === 'prioritize' ? <PrioritizePortfolios onOpenPortfolio={openPortfolio} />
-                  : React.createElement(window.MeridianOrg)}
-              </main>
-            </div>
+          ? (() => {
+              /* D-114 org-page redesign: the six sections, with legacy kept below
+                 (rehome, never remove). sub=meridian (old links) maps to Overview,
+                 or to Domains when a drill param rides along. */
+              const q = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
+              const drill = q.dom || q.bc || q.mprod;
+              const sec = sub === 'meridian' ? (drill ? 'domains' : 'overview') : sub;
+              return <div className="asc-body">
+                <NavRail sect="Organization" active={sec} onSelect={navSub}
+                  items={[
+                    { id:'overview', label:'Overview', icon:'org' },
+                    { id:'domains', label:'Domains', icon:'dash' },
+                    { id:'capabilities', label:'Capabilities', icon:'cap' },
+                    { id:'platforms', label:'Platforms', icon:'layers' },
+                    { id:'risks', label:'Risks', icon:'risk' },
+                    { id:'governance', label:'Governance', icon:'shield' },
+                  ]}
+                  foot={<>
+                    <div className="asc-rail-sect" style={{ marginTop:'14px' }}>Legacy</div>
+                    <div className={'asc-nav' + (sec === 'dashboard' ? ' on' : '')} onClick={() => navSub('dashboard')}><Ico k="dash" w={15} /> WealthGrow (legacy v3)</div>
+                    <div className={'asc-nav' + (sec === 'prioritize' ? ' on' : '')} onClick={() => navSub('prioritize')}><Ico k="board" w={15} /> Prioritize portfolios</div>
+                  </>} />
+                <main className="asc-main">
+                  {sec === 'dashboard' ? <OrgDashboard onOpenPortfolio={openPortfolio} />
+                    : sec === 'prioritize' ? <PrioritizePortfolios onOpenPortfolio={openPortfolio} />
+                    : sec === 'overview' ? React.createElement(window.MerOverview || window.MeridianOrg)
+                    : sec === 'domains' ? React.createElement(window.MeridianOrg)
+                    : sec === 'platforms' ? React.createElement(window.MerPlatforms)
+                    : React.createElement(window.MerOrgSection, { section: sec })}
+                </main>
+              </div>;
+            })()
           : <div className="asc-body">
               <NavRail sect={pf ? pf.name : 'Portfolio'} active={sub} onSelect={navSub}
                 items={[{ id:'dashboard', label:'Dashboard', icon:'dash' }, { id:'prioritize', label:'Prioritize products', icon:'board' }]}

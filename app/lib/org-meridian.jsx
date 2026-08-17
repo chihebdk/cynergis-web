@@ -1472,6 +1472,175 @@ function kg4Search(needle) {
 if (typeof window !== 'undefined') window.__kg4Search = kg4Search;
 
 /* ---------- entry ---------- */
+/* ============================================================
+   The organization page redesign (D-114) — left-panel sections:
+   Overview · Domains · Capabilities · Platforms · Risks · Governance.
+   The OVERVIEW page renders Section 1 of the reference doc
+   (ddd/auto-insurance-org-model_11.html — "The value chain, and
+   the domains under it") in full: the six-step chain strip
+   verbatim, with each cell clickable into the graph-backed
+   domain pages, and the derived domain cards beneath it.
+   ============================================================ */
+const CHAIN_STRIP = [
+  { step: 'Design the product', dom: 'Product & Pricing', id: 'DOM-PRICING',
+    ex: 'Coverages, forms, endorsements, rating algorithm, rate and rule filings' },
+  { step: 'Reach the buyer', dom: 'Distribution & Quoting', id: 'DOM-DISTRIBUTION',
+    ex: 'Broker portal, direct funnel, aggregators, quote, commissions' },
+  { step: 'Select and bind', dom: 'Underwriting & Policy', id: 'DOM-UW-POLICY',
+    ex: 'Risk selection, referrals, bind, endorsements, renewal, cancellation' },
+  { step: 'Collect the premium', dom: 'Billing & Money Movement', id: 'DOM-BILLING',
+    ex: 'Instalments, collections, non-payment, disbursements, commission payout' },
+  { step: 'Pay the loss', dom: 'Claims', id: 'DOM-CLAIMS',
+    ex: 'FNOL, coverage decision, estimating, repair, total loss, accident benefits' },
+  { step: 'Recover and learn', dom: 'Claims (recovery) + Data', id: 'DOM-CLAIMS',
+    ex: 'Subrogation, salvage, fraud, loss experience feeding pricing' },
+];
+
+function MerOverview() {
+  if (!M) return <div className="asc-page"><div className="asc-panel asc-panel-pad">The v4 graphs are not generated yet — run <code>node kg/generate-v4.js</code>.</div></div>;
+  const orgNode = M.org.byLocal.get('ORG');
+  const streamDomains = M.domains.filter(d => d.node.props.kind === 'stream');
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Organization · worked example — personal auto insurer</div>
+          <h1 className="asc-page-title">{orgNode.label}</h1>
+          <p className="asc-page-sub">The columns are not departments renamed. They are the places where the business language changes meaning — which is what makes them viable team boundaries.</p>
+        </div>
+      </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">1 · The value chain, and the domains under it</div>
+          <div className="asc-sec-sub">Start from how the business actually earns and pays out. Each step is dense enough in its own vocabulary and rules to justify its own group.</div>
+        </div>
+        <div className="ovw-strip">
+          {CHAIN_STRIP.map((c, i) => (
+            <button type="button" className="ovw-cs" key={i} onClick={() => goDomain(c.id)} title={`Open the ${c.dom} domain page`}>
+              <span className="step">{c.step}</span>
+              <span className="dom">{c.dom}</span>
+              <span className="ex">{c.ex}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">The domains under it</div>
+          <div className="asc-sec-sub">Durable, cross-functional, persistently funded, one named accountable owner each — derived live from the org graph</div>
+        </div>
+        <div className="ovw-domcards">
+          {streamDomains.map(d => (
+            <button type="button" className="ovw-domcard" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
+              <div className="ovw-dc-top"><b>{d.node.label}</b><span className="badge">{d.node.props.valueChainStep}</span></div>
+              <div className="ovw-dc-sum">{d.node.props.summary}</div>
+              <div className="ovw-dc-meta">
+                <span>{d.node.props.owner}</span>
+                <span>{d.contexts.length} contexts · {d.teams.length} teams</span>
+              </div>
+              {(d.node.props.standingMeasures || []).length > 0 && (
+                <div className="mer-oms" style={{ marginTop: 8 }}>{d.node.props.standingMeasures.map(m => <span className="mer-om" key={m}>{m}</span>)}</div>
+              )}
+            </button>
+          ))}
+          {M.domains.filter(d => d.node.props.kind === 'platform').map(d => (
+            <button type="button" className="ovw-domcard plat" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
+              <div className="ovw-dc-top"><b>{d.node.label}</b><span className="badge">{d.node.props.valueChainStep}</span></div>
+              <div className="ovw-dc-sum">{d.node.props.summary}</div>
+              <div className="ovw-dc-meta"><span>{d.node.props.owner}</span><span>{d.contexts.length} platform contexts</span></div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <DerivedStrip graph={M.org.g} extra={<>section 1 of the reference doc rendered in full · domains derived from <code>meridian:*</code></>} />
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerOverview = MerOverview;
+
+/* the Platforms section: the platform band as a first-class page */
+function MerPlatforms() {
+  if (!M) return null;
+  const plat = M.domains.find(d => d.node.props.kind === 'platform');
+  if (!plat) return null;
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Organization · platforms</div>
+          <h1 className="asc-page-title">{plat.node.label}</h1>
+          <p className="asc-page-sub">{plat.node.props.summary}</p>
+        </div>
+      </div>
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">The platform contexts</div>
+          <div className="asc-sec-sub">X-as-a-Service by default: published capability, consumed as a service, packaged by zero products (I4) — each opens its context page</div>
+        </div>
+        <div className="ovw-domcards">
+          {plat.contexts.map(c => {
+            const dep = M.depth.get(c.localId);
+            return (
+              <button type="button" className="ovw-domcard" key={c.id} onClick={() => goContext(c.localId)}>
+                <div className="ovw-dc-top"><b>{c.label}</b><Chip c={c.props.classification} /></div>
+                <div className="ovw-dc-sum">{dep ? dep.node.props.purpose : (c.props.publishes || '')}</div>
+                {dep && <div className="ovw-dc-meta"><span>{dep.team ? dep.team.label : ''}</span><span>{dep.models.length} model{dep.models.length === 1 ? '' : 's'} · {(dep.agents || []).length} agents</span></div>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <DerivedStrip graph={(M.members.platform || M.org).g} />
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerPlatforms = MerPlatforms;
+
+/* honest scaffolds for the sections the redesign has not reached yet */
+const ORG_SECTION_NOTES = {
+  capabilities: {
+    title: 'Capabilities',
+    sub: 'The capability axis: chapters, classifications and skills.',
+    note: 'This section arrives with a later redesign pass. Today the capability axis lives on the two-axis chart — chapters × domains with classification chips on every context — under Domains.',
+    linkLabel: 'Open the two-axis chart →', target: () => nav({ sub: 'domains' }),
+  },
+  risks: {
+    title: 'Risks',
+    sub: 'The organization’s risk registers, rolled up.',
+    note: 'This section arrives with a later redesign pass. Today risks live per product (each lifecycle spec carries its risk register) and per domain (postures and watch items on the context pages).',
+    linkLabel: 'Open a product risk register →', target: () => goProduct('PROD-CLAIMSCORE', 'envision'),
+  },
+  governance: {
+    title: 'Governance',
+    sub: 'Gates, approvals, funding rhythm and the trust ladder.',
+    note: 'This section arrives with a later redesign pass. Today governance runs in the machinery: phase gates on every product, approval queues with human-reserved decisions, and the quarterly outcome reviews on every domain page.',
+    linkLabel: 'Open the Claims funding rhythm →', target: () => goDomain('DOM-CLAIMS'),
+  },
+};
+function MerOrgSection({ section }) {
+  const s = ORG_SECTION_NOTES[section];
+  if (!s) return null;
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Organization · {section}</div>
+          <h1 className="asc-page-title">{s.title}</h1>
+          <p className="asc-page-sub">{s.sub}</p>
+        </div>
+      </div>
+      <div className="asc-panel asc-panel-pad">
+        <p style={{ margin: 0 }}>{s.note}</p>
+        <button type="button" className="mer-link" style={{ marginTop: 10 }} onClick={s.target}>{s.linkLabel}</button>
+      </div>
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerOrgSection = MerOrgSection;
+
 function MeridianOrg() {
   const n = typeof window !== 'undefined' && window.cynParseUrl ? window.cynParseUrl() : {};
   if (!M) {
