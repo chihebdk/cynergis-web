@@ -1302,6 +1302,9 @@ function Kg4PhaseEntry({ phase, entry, productId }) {
   return null;
 }
 if (typeof window !== 'undefined') window.Kg4PhaseEntry = Kg4PhaseEntry;
+/* the indexed product graph, for surfaces outside this module (D-111: the
+   System-design registers derive from it) */
+if (typeof window !== 'undefined') window.__kg4Product = pid => (M && M.prods4[pid]) || null;
 
 /* ---------- ⌘K search over the v4 graphs ---------- */
 const PHASE_OF_TYPE = {

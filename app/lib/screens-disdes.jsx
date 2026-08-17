@@ -634,6 +634,15 @@ function DesignArchitecture({ prd }) {
      honest empty states on the as-built tabs until an arch registry is derived. */
   const p4 = typeof window !== 'undefined' && window.__PRD4__ && window.__PRD4__[nav.prod];
   if (p4) {
+    /* D-111 (R4 gate line G1): the registers DERIVE from the product graph —
+       Decision/Component/Contract nodes and their edges — never hand-seeded and
+       never borrowed from another product. Tabs the graph is silent on (stack,
+       security) keep the honest empty state that names the reason. */
+    const p4g = typeof window !== 'undefined' && window.__kg4Product && window.__kg4Product(nav.prod);
+    const cc = p4g && p4g.idx;
+    const D4 = (typeof window !== 'undefined' && window.__DDD__ && window.__DDD__.byProduct && window.__DDD__.byProduct[nav.prod]) || null;
+    const wallName = lid => (D4 && (D4.contexts || []).find(x => x.id === lid)?.name) || lid;
+    const empty4 = why => <div className="ddd-empty-inline">{why}</div>;
     return (
       <>
         <p className="dd-lead">{(p4.overview && p4.overview.vision) || 'The product in its world.'}</p>
@@ -642,9 +651,90 @@ function DesignArchitecture({ prd }) {
             <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => setTab(t.key)}>{t.label}</button>
           ))}
         </div>
-        {tab === 'map'
-          ? (SysMap ? <SysMap product={{ id: nav.prod }} prd={prd} /> : null)
-          : <div className="ddd-empty-inline">Not authored yet — and the registry says so. The as-built {SD_TABS.find(t => t.key === tab)?.label.toLowerCase()} register for this product arrives when its architecture layer is derived from the graph; until then, the Design records live on the Bounded contexts tabs (models, contracts, decisions) — nothing is borrowed from another product.</div>}
+
+        {tab === 'map' && (SysMap ? <SysMap product={{ id: nav.prod }} prd={prd} /> : null)}
+
+        {tab === 'decisions' && (cc ? (
+          <DSec icon="policy" title="Design decisions" sub={`Derived from the ${nav.prod} lifecycle graph — Decision nodes with their recorded status; the go-forward decision lives in Realize`}>
+            {cc.nodes('Decision').filter(d => /^ADR/.test(d.localId)).map(d => (
+              <div className="dm-rel" key={d.id}>
+                <div className="dm-rel-h">
+                  <span className="dm-chip comp">{d.localId}</span>
+                  <b>{d.label}</b>
+                  <span className={'dm-chip ' + (d.props.status === 'accepted' ? 'event' : 'policy')}>{d.props.status}</span>
+                </div>
+                <p className="dm-rel-flow">{d.props.note}</p>
+              </div>
+            ))}
+          </DSec>
+        ) : empty4('The product graph is not loaded — the decisions register derives from it.'))}
+
+        {tab === 'components' && (cc ? (
+          <DSec icon="arch" title="Components to build" sub="Derived from the graph: each module implements its FRs and lives on exactly one wall (I1) — the modular-monolith packaging of ADR-01">
+            {cc.nodes('Component').map(c4 => {
+              const wall = (cc.byId.get((cc.out(c4.id, 'part_of')[0] || {}).to) || {}).localId;
+              const frs = cc.out(c4.id, 'implements').map(e => (cc.byId.get(e.to) || {}).localId);
+              const nfrs = cc.out(c4.id, 'constrained_by').map(e => (cc.byId.get(e.to) || {}).localId);
+              const skills = cc.inn(c4.id, 'realizes').map(e => (cc.byId.get(e.from) || {}));
+              return (
+                <div className="dm-rel" key={c4.id}>
+                  <div className="dm-rel-h">
+                    <span className="dm-chip comp">{c4.localId}</span>
+                    <b>{c4.label}</b>
+                    <span className="dm-chip event">{wallName(wall)}</span>
+                    {frs.map(f => <TRef id={f} key={f} />)}
+                    {nfrs.map(f => <TRef id={f} key={f} />)}
+                  </div>
+                  <p className="dm-rel-flow">
+                    <code>{c4.props.code}</code>
+                    {skills.length > 0 && <> · realized by {skills.map(s => `${s.localId} (${s.props.tier})`).join(', ')}</>}
+                    {c4.props.note && <> — {c4.props.note}</>}
+                  </p>
+                </div>
+              );
+            })}
+          </DSec>
+        ) : empty4('The product graph is not loaded — the components register derives from it.'))}
+
+        {tab === 'integrations' && (D4 ? (
+          <DSec icon="arch" title="External parties & cross-domain seams" sub="Everything crossing this product's boundary, typed by pattern — the same relations register the maps draw">
+            {(D4.relations || []).filter(r => !String(r.from).startsWith('CTX-') || !String(r.to).startsWith('CTX-')).map((r, i) => (
+              <div className="dm-rel" key={i}>
+                <div className="dm-rel-h">
+                  <span className="dm-chip event">{String(r.from).startsWith('CTX-') ? wallName(r.from) : r.from}</span>
+                  <span className="dm-pol-arrow">→</span>
+                  <span className="dm-chip event">{String(r.to).startsWith('CTX-') ? wallName(r.to) : r.to}</span>
+                  <span className="dm-chip policy">{r.pattern}</span>
+                  <span className="dm-rel-carries">carries: {r.label}</span>
+                </div>
+                <p className="dm-rel-flow">{r.flow}</p>
+              </div>
+            ))}
+          </DSec>
+        ) : empty4('No relations register for this product yet.'))}
+
+        {tab === 'contracts' && (cc ? (
+          <DSec icon="policy" title="Published language — contract registry" sub="Derived from the graph's Contract nodes: what crosses each seam, owned by the module that speaks it">
+            {cc.nodes('Contract').map(k => {
+              const owner = cc.byId.get((cc.out(k.id, 'owned_by')[0] || {}).to);
+              return (
+                <div className="dm-rel" key={k.id}>
+                  <div className="dm-rel-h">
+                    <span className="dm-chip comp">{k.localId}</span>
+                    <b>{k.label}</b>
+                    <span className="dm-chip policy">{k.props.contractType}</span>
+                    {owner && <span className="dm-rel-carries">owned by {owner.label}</span>}
+                  </div>
+                  <p className="dm-rel-flow">{k.props.note}</p>
+                </div>
+              );
+            })}
+          </DSec>
+        ) : empty4('The product graph is not loaded — the contract registry derives from it.'))}
+
+        {tab === 'stack' && empty4('Not authored yet — and the graph says so: no resource or environment nodes exist in the claimscore graph. The stack register derives when the as-built layer is recorded (never borrowed from another product).')}
+
+        {tab === 'security' && empty4('Not authored yet — and the graph says so: no secret or posture nodes exist in the claimscore graph. The security register derives when the as-built layer is recorded (never borrowed from another product).')}
       </>
     );
   }
