@@ -4,6 +4,7 @@ import './trace-core';
 import './ddd-data';
 import './domain-model-data';
 import { seedFlows } from '../flow/data';
+import { claimsFlows } from '../flow/claims-flows';
 import { kgContracts } from './kg-query';
 import { componentById, componentsForBC, deriveArch } from '../flow/arch';
 const { Ref: DDRef } = window;
@@ -200,7 +201,8 @@ function OpsAgentCard({ c }) {
   const goBuilt = () => {
     window.__cynAgentOpen = { id: o.asBuilt, tab: 'knowledge' };
     const nav = window.__cynNav || {};
-    const t = { v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Build', entry: 'agents' };
+    const scope = window.__cynGroundScope || {};   // set when the element mounts on the org altitude (R3)
+    const t = { v: 'prod', pf: nav.pf || scope.pf, prod: nav.prod || scope.prod, sub: 'dashboard', phase: 'Build', entry: 'agents' };
     window.cynPushUrl?.(t); window.__cynApplyProd?.(t);
   };
   return (
@@ -285,7 +287,7 @@ const domainData = product => (window.__DOMAIN__ && window.__DOMAIN__.byProduct[
    that executes the THEN) is the crosses target, or the flow's own context when
    the reaction stays inside. Consumed by the bounded context's
    Policies tab and the knowledge pack. */
-const derivedPolicies = () => seedFlows.flatMap(f =>
+const derivedPolicies = () => [...seedFlows, ...claimsFlows].flatMap(f =>
   f.nodes.flatMap(n => (n.policies || []).map((p, i) => {
     const [whenRaw, then] = (p.label || '').split('→').map(s => s.trim());
     return {
@@ -587,10 +589,6 @@ function ContextKnowledgeGraph({ c, D, M }) {
 
 /* per-context detail: event flow · agent · domain model · language */
 function ContextDetail({ c, D, M, prd, onBack }) {
-  const aggregates = (M ? M.aggregates : []).filter(a => a.context === c.id);
-  const policies = derivedPolicies().filter(p => p.owner === c.id);   // the reactions this context owns (derived from the flows)
-  const reals = D.realizations.filter(r => r.context === c.id);
-  const ucTitle = id => { const u = (prd.usecases || []).find(x => x.id === id); return u ? u.title : id; };
   // legacy deep links / cached tab state from the pre-split page (D-037)
   const LEGACY_TAB = { model: 'aggregates', rels: 'contracts' };
   const normTab = t => (t && (LEGACY_TAB[t] || t)) || 'flow';
@@ -604,6 +602,31 @@ function ContextDetail({ c, D, M, prd, onBack }) {
     window.__cynSetTab = t => { const v = normTab(t); window.__cynCtxTab = v; setTab(v); };  // raw apply for Back/Forward (no URL push)
     return () => { delete window.__cynSetTab; };
   });
+  return (
+    <div className="ddd-wrap">
+      <div className="ddd-crumbhead">
+        <h2 className="ddd-crumb-title">
+          <button type="button" className="ddd-crumb-link" onClick={onBack}>Bounded contexts</button>
+          <span className="ddd-crumb-sep">›</span>
+          <span className="ddd-crumb-cur">{c.name}</span>
+        </h2>
+        <span className={'ddd-class ' + c.classification}>{c.classification} subdomain</span>
+      </div>
+      <p className="ddd-detail-note">{c.summary || c.note}</p>
+      <BcTabs c={c} D={D} M={M} prd={prd} tab={tab} navTab={navTab} />
+    </div>
+  );
+}
+
+/* The BC tabbed element, extracted for reuse (R3, D-109): the product page's
+   ContextDetail wraps it with the crumb + URL-wired tab state above; the
+   Meridian subdomain page mounts it directly (window.CynBcTabs) with local
+   tab state — one element, two homes, same seeds. */
+function BcTabs({ c, D, M, prd, tab, navTab }) {
+  const aggregates = (M ? M.aggregates : []).filter(a => a.context === c.id);
+  const policies = derivedPolicies().filter(p => p.owner === c.id);   // the reactions this context owns (derived from the flows)
+  const reals = D.realizations.filter(r => r.context === c.id);
+  const ucTitle = id => { const u = (prd.usecases || []).find(x => x.id === id); return u ? u.title : id; };
   // BC-level tabs mirror the event-card panel's ownership levels (D-037): the
   // read-only Aggregate / Contracts cards on events point HERE as the edit home.
   const TABS = [
@@ -618,17 +641,7 @@ function ContextDetail({ c, D, M, prd, onBack }) {
   ];
 
   return (
-    <div className="ddd-wrap">
-      <div className="ddd-crumbhead">
-        <h2 className="ddd-crumb-title">
-          <button type="button" className="ddd-crumb-link" onClick={onBack}>Bounded contexts</button>
-          <span className="ddd-crumb-sep">›</span>
-          <span className="ddd-crumb-cur">{c.name}</span>
-        </h2>
-        <span className={'ddd-class ' + c.classification}>{c.classification} subdomain</span>
-      </div>
-      <p className="ddd-detail-note">{c.summary || c.note}</p>
-
+    <>
       <div className="ddd-tabs">
         {TABS.map(t => (
           <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => navTab(t.key)}>{t.label}</button>
@@ -775,9 +788,10 @@ function ContextDetail({ c, D, M, prd, onBack }) {
           </div>
         </>);
       })()}
-    </div>
+    </>
   );
 }
+if (typeof window !== 'undefined') window.CynBcTabs = BcTabs;
 
 /* Contract registry with expandable schema rows (D-062): the published
    language IS the fields — click a contract to see its payload/columns,

@@ -16,7 +16,7 @@ import { stageChange } from './kg-query';
    Strangler: lives beside the WealthGrow dashboard until cutover.
    Routing rides the shell router: ?v=org&sub=meridian&dom=…&bc=…
    ============================================================ */
-const { useMemo, useState } = React;
+const { useMemo, useState, useEffect } = React;
 
 const K4 = typeof window !== 'undefined' ? window.__KG4__ : null;
 
@@ -581,9 +581,28 @@ function MerDomain({ id }) {
 
 /* ---------- context page ---------- */
 function MerContext({ id }) {
-  const c = M.org.byLocal.get(id);
+  /* R3 (D-109): when a product's DDD seed covers this wall, the full v3 BC
+     tabbed element mounts HERE too — the subdomain page absorbs it. Hooks
+     stay above the early return. */
+  const [bcTab, setBcTab] = useState('flow');
+  useEffect(() => { setBcTab('flow'); }, [id]);
+  const dddProd = useMemo(() => {
+    const reg = (typeof window !== 'undefined' && window.__DDD__ && window.__DDD__.byProduct) || {};
+    for (const pid of Object.keys(reg)) {
+      if (((reg[pid] || {}).contexts || []).some(cc => cc.id === id)) return { pid, ddd: reg[pid] };
+    }
+    return null;
+  }, [id]);
+  const c = M && M.org.byLocal.get(id);
+  const domain = c ? M.ctxDomain.get(c.id) : null;
+  useEffect(() => {
+    if (!dddProd) return;
+    /* ground chips, arch joins and nav targets inside the element resolve
+       against the OWNING product while we're on the org altitude */
+    window.__cynGroundScope = { prod: dddProd.pid, pf: domain ? domain.localId : undefined };
+    return () => { delete window.__cynGroundScope; };
+  }, [dddProd, domain && domain.localId]);
   if (!c || c.type !== 'BoundedContext') return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown context. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
-  const domain = M.ctxDomain.get(c.id);
   const dep = M.depth.get(id);
   const team = dep ? dep.team : M.org.byId.get((M.org.out(c.id, 'owned_by')[0] || {}).to);
   const packagedBy = M.products.filter(p => p.packages.some(pk => pk.ctx && pk.ctx.id === c.id));
@@ -608,6 +627,24 @@ function MerContext({ id }) {
         <div className="mer-fact"><span className="k">Model{dep && dep.models.length > 1 ? 's' : ''}</span><span className="v">{c.props.bcName}</span></div>
         {dep && dep.node.props.origin && <div className="mer-fact"><span className="k">Origin</span><span className="v">{dep.node.props.origin}</span></div>}
       </div>
+
+      {dddProd && typeof window !== 'undefined' && window.CynBcTabs && (() => {
+        const BcTabs = window.CynBcTabs;
+        const cc = dddProd.ddd.contexts.find(x => x.id === id);
+        const prodNode = packagedBy.find(p => p.node.localId === dddProd.pid);
+        return (
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">The bounded-context element{prodNode ? <> — {prodNode.node.label} on this wall</> : null}</div>
+              <div className="asc-sec-sub">The full v3 BC element, rehomed to the subdomain page (R3): event flow · agents · knowledge graph · aggregates · policies · capabilities · contracts · language — the same seeds the product page reads</div>
+            </div>
+            <BcTabs c={cc} D={dddProd.ddd}
+              M={((window.__DOMAIN__ || {}).byProduct || {})[dddProd.pid]}
+              prd={((window.__PRD4__ || {})[dddProd.pid]) || {}}
+              tab={bcTab} navTab={setBcTab} />
+          </div>
+        );
+      })()}
 
       {dep && dep.models.length > 0 && (
         <div className="asc-section">

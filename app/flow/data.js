@@ -27,7 +27,10 @@ export const GROUNDING = {
 const PRODUCT_GROUNDING = {};
 export const registerGrounding = (productId, entries) => { PRODUCT_GROUNDING[productId] = entries; };
 export const resolveGround = (id) => {
-  const prod = typeof window !== "undefined" && window.__cynNav && window.__cynNav.prod;
+  // __cynGroundScope: set when a product's element is mounted OUTSIDE the product
+  // shell (the Meridian subdomain page, R3) — same product-scoped resolution.
+  const prod = typeof window !== "undefined"
+    && ((window.__cynNav && window.__cynNav.prod) || (window.__cynGroundScope && window.__cynGroundScope.prod));
   const per = prod && PRODUCT_GROUNDING[prod];
   return per ? per[id] : GROUNDING[id];
 };

@@ -19,7 +19,8 @@ const KIND_TO_TARGET = {
 };
 function navTargetFor(id) {
   const nav = (typeof window !== "undefined" && window.__cynNav) || {};
-  const base = { v: "prod", pf: nav.pf, prod: nav.prod, sub: "dashboard" };
+  const scope = (typeof window !== "undefined" && window.__cynGroundScope) || {};   // org-altitude mount (R3)
+  const base = { v: "prod", pf: nav.pf || scope.pf, prod: nav.prod || scope.prod, sub: "dashboard" };
   if (/^AGG/i.test(id)) return { ...base, phase: "Design", entry: "contexts", ctx: nav.ctx, tab: "aggregates" };
   if (/^(BC|CTX)-/i.test(id)) return { ...base, phase: "Design", entry: "contexts", ctx: id, tab: "rels" };
   const g = resolveGround(id);
@@ -31,7 +32,9 @@ function navRef(id) {
   // Trace-indexed refs (FR/UC/NFR/POL): open the detail modal IN PLACE — stay on the
   // Event Flow. The modal's own "View in …" button is the explicit way to jump to the
   // defining page. (The modal is lifted above the fullscreen overlay via CSS.)
-  if (typeof window.cynTraceHas === "function" && window.cynTraceHas(id)) {
+  // Product pages only: the trace index belongs to the MOUNTED product page — on the
+  // org altitude (R3 element mount) it may be stale from another product, so navigate.
+  if ((window.__cynNav || {}).v === "prod" && typeof window.cynTraceHas === "function" && window.cynTraceHas(id)) {
     window.cynTraceOpen?.(id);
     return;
   }
@@ -45,7 +48,8 @@ function navRef(id) {
 // The bounded-context page for tab 'model' | 'rels' — used by the read-only cards.
 function bcTarget(bc, tab) {
   const nav = (typeof window !== "undefined" && window.__cynNav) || {};
-  return { v: "prod", pf: nav.pf, prod: nav.prod, sub: "dashboard", phase: "Design", entry: "contexts", ctx: bc || nav.ctx, tab };
+  const scope = (typeof window !== "undefined" && window.__cynGroundScope) || {};   // org-altitude mount (R3)
+  return { v: "prod", pf: nav.pf || scope.pf, prod: nav.prod || scope.prod, sub: "dashboard", phase: "Design", entry: "contexts", ctx: bc || nav.ctx, tab };
 }
 function navTo(target) {
   if (typeof window === "undefined" || !target) return;
