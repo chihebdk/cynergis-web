@@ -1574,20 +1574,10 @@ function MerDomains() {
               )}
             </button>
           ))}
-          {M.domains.filter(d => d.node.props.kind === 'platform').map(d => (
-            <button type="button" className="ovw-domcard plat click" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
-              <div className="ovw-dc-top"><b>{d.node.label}</b><span className="badge">{d.node.props.valueChainStep}</span></div>
-              <div className="ovw-dc-sum">{d.node.props.summary}</div>
-              <div className="ovw-dc-meta"><span>{d.node.props.owner}</span><span>{d.contexts.length} platform contexts</span></div>
-            </button>
-          ))}
         </div>
       </div>
-      <div className="asc-panel asc-panel-pad" style={{ marginTop: 14 }}>
-        The DERIVED two-axis chart — chapters × domains with journeys, the typed context map, polysemes and health metrics, all from <code>meridian:*</code> — lives on its own page:{' '}
-        <button type="button" className="mer-link" onClick={() => nav({ sub: 'chart' })}>open the two-axis chart →</button>
-      </div>
-      <DerivedStrip graph={M.org.g} />
+      {/* D-118: domain cards only — the platform band lives under Platforms; the
+          derived two-axis chart keeps its page at sub=chart (URL-addressable). */}
     </div>
   );
 }
