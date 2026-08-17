@@ -1,6 +1,9 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import './kg-v4.gen';
 import './org-refchart';
+/* the flow canvas, for the domain-level maps (D-120) — client-only, heavy */
+const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
 import { stageChange } from './kg-query';
 /* ============================================================
    Cynergis — the Meridian org altitude (v4, D-094).
@@ -1671,6 +1674,16 @@ function MerDomainMap({ id }) {
           <p className="asc-page-sub">How {d.node.label}'s subdomains relate — every standing relationship typed by pattern; upstream on the left. Open a subdomain from the left menu for its full element.</p>
         </div>
       </div>
+      {member && (
+        <div className="asc-section">
+          <div className="asc-sec-head"><div className="asc-sec-title">The map</div>
+            <div className="asc-sec-sub">Subdomains and the published events crossing each seam — same visual language as the product maps</div></div>
+          <div style={{ height: '560px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+            <FlowEmbed flowId={`dm-${member.ns}`} variant="contextmap" />
+          </div>
+        </div>
+      )}
+
       {internal.length > 0 && (
         <div className="asc-section">
           <div className="asc-sec-head"><div className="asc-sec-title">Inside the domain</div>
@@ -1688,6 +1701,33 @@ function MerDomainMap({ id }) {
   );
 }
 if (typeof window !== 'undefined') window.MerDomainMap = MerDomainMap;
+
+/* the domain's System map page (D-120): the domain as one expandable box in
+   its world — actors, subdomains inside, external systems around it */
+function MerDomainSystem({ id }) {
+  if (!M) return null;
+  const d = M.domains.find(x => x.node.localId === id);
+  const member = M.members[id];
+  if (!d || !member) return null;
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">{d.node.label} · system map</div>
+          <h1 className="asc-page-title">System map</h1>
+          <p className="asc-page-sub">{d.node.label} in its world — who acts on it and which systems feed and consume it. Select the domain box and hit the expand arrow to see the subdomains in place.</p>
+        </div>
+      </div>
+      <div className="asc-section">
+        <div style={{ height: '560px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+          <FlowEmbed flowId={`ds-${member.ns}`} variant="contextmap" />
+        </div>
+      </div>
+      <DerivedStrip graph={member.g} extra={<>the {d.node.label} member graph backs the detail; the map mirrors its seams</>} />
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerDomainSystem = MerDomainSystem;
 
 /* honest scaffolds for the sections the redesign has not reached yet */
 const ORG_SECTION_NOTES = {

@@ -690,13 +690,14 @@ function OrgApp() {
               const domScope = !q.mprod && (q.dom || q.bc) ? merScope.domId : null;
               if (domScope) {
                 const ctxs = merDomainContexts(domScope);
-                const dActive = q.bc ? q.bc : (q.dtab === 'map' ? 'map' : 'overview');
+                const dActive = q.bc ? q.bc : (q.dtab === 'map' ? 'map' : q.dtab === 'system' ? 'system' : 'overview');
                 const goDomTab = (dtab) => { setSub('meridian'); window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: domScope, dtab, ...RESET }); setTimeout(scrollTop, 0); };
                 return <div className="asc-body">
                   <aside className="asc-rail">
                     <div className="asc-rail-sect">{merScope.domName}</div>
                     <div className={'asc-nav' + (dActive === 'overview' ? ' on' : '')} onClick={() => goMerDomain(domScope)}><Ico k="org" w={15} /> Overview</div>
                     <div className={'asc-nav' + (dActive === 'map' ? ' on' : '')} onClick={() => goDomTab('map')}><Ico k="dash" w={15} /> Context map</div>
+                    <div className={'asc-nav' + (dActive === 'system' ? ' on' : '')} onClick={() => goDomTab('system')}><Ico k="layers" w={15} /> System map</div>
                     <div className="asc-rail-sect" style={{ marginTop:'14px' }}>Subdomains</div>
                     {ctxs.map(c => (
                       <div key={c.id} className={'asc-nav' + (dActive === c.id ? ' on' : '')} onClick={() => goMerContext(c.id)}><Ico k="product" w={15} /> {c.label}</div>
@@ -706,7 +707,9 @@ function OrgApp() {
                   <main className="asc-main">
                     {(!q.bc && q.dtab === 'map' && window.MerDomainMap)
                       ? React.createElement(window.MerDomainMap, { id: domScope })
-                      : React.createElement(window.MeridianOrg)}
+                      : (!q.bc && q.dtab === 'system' && window.MerDomainSystem)
+                        ? React.createElement(window.MerDomainSystem, { id: domScope })
+                        : React.createElement(window.MeridianOrg)}
                   </main>
                 </div>;
               }
