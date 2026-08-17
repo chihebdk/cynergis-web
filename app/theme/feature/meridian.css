@@ -235,6 +235,10 @@ button.mer-om { font: inherit; }
 .ovw-stat span { font-size:11px; color:var(--ink-3); letter-spacing:.04em; text-transform:uppercase; }
 .ovw-mini { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
 .ovw-mini2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+/* D-122 polish: uniform card sizes under Specialist teams — equal rows per
+   column plus a shared minimum so both columns line up. */
+.ovw-mini2 .ovw-mini { grid-auto-rows:1fr; }
+.ovw-mini2 .ovw-minicard { min-height:96px; box-sizing:border-box; }
 .ovw-minicard { padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--panel); }
 .ovw-minicard b { display:block; font-size:13px; }
 .ovw-minicard span { display:block; margin-top:4px; font-size:12px; color:var(--ink-3); line-height:1.45; }
