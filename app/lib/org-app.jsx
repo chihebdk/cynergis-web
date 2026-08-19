@@ -675,7 +675,6 @@ function OrgApp() {
       <header className="asc-topbar">
         <div className="asc-brand" onClick={goOrg}>
           <img className="asc-logo" src="/onthos-logo.png" alt="Onthos" />
-          <span className="asc-brand-org">{(window.__KG4__ && window.__KG4__.org) ? window.__KG4__.org.org.name : ORG.org.name}</span>
         </div>
 
         <button className="asc-backbtn" disabled={!canBack} onClick={() => window.history.back()}
@@ -744,6 +743,12 @@ function OrgApp() {
         })()}
 
         <button type="button" className="asc-search" onClick={() => setPalOpen(true)}><Ico k="search" w={13} /> <span className="stxt">Search org &amp; knowledge mesh</span> <span className="kbd">⌘K</span></button>
+        {/* D-128 polish: the tenant chip — Onthos is the product, this is the
+            organization the workspace models (always visible, unlike the
+            context-aware path and the per-workspace rails) */}
+        <button type="button" className="asc-tenant" onClick={goOrg} title="The organization this workspace models">
+          <Ico k="org" w={13} /> {(window.__KG4__ && window.__KG4__.org) ? window.__KG4__.org.org.name : ORG.org.name}
+        </button>
         <div className="asc-userav">AT</div>
       </header>
 

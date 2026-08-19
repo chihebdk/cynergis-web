@@ -27,11 +27,19 @@ button{ font-family:inherit; }
   padding:0 22px; height:80px;
   background:var(--panel); border-bottom:1px solid var(--line);
 }
-.asc-brand{ display:flex; align-items:baseline; gap:12px; cursor:pointer; }
-/* D-128: the Onthos wordmark replaces the letter mark; the org name sits
-   beside it as the mono subtitle it always was */
-.asc-logo{ height:64px; width:auto; display:block; align-self:center; }
-.asc-brand-org{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-3); align-self:center; padding-top:3px; }
+.asc-brand{ display:flex; align-items:center; cursor:pointer; }
+/* D-128: the Onthos wordmark replaces the letter mark; the tenant (the org
+   this workspace models) lives in its own chip on the right, not in the
+   brand zone */
+.asc-logo{ height:64px; width:auto; display:block; }
+.asc-tenant{
+  display:flex; align-items:center; gap:7px; flex-shrink:0;
+  height:32px; padding:0 13px; border-radius:999px;
+  border:1px solid var(--line); background:var(--panel-2);
+  font-family:var(--font-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--ink-2); cursor:pointer;
+}
+.asc-tenant:hover{ border-color:var(--line-strong); color:var(--ink); }
 
 /* Back button — wired to browser history (URL routing) */
 .asc-backbtn{
