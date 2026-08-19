@@ -670,7 +670,7 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
       {tab === 'kg' && <ContextKnowledgeGraph c={c} D={D} M={M} />}
 
       {tab === 'flow' && (
-        FLOW_BY_CONTEXT[c.id]
+        (FLOW_BY_CONTEXT[c.id] || (typeof window !== 'undefined' && (window.__DERIVED_FLOWS_BY_CTX__ || {})[c.id]))
           ? <div className="ddd-wrap" style={{ paddingTop: '4px' }}>
               <p className="ddd-lead" style={{ marginBottom: '10px' }}>
                 How work moves through this context over time — click an event to inspect its commands, rules,
@@ -678,7 +678,7 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
                 <b> Org</b> focuses one path.)
               </p>
               <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
-                <FlowEmbed flowId={FLOW_BY_CONTEXT[c.id]} />
+                <FlowEmbed flowId={FLOW_BY_CONTEXT[c.id] || (window.__DERIVED_FLOWS_BY_CTX__ || {})[c.id]} />
               </div>
             </div>
           : <div className="ddd-empty-inline">No event flow modelled for this context yet.</div>

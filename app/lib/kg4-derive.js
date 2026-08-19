@@ -12,10 +12,12 @@
 import './kg-v4.gen';
 import './prd-data';
 import './ddd-data';
+import { buildDerivedFlows } from '../flow/derived-flows';
 
 (function () {
   const K4 = typeof window !== 'undefined' && window.__KG4__;
   if (!K4 || !K4.org || !K4.products) return;
+  buildDerivedFlows();   // D-131: sets window.__DERIVED_FLOWS_BY_CTX__ at boot (the adapter re-seeds lazily)
 
   const wrap = g => {
     const byId = new Map(g.nodes.map(n => [n.id, n]));
