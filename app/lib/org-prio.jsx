@@ -313,5 +313,7 @@ const { ORG } = window;
     );
   }
 
-  Object.assign(window, { PrioritizePortfolios, PrioritizeProducts });
+  /* D-127: the board + WSJF breakdown are shared with the Meridian domain
+     pages (Prioritize products tab) — same visual language on both altitudes */
+  Object.assign(window, { PrioritizePortfolios, PrioritizeProducts, CynVFBoard: VFBoard, CynProdWsjfDetail: ProdItemDetail });
 })();

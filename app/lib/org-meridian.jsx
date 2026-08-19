@@ -460,6 +460,7 @@ const DOMAIN_TABS = [
   { key: 'funding', label: 'Funding & review' },
   { key: 'subdomains', label: 'Subdomains' },
   { key: 'portfolio', label: 'Product portfolio' },
+  { key: 'prioritize', label: 'Prioritize products' },
 ];
 function MerDomain({ id }) {
   const d = M.domains.find(x => x.node.localId === id);
@@ -468,7 +469,8 @@ function MerDomain({ id }) {
      dtab=map, already covers the map at proper diagram depth; journeys read thin
      at domain altitude). Hooks stay above the early return. */
   const [domTab, setDomTab] = useState('units');
-  useEffect(() => { setDomTab('units'); }, [id]);
+  const [prioSel, setPrioSel] = useState(null);   // D-127: the open WSJF breakdown
+  useEffect(() => { setDomTab('units'); setPrioSel(null); }, [id]);
   if (!d) return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown domain. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
   const member = M.members[id] || null;
   const units = M.memberUnits[id] || [];
@@ -593,6 +595,51 @@ function MerDomain({ id }) {
           ) : <div className="ddd-empty-inline">No products package this domain's contexts yet.</div>}
         </div>
       )}
+
+      {domTab === 'prioritize' && (() => {
+        /* D-127: the legacy portfolio's WSJF sequencing at domain altitude —
+           the SAME board and breakdown (window.CynVFBoard / CynProdWsjfDetail),
+           scored from wsjf props the org spec records on each Product node.
+           Closes parity-gate line G6. */
+        const O = window.ORG;
+        if (!O || !window.CynVFBoard) return <div className="ddd-empty-inline">Prioritization machinery not loaded.</div>;
+        const scored = portfolio.filter(p => p.node.props.wsjf).map(p => ({
+          id: p.node.localId, name: p.node.label, tagline: p.node.props.note || p.node.props.kind,
+          wsjf: p.node.props.wsjf, rationale: p.node.props.wsjfWhy,
+        }));
+        const unscored = portfolio.filter(p => !p.node.props.wsjf);
+        const ranked = scored.map(dd => ({
+          id: dd.id, name: dd.name, sub: dd.tagline,
+          value: O.prodValue(dd), feasibility: O.prodFeasibility(dd), score: O.wsjf(dd),
+          invest: dd.wsjf.js, urgency: dd.wsjf.tc,
+        })).sort((a, b) => b.score - a.score);
+        const max = ranked.length ? ranked[0].score : 1;
+        ranked.forEach(it => { it.tier = O.tierOf(it.score, max); it.scoreLabel = it.score.toFixed(2); it.scoreUnit = 'WSJF'; });
+        const selProd = prioSel ? scored.find(dd => dd.id === prioSel) : null;
+        return (
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">Prioritize products</div>
+              <div className="asc-sec-sub">WSJF sequencing — Cost of Delay ÷ Job Size, ranked within the domain; scores recorded in the org spec, never invented here</div>
+            </div>
+            <div className="formula-line">
+              <b>WSJF</b> = ( Business Value + Time Criticality + Risk Reduction ) ÷ Job Size
+              <span className="fl-note">components scored 1–10 · higher = do sooner</span>
+            </div>
+            {ranked.length > 0
+              ? <div style={{ marginTop: '16px' }}>
+                  {React.createElement(window.CynVFBoard, { items: ranked, onItem: it => setPrioSel(it.id), sizeLabel: 'Job size', colorLabel: 'Time criticality' })}
+                </div>
+              : <div className="ddd-empty-inline">No scored products in this domain yet.</div>}
+            {unscored.length > 0 && (
+              <div className="ddd-empty-inline" style={{ marginTop: '10px' }}>
+                Not yet scored (wsjf absent from the org spec): {unscored.map(p => p.node.label).join(' · ')}
+              </div>
+            )}
+            {selProd && React.createElement(window.CynProdWsjfDetail, { product: selProd, onClose: () => setPrioSel(null) })}
+          </div>
+        );
+      })()}
 
       <DerivedStrip graph={member ? member.g : M.org.g} extra={member ? <>member graph <code>{member.ns}:*</code> · walls gated "Walls hold?" ✓</> : null} />
     </div>

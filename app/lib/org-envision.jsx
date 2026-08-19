@@ -533,7 +533,7 @@ function CPrio({ product }) {
     <div className="env-doc">
       <Block k="Thesis" full>{product.tagline}</Block>
       <div className="env-priorow">
-        <div className="env-priostat"><div className="l">Value at stake</div><div className="v">{product.valueAtStake}<small>/yr</small></div></div>
+        {product.valueAtStake && <div className="env-priostat"><div className="l">Value at stake</div><div className="v">{product.valueAtStake}<small>/yr</small></div></div>}
         <div className="env-priostat"><div className="l">Value</div><div className="v">{product.value.toFixed(1)}<small>/5</small></div></div>
         <div className="env-priostat"><div className="l">Feasibility</div><div className="v">{product.feasibility.toFixed(1)}<small>/5</small></div></div>
         <div className="env-priostat"><div className="l">WSJF</div><div className="v">{wsjf}</div></div>

@@ -112,12 +112,21 @@ function v4Catalog() {
     const dom = pkg ? byId[ctxDom[pkg.to]] : null;
     const ownerEdge = g.edges.find(e => e.type === 'owned_by' && e.from === n.id);
     const owner = ownerEdge ? byId[ownerEdge.to] : null;
+    /* D-127: WSJF now derives from the org spec (kg/org/meridian.js) — the
+       D-104 "honestly unscored" placeholder closes with real recorded scores.
+       valueAtStake stays null: no per-product dollar figure is on the books. */
+    const w = n.props.wsjf || null;
+    const O = window.ORG;
+    const scored = w && O ? { wsjf: w } : null;
     const product = {
       id: n.localId, name: n.label, tagline: n.props.note || n.props.kind, phase: phaseOf(n.localId),
       sponsor: (dom && dom.props.owner) || (owner && owner.label) || null,   // the domain's accountable executive
       owner: owner ? owner.label : null,
-      quadrant: null, wsjf: null, value: null, feasibility: null,            // honestly unscored (R2)
-      valueAtStake: null, rationale: null, studio: false, _v4: true,
+      wsjf: w,
+      value: scored ? O.prodValue(scored) : null,
+      feasibility: scored ? O.prodFeasibility(scored) : null,
+      quadrant: scored ? O.quadOf(O.prodValue(scored), O.prodFeasibility(scored)) : null,
+      valueAtStake: null, rationale: n.props.wsjfWhy || null, studio: false, _v4: true,
     };
     if (dom && domains[dom.localId]) { product._dom = dom.localId; domains[dom.localId].products.push(product); }
   }
