@@ -327,7 +327,8 @@ import { buildDerivedFlows } from '../flow/derived-flows';
         const cxs = fset.map(f => (frCtx(f) || {}).localId).filter(Boolean);
         const sk = skillByRealize[uc.localId] || fset.map(f => skillByRealize[(frComp(f) || {}).localId]).find(Boolean);
         return {
-          ucId: uc.localId, context: cxs[0] || (walls[0] || {}).localId, components: fset.map(f => (frComp(f) || {}).localId).filter(Boolean),
+          ucId: uc.localId, context: cxs[0] || (walls[0] || {}).localId,
+          components: [...new Set(fset.map(f => (frComp(f) || {}).localId).filter(Boolean))],
           form: sk ? 'llm-function' : 'code', composition: 'workflow', surface: 'app',
           agency: sk ? ({ Suggest: 'suggests', Assist: 'assisted', Operate: 'automated', Codify: 'codified' }[sk.props.tier] || 'assisted') : 'human-in-loop',
           trigger: uc.props.note || '',

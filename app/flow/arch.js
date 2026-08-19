@@ -16,7 +16,27 @@ function allComponents(ARCH) {
 // Full __ARCH__ component record by id (C1, C2, …) — the deployable component that a
 // context-map node points at via `componentId`. Used by the context-map property panel.
 export function componentById(id) {
-  if (typeof window === "undefined" || !window.__ARCH__ || !id) return null;
+  if (typeof window === "undefined" || !id) return null;
+  /* D-131 fix: with a v4 product in scope, components resolve from ITS OWN
+     lifecycle graph — never fraud's __ARCH__ (the D-108 leak class, caught
+     on the Capabilities tab where C1/C2 rendered fraud's component names) */
+  const pid = (window.__cynGroundScope && window.__cynGroundScope.prod) || (window.__cynNav && window.__cynNav.prod);
+  const K4 = window.__KG4__;
+  if (pid && K4 && K4.products) {
+    if (!window.__kg4ProdByPid) {
+      window.__kg4ProdByPid = {};
+      for (const g of Object.values(K4.products)) {
+        const p = g.nodes.find(n => n.type === 'Product');
+        if (p && p.props.orgRef) window.__kg4ProdByPid[p.props.orgRef.split(':').pop()] = g;
+      }
+    }
+    const g4 = window.__kg4ProdByPid[pid];
+    if (g4) {
+      const n = g4.nodes.find(x => x.type === 'Component' && x.localId === id);
+      return n ? { id, name: n.label, note: n.props.note, code: n.props.code } : null;   // v4 scope never falls through to fraud
+    }
+  }
+  if (!window.__ARCH__) return null;
   return allComponents(window.__ARCH__).find((c) => c.id === id) || null;
 }
 
