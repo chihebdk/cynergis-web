@@ -10,6 +10,7 @@ import './lib/arch-data';
 import './lib/org-data';
 import './lib/delivery-data';
 import './lib/ddd-data';
+import './lib/kg4-derive';   // D-130: derives PRD + Design projections for every v4 product
 import './lib/domain-model-data';
 import './lib/trace-core';
 import './lib/trace-details';
