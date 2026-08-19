@@ -254,3 +254,16 @@ button.mer-om { font: inherit; }
 .mer-covcell.on { color: var(--accent); }
 .mer-covskill { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 4px; border-radius: 50%; background: var(--core, #0e5a46); color: #fff; font-size: 9px; font-weight: 700; vertical-align: middle; cursor: default; }
 .mer-covlegend { margin-top: 8px; font-size: 11.5px; color: var(--ink-3); }
+
+/* D-125: the Chapters page — team roster (named illustrative seats) */
+.mer-roster-grid { display: flex; flex-direction: column; gap: 12px; }
+.mer-roster-ctx { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; background: var(--panel); }
+.mer-roster-ctx-h { font-weight: 600; font-size: 12.5px; color: var(--ink); margin-bottom: 9px; }
+.mer-roster-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.mer-seat { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; font-size: 11.5px; }
+.mer-seat-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin-bottom: 4px; }
+.mer-seat-top b { font-weight: 600; }
+.mer-seat-role { color: var(--ink-3); font-size: 10.5px; white-space: nowrap; }
+.mer-seat-skill { color: var(--ink-3); line-height: 1.5; }
+.mer-seat-skill .badge { margin-right: 5px; }
+.mer-seat-level { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }

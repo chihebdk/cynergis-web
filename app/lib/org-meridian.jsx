@@ -1849,6 +1849,34 @@ function MerChapters() {
     return teamTo ? M.org.inn(teamTo, 'staffs').map(e => M.org.byId.get(e.from)).filter(Boolean) : [];
   };
 
+  /* D-125: the named-seat roster (supply side) — org graph Person nodes,
+     joined to a wall via its owning team's member_of edges */
+  const rosterAt = ctxLocalId => {
+    const ctxNode = M.org.byLocal.get(ctxLocalId);
+    const teamTo = ctxNode ? (M.org.out(ctxNode.id, 'owned_by')[0] || {}).to : null;
+    return teamTo ? M.org.inn(teamTo, 'member_of').map(e => M.org.byId.get(e.from)).filter(Boolean) : [];
+  };
+  const LEVEL_RANK = { foundational: 0, intermediate: 1, advanced: 2 };
+
+  /* the demand side — every Competency across the product mesh, correlated
+     against the roster via the shared assistedBy Skill id (the same seam
+     rule the skill catalog above already uses) */
+  const competencies = [];
+  for (const [pid, { idx }] of Object.entries(M.prods4)) {
+    for (const cp of idx.nodes('Competency')) {
+      const skill = idx.byId.get((idx.out(cp.id, 'assisted_by')[0] || {}).to);
+      const comp = skill ? idx.byId.get((idx.out(skill.id, 'realizes')[0] || {}).to) : null;
+      const ctxRef = comp ? idx.byId.get((idx.out(comp.id, 'part_of')[0] || {}).to) : null;
+      const ctxLocalId = ctxRef ? ctxRef.localId : null;
+      const seats = ctxLocalId ? rosterAt(ctxLocalId) : [];
+      const holders = seats
+        .map(p => ({ p, s: (p.props.skills || []).find(s => s.assistedBy === (skill && skill.localId)) }))
+        .filter(x => x.s);
+      const filled = holders.filter(({ s }) => (LEVEL_RANK[s.level] ?? -1) >= (LEVEL_RANK[cp.props.minLevel] ?? 0));
+      competencies.push({ cp, skill, ctxLocalId, pid, holders, filled });
+    }
+  }
+
   const claimsCtxNodes = claimsCtxIds.map(id => ({ id, node: claimsMember.byLocal.get(id) }));
   const tierRank = { Suggest: 0, Assist: 1, Operate: 2, Codify: 3 };
 
@@ -1946,6 +1974,68 @@ function MerChapters() {
       {claimsMember && (
         <div className="asc-section">
           <div className="asc-sec-head">
+            <div className="asc-sec-title">Team roster — Claims</div>
+            <div className="asc-sec-sub">Named illustrative seats standing in for each wall's real roster — not real individuals, same footing as the persona set. One per chapter the team lists, the craft skill each holds, and whether an agent skill already assists that slice of their work.</div>
+          </div>
+          <div className="mer-roster-grid">
+            {claimsCtxNodes.map(({ id, node }) => {
+              const seats = rosterAt(id);
+              if (!seats.length) return null;
+              return (
+                <div className="mer-roster-ctx" key={id}>
+                  <div className="mer-roster-ctx-h">{node.label}</div>
+                  <div className="mer-roster-seats">
+                    {seats.flatMap(p => (p.props.skills || []).map((s, i) => (
+                      <div className="mer-seat" key={p.id + '-' + i}>
+                        <div className="mer-seat-top"><b>{p.label}</b><span className="mer-seat-role">{p.props.role}</span></div>
+                        <div className="mer-seat-skill">
+                          <span className={'badge ' + (s.kind === 'technical' ? 'info' : 'violet')}>{s.kind}</span>
+                          {s.name} <span className="mer-seat-level">· {s.level}</span>
+                          {s.assistedBy && <span className="mer-covskill" title={`agent-assisted · ${s.assistedBy}`}>A</span>}
+                        </div>
+                      </div>
+                    )))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {claimsMember && competencies.length > 0 && (
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Skill coverage requirement — Claims</div>
+            <div className="asc-sec-sub">What the product needs proven human proficiency for, correlated against who on the roster actually clears the bar — the gap an aggregate chapter count can hide</div>
+          </div>
+          <div className="mer-map">
+            {competencies.map(({ cp, skill, ctxLocalId, filled }) => {
+              const need = Number(cp.props.minHeadcount) || 1;
+              const ok = filled.length >= need;
+              const ctxNode = ctxLocalId ? M.org.byLocal.get(ctxLocalId) : null;
+              return (
+                <div className="mer-seam" key={cp.id}>
+                  <span className="mer-seam-ends"><b>{cp.label}</b></span>
+                  <span className={'badge ' + (ok ? 'ok' : 'warn')}>{filled.length} of {need} · {cp.props.minLevel}+</span>
+                  <span className="mer-seam-what">
+                    {ctxNode && <button type="button" className="mer-link" onClick={() => goContext(ctxLocalId)}>{ctxNode.label} →</button>}
+                    {skill ? <> · assists {skill.label}</> : ' · no deployed agent skill on record'}
+                    {filled.length
+                      ? <> · held by {filled.map(({ p }) => p.label).join(', ')}</>
+                      : ' · no one on the roster currently clears the bar'}
+                    {cp.props.note ? <> — {cp.props.note}</> : ''}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {claimsMember && (
+        <div className="asc-section">
+          <div className="asc-sec-head">
             <div className="asc-sec-title">Agent-skill whitespace — Claims</div>
             <div className="asc-sec-sub">Walls with no recorded skill, or stuck at the lowest tier — candidates for the next agent-skill investment</div>
           </div>
@@ -1985,7 +2075,7 @@ function MerChapters() {
         </div>
       )}
 
-      <DerivedStrip graph={M.org.g} extra={<>chapters + staffs edges from <code>meridian:*</code> · skills from every product's lifecycle graph</>} />
+      <DerivedStrip graph={M.org.g} extra={<>chapters + staffs edges from <code>meridian:*</code> · skills from every product's lifecycle graph · roster (Person) and requirement (Competency) nodes new in D-125</>} />
     </div>
   );
 }
