@@ -693,8 +693,12 @@ function OrgApp() {
           if (view === 'org') {
             const drill = q.dom || q.bc || q.mprod;
             const sec = sub === 'meridian' ? (drill ? 'domains' : 'overview') : sub;
-            if (sec === 'chapters') {
-              const chName = q.chp ? merChapterName(q.chp) : null;
+            const pathFull = drill || sec === 'domains' || sec === 'chart' || sec === 'dashboard' || sec === 'prioritize';
+            if (!pathFull) {
+              /* D-126 (revised): outside Domains the path collapses to the
+                 Organization segment alone — an anchored scope beats an empty
+                 gap; a chapter workspace adds its Chapter · name segment. */
+              const chName = sec === 'chapters' && q.chp ? merChapterName(q.chp) : null;
               return (
                 <div className="asc-scope asc-scope-path">
                   <button className={chName ? '' : 'on'} onClick={goOrg}><Ico k="org" w={13} /> Organization</button>
@@ -707,8 +711,6 @@ function OrgApp() {
                 </div>
               );
             }
-            const pathOn = drill || sec === 'domains' || sec === 'chart' || sec === 'dashboard' || sec === 'prioritize';
-            if (!pathOn) return null;
           }
           const mer = view === 'org' ? merScopeFromUrl(q) : {};
           const legacyPf = pf && !pf._v4 && view !== 'org';
