@@ -674,8 +674,8 @@ function OrgApp() {
     <div className="asc-app" style={{ gridTemplateRows:'56px 1fr' }}>
       <header className="asc-topbar">
         <div className="asc-brand" onClick={goOrg}>
-          <div className="asc-mark">C</div>
-          <div><b>Cynergis</b><span>{(window.__KG4__ && window.__KG4__.org) ? window.__KG4__.org.org.name : ORG.org.name}</span></div>
+          <img className="asc-logo" src="/onthos-logo.png" alt="Onthos" />
+          <span className="asc-brand-org">{(window.__KG4__ && window.__KG4__.org) ? window.__KG4__.org.org.name : ORG.org.name}</span>
         </div>
 
         <button className="asc-backbtn" disabled={!canBack} onClick={() => window.history.back()}

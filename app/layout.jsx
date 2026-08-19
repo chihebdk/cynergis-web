@@ -13,7 +13,7 @@ import './theme/feature/flow-canvas.css';
 import './theme/feature/inline.css';
 
 export const metadata = {
-  title: 'Cynergis — Meridian Auto Insurance',
+  title: 'Onthos — Meridian Auto Insurance',
   description: 'The DDD organization: domains, bounded contexts, durable teams — every surface derived from the knowledge graph.',
 };
 

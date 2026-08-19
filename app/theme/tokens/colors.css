@@ -6,11 +6,15 @@
    are fixed (they must read the same in any theme).
    ============================================================ */
 :root{
-  /* ---- Accent (theme driver) ---- */
-  --accent-h: 265;                                   /* the one knob */
-  --accent:      oklch(0.52 0.14 var(--accent-h));   /* primary actions, active dots */
-  --accent-soft: oklch(0.955 0.025 var(--accent-h)); /* accent fills, soft badges */
-  --accent-ink:  oklch(0.34 0.12 var(--accent-h));   /* accent text on light */
+  /* ---- Accent (theme driver) ----
+     D-128: the palette derives from the Onthos logo, measured in OKLCH from
+     the mark itself — indigo node #343bd9 = oklch(0.467 0.233 271) drives the
+     accent; the wordmark ink #131a21 = oklch(0.214 0.017 249) is what the
+     parametric --ink ramp lands on at this hue. */
+  --accent-h: 271;                                   /* the one knob — the logo's indigo node */
+  --accent:      oklch(0.47 0.21 var(--accent-h));   /* primary actions, active dots */
+  --accent-soft: oklch(0.955 0.03 var(--accent-h));  /* accent fills, soft badges */
+  --accent-ink:  oklch(0.36 0.16 var(--accent-h));   /* accent text on light */
 
   /* ---- Neutral surfaces (hue-tinted greys) ---- */
   --bg:        oklch(0.985 0.006 var(--accent-h));   /* app background */
@@ -30,9 +34,9 @@
   --ok:        oklch(0.58 0.1 145);   --ok-soft:     oklch(0.95 0.04 145);
   --warn:      oklch(0.66 0.12 70);   --warn-soft:   oklch(0.95 0.05 70);
   --err:       oklch(0.58 0.14 25);   --err-soft:    oklch(0.95 0.04 25);
-  --info:      oklch(0.55 0.1 240);   --info-soft:   oklch(0.95 0.035 240);
+  --info:      oklch(0.55 0.13 256);  --info-soft:   oklch(0.95 0.035 256);  /* the logo's blue node (#308bfb, h 256) */
   --violet:    oklch(0.55 0.12 295);  --violet-soft: oklch(0.95 0.035 295);
-  --teal:      oklch(0.58 0.08 195);  --teal-soft:   oklch(0.95 0.03 195);
+  --teal:      oklch(0.60 0.11 220);  --teal-soft:   oklch(0.95 0.03 220);   /* the logo's cyan node (#00add2, h 220) */
 
   /* ---- Lens hues (cross-cutting persona framings) ----
      applied as oklch(0.55 0.14 var(--lens-h)) */
