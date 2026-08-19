@@ -1795,14 +1795,204 @@ function MerDomainSystem({ id }) {
 }
 if (typeof window !== 'undefined') window.MerDomainSystem = MerDomainSystem;
 
+/* ============================================================
+   Chapters — skill management (D-124). Renamed from the Capabilities
+   scaffold: chapters are the craft/discipline axis that actually
+   supplies and develops skill (owns craft standards, staffs teams),
+   distinct from the core/supporting/generic capability classification
+   which stays a property surfaced elsewhere (the chart, context chips).
+   Five sections, all derived — no person-level data invented:
+     1 Chapters roster        — M.org Chapter nodes (owns/size/allocation)
+     2 Skill catalog          — every Skill node across every product graph,
+                                 cross-referenced to the agent that carries it
+     3 Coverage matrix        — chapters × Claims subdomains: is the chapter
+                                 represented (org graph `staffs` edges), and
+                                 is there an agent skill on that wall
+     4 Agent-skill whitespace — Claims contexts with no skill node, or
+                                 stuck at Suggest — candidates for more
+     5 Coverage stats         — Claims headcount grouped by agent tier
+                                 (counts the WHOLE team behind a wall, not
+                                 measured time-on-task — labelled as such)
+   Sections 3–5 scope to Claims (the only domain with full agent-pair +
+   skill depth); 1–2 read org-wide and stay honestly thin elsewhere.
+   ============================================================ */
+function MerChapters() {
+  if (!M) return null;
+  const claimsMember = M.members['DOM-CLAIMS'];
+  const claimsCtxIds = claimsMember ? claimsMember.nodes('BoundedContext').map(c => c.localId) : [];
+
+  /* skill localId -> { agent, ctxLocalId } — scan every member graph's
+     operations agents once, keyed by the shared skill id (the v4 seam rule) */
+  const skillToAgent = new Map();
+  for (const mg of new Set(Object.values(M.members))) {
+    for (const a of mg.nodes('Agent')) {
+      if (a.props.kind !== 'operations') continue;
+      const ctx = mg.byId.get((mg.out(a.id, 'serves')[0] || {}).to);
+      for (const sk of (a.props.skills || [])) skillToAgent.set(sk, { agent: a, ctxLocalId: ctx ? ctx.localId : null, member: mg });
+    }
+  }
+
+  /* every Skill node across every product's lifecycle graph */
+  const allSkills = [];
+  for (const [pid, { idx }] of Object.entries(M.prods4)) {
+    for (const sk of idx.nodes('Skill')) {
+      const comp = idx.byId.get((idx.out(sk.id, 'realizes')[0] || {}).to);
+      allSkills.push({ sk, pid, prodName: (idx.nodes('Product')[0] || {}).label || pid, comp, carrier: skillToAgent.get(sk.localId) });
+    }
+  }
+
+  /* chapters staffing a context, via the ORG graph's staffs edges (the same
+     source of truth the two-axis chart's bars read from) */
+  const chaptersAt = ctxLocalId => {
+    const ctxNode = M.org.byLocal.get(ctxLocalId);
+    const teamTo = ctxNode ? (M.org.out(ctxNode.id, 'owned_by')[0] || {}).to : null;
+    return teamTo ? M.org.inn(teamTo, 'staffs').map(e => M.org.byId.get(e.from)).filter(Boolean) : [];
+  };
+
+  const claimsCtxNodes = claimsCtxIds.map(id => ({ id, node: claimsMember.byLocal.get(id) }));
+  const tierRank = { Suggest: 0, Assist: 1, Operate: 2, Codify: 3 };
+
+  /* stat 5: Claims headcount grouped by ops-agent tier */
+  const tierStats = {};
+  for (const { id } of claimsCtxNodes) {
+    const dep = M.depth.get(id);
+    const ops = (dep && dep.agents || []).find(a => a.props.kind === 'operations');
+    const tier = ops ? ops.props.tier : 'none';
+    const size = dep && dep.team ? Number(dep.team.props.size) || 0 : 0;
+    if (!tierStats[tier]) tierStats[tier] = { people: 0, walls: 0 };
+    tierStats[tier].people += size; tierStats[tier].walls += 1;
+  }
+  const totalPeople = Object.values(tierStats).reduce((s, t) => s + t.people, 0);
+
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Organization · chapters</div>
+          <h1 className="asc-page-title">Chapters</h1>
+          <p className="asc-page-sub">The craft axis: who supplies and develops a skill, correlated with where product work needs it and where an agent skill already carries part of it. Core/supporting/generic classification stays a property of each subdomain, shown on the chart and the context pages.</p>
+        </div>
+      </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Chapters roster</div>
+          <div className="asc-sec-sub">Craft standards, indicative headcount and allocation rule — derived from the org graph</div>
+        </div>
+        <div className="mer-units">
+          {M.chapters.map(({ node: ch, staffed }) => (
+            <div className="mer-unit" key={ch.id}>
+              <div className="mer-u-top"><b>{ch.label}</b><span className="mer-u-size">{ch.props.size}</span></div>
+              <div className="mer-u-shape">{ch.props.owns}</div>
+              <div className="mer-u-note">{ch.props.allocation} · staffs {staffed} team{staffed === 1 ? '' : 's'}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Skill catalog</div>
+          <div className="asc-sec-sub">Every agent skill recorded across the product mesh — tier, what it realizes, who carries it. Thin outside Claims by design (honest depth).</div>
+        </div>
+        <div className="mer-map">
+          {allSkills.map(({ sk, prodName, comp, carrier }) => (
+            <div className="mer-seam" key={sk.id}>
+              <span className="mer-seam-ends"><b>{sk.label}</b></span>
+              <span className={'badge ' + (sk.props.tier === 'Operate' || sk.props.tier === 'Codify' ? 'ok' : '')}>{sk.props.tier}</span>
+              <span className="mer-seam-what">
+                {prodName}{comp ? ` · realizes ${comp.label}` : ''}
+                {carrier && carrier.ctxLocalId ? <> · carried by <button type="button" className="mer-link" onClick={() => goContext(carrier.ctxLocalId)}>{carrier.agent.label} →</button></> : ' · no deployed carrier on record'}
+                {sk.props.note ? <> — {sk.props.note}</> : ''}
+              </span>
+            </div>
+          ))}
+          {allSkills.length === 0 && <div className="ddd-empty-inline">No skills authored yet.</div>}
+        </div>
+      </div>
+
+      {claimsMember && (
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Coverage matrix — Claims</div>
+            <div className="asc-sec-sub">Which chapters are represented on each subdomain (org graph <code>staffs</code> edges), and whether an agent skill already covers part of the work there</div>
+          </div>
+          <table className="dm-tbl mer-covmatrix">
+            <thead><tr><th>chapter</th>{claimsCtxNodes.map(c => <th key={c.id}>{c.node.label}</th>)}</tr></thead>
+            <tbody>
+              {M.org.nodes('Chapter').map(ch => (
+                <tr key={ch.id}>
+                  <td className="mer-covrow-h">{ch.label}</td>
+                  {claimsCtxNodes.map(c => {
+                    const here = chaptersAt(c.id).some(x => x.id === ch.id);
+                    const dep = M.depth.get(c.id);
+                    const ops = (dep && dep.agents || []).find(a => a.props.kind === 'operations');
+                    const hasSkill = ops && (ops.props.skills || []).length > 0;
+                    return (
+                      <td key={c.id} className={'mer-covcell' + (here ? ' on' : '')}>
+                        {here ? '●' : '—'}
+                        {here && hasSkill && <span className="mer-covskill" title={`${ops.label} · ${ops.props.tier}`}>{ops.props.tier[0]}</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mer-covlegend">● chapter represented (org graph) · letter badge = an agent skill is deployed on that wall, tier initial (S·A·O·C)</div>
+        </div>
+      )}
+
+      {claimsMember && (
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Agent-skill whitespace — Claims</div>
+            <div className="asc-sec-sub">Walls with no recorded skill, or stuck at the lowest tier — candidates for the next agent-skill investment</div>
+          </div>
+          <div className="mer-map">
+            {claimsCtxNodes
+              .map(c => {
+                const dep = M.depth.get(c.id);
+                const ops = (dep && dep.agents || []).find(a => a.props.kind === 'operations');
+                return { c, ops };
+              })
+              .filter(({ ops }) => !ops || (ops.props.tier === 'Suggest') || !(ops.props.skills || []).length)
+              .map(({ c, ops }) => (
+                <div className="mer-seam" key={c.id}>
+                  <span className="mer-seam-ends"><b>{c.node.label}</b></span>
+                  <span className="badge">{ops ? ops.props.tier : 'no agent'}</span>
+                  <span className="mer-seam-what">
+                    {ops ? <>{ops.label} — {(ops.props.acts || []).slice(0, 2).join('; ')}{!(ops.props.skills || []).length ? ' · no formal skill node authored yet' : ''}</> : 'No operations agent recorded on this wall.'}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {claimsMember && totalPeople > 0 && (
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Coverage stats — Claims</div>
+            <div className="asc-sec-sub">Headcount behind each wall, grouped by the agent tier deployed there — counts the whole team behind a wall, not measured time-on-task</div>
+          </div>
+          <div className="ovw-stats">
+            {Object.entries(tierStats).sort((a, b) => (tierRank[b[0]] ?? -1) - (tierRank[a[0]] ?? -1)).map(([tier, s]) => (
+              <div className="ovw-stat" key={tier}><b>{s.people}</b><span>{tier} · {s.walls} wall{s.walls === 1 ? '' : 's'}</span></div>
+            ))}
+            <div className="ovw-stat"><b>{totalPeople}</b><span>total, 7 walls</span></div>
+          </div>
+        </div>
+      )}
+
+      <DerivedStrip graph={M.org.g} extra={<>chapters + staffs edges from <code>meridian:*</code> · skills from every product's lifecycle graph</>} />
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerChapters = MerChapters;
+
 /* honest scaffolds for the sections the redesign has not reached yet */
 const ORG_SECTION_NOTES = {
-  capabilities: {
-    title: 'Capabilities',
-    sub: 'The capability axis: chapters, classifications and skills.',
-    note: 'This section arrives with a later redesign pass. Today the capability axis lives on the two-axis chart — chapters × domains with classification chips on every context — under Domains.',
-    linkLabel: 'Open the two-axis chart →', target: () => nav({ sub: 'domains' }),
-  },
   risks: {
     title: 'Risks',
     sub: 'The organization’s risk registers, rolled up.',

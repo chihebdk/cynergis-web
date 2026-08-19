@@ -777,7 +777,7 @@ function OrgApp() {
                   items={[
                     { id:'overview', label:'Overview', icon:'org' },
                     { id:'domains', label:'Domains', icon:'dash' },
-                    { id:'capabilities', label:'Capabilities', icon:'cap' },
+                    { id:'chapters', label:'Chapters', icon:'cap' },
                     { id:'platforms', label:'Platforms', icon:'layers' },
                     { id:'risks', label:'Risks', icon:'risk' },
                     { id:'governance', label:'Governance', icon:'shield' },
@@ -794,6 +794,7 @@ function OrgApp() {
                     : sec === 'domains' ? (drill ? React.createElement(window.MeridianOrg) : React.createElement(window.MerDomains || window.MeridianOrg))
                     : sec === 'chart' ? React.createElement(window.MeridianOrg)
                     : sec === 'platforms' ? React.createElement(window.MerPlatforms)
+                    : sec === 'chapters' ? React.createElement(window.MerChapters)
                     : React.createElement(window.MerOrgSection, { section: sec })}
                 </main>
               </div>;
