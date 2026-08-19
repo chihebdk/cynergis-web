@@ -1898,7 +1898,7 @@ const goChapter = id => { window.cynPushUrl({ v: 'org', pf: null, prod: null, su
 const goChapters = () => { window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'chapters', phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' }); setTimeout(() => document.querySelector('.asc-main')?.scrollTo(0, 0), 0); };
 
 /* the sections, each standalone so the index and the chapter workspace compose them (D-126) */
-function ChSecRoster({ activeId }) {
+function ChSecRoster() {
   return (
     <div className="asc-section">
       <div className="asc-sec-head">
@@ -1907,7 +1907,7 @@ function ChSecRoster({ activeId }) {
       </div>
         <div className="mer-units">
           {M.chapters.map(({ node: ch, staffed }) => (
-            <div className={'mer-unit click' + (activeId === ch.localId ? ' on' : '')} key={ch.id} role="button" tabIndex={0} onClick={() => goChapter(ch.localId)}>
+            <div className="mer-unit click" key={ch.id} role="button" tabIndex={0} onClick={() => goChapter(ch.localId)}>
               <div className="mer-u-top"><b>{ch.label}</b><span className="mer-u-size">{ch.props.size}</span></div>
               <div className="mer-u-shape">{ch.props.owns}</div>
               <div className="mer-u-note">{ch.props.allocation} · staffs {staffed} team{staffed === 1 ? '' : 's'}</div>
@@ -2108,12 +2108,9 @@ function MerChapters() {
 }
 if (typeof window !== 'undefined') window.MerChapters = MerChapters;
 
-/* the chapter workspace (D-126): Overview = chapter roster + skill catalog in
-   tabs; Domains = the five coverage sections in tabs (Claims depth today). */
-const CH_OVW_TABS = [
-  { key: 'roster', label: 'Chapter roster' },
-  { key: 'catalog', label: 'Skill catalog' },
-];
+/* the chapter workspace (D-126): Overview = the skill catalog (the roster
+   stays on the index — re-showing it inside a chapter was redundant, sponsor
+   polish); Domains = the five coverage sections in tabs (Claims depth today). */
 const CH_DOM_TABS = [
   { key: 'matrix', label: 'Coverage matrix' },
   { key: 'team', label: 'Team roster' },
@@ -2122,13 +2119,12 @@ const CH_DOM_TABS = [
   { key: 'stats', label: 'Coverage stats' },
 ];
 function MerChapterPage({ id, view }) {
-  const [tab, setTab] = useState(view === 'domains' ? 'matrix' : 'roster');
-  useEffect(() => { setTab(view === 'domains' ? 'matrix' : 'roster'); }, [id, view]);
+  const [tab, setTab] = useState('matrix');
+  useEffect(() => { setTab('matrix'); }, [id, view]);
   if (!M) return null;
   const ch = M.org.byLocal.get(id);
   if (!ch || ch.type !== 'Chapter') return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown chapter. <button type="button" className="mer-link" onClick={goChapters}>Back to chapters</button></div></div>;
   const staffed = M.org.out(ch.id, 'staffs').length;
-  const tabs = view === 'domains' ? CH_DOM_TABS : CH_OVW_TABS;
   return (
     <div className="asc-page">
       <div className="mer-crumb"><button type="button" className="mer-link" onClick={goChapters}>Chapters</button> / <b>{ch.label}</b></div>
@@ -2144,13 +2140,14 @@ function MerChapterPage({ id, view }) {
         {ch.props.allocation && <div className="mer-fact"><span className="k">Allocation rule</span><span className="v">{ch.props.allocation}</span></div>}
         <div className="mer-fact"><span className="k">Staffs</span><span className="v">{staffed} team{staffed === 1 ? '' : 's'} across the org</span></div>
       </div>
-      <div className="ddd-tabs">
-        {tabs.map(t => (
-          <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => setTab(t.key)}>{t.label}</button>
-        ))}
-      </div>
-      {view !== 'domains' && tab === 'roster' && <ChSecRoster activeId={id} />}
-      {view !== 'domains' && tab === 'catalog' && <ChSecCatalog />}
+      {view === 'domains' && (
+        <div className="ddd-tabs">
+          {CH_DOM_TABS.map(t => (
+            <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => setTab(t.key)}>{t.label}</button>
+          ))}
+        </div>
+      )}
+      {view !== 'domains' && <ChSecCatalog />}
       {view === 'domains' && tab === 'matrix' && <ChSecMatrix hi={id} />}
       {view === 'domains' && tab === 'team' && <ChSecTeamRoster hi={id} />}
       {view === 'domains' && tab === 'req' && <ChSecCoverageReq />}
