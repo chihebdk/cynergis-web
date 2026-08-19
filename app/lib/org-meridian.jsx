@@ -455,16 +455,24 @@ function FundingRhythm({ domainId = 'DOM-CLAIMS' }) {
 }
 
 /* ---------- domain page ---------- */
+const DOMAIN_TABS = [
+  { key: 'units', label: 'Org sub-structure' },
+  { key: 'funding', label: 'Funding & review' },
+  { key: 'subdomains', label: 'Subdomains' },
+  { key: 'portfolio', label: 'Product portfolio' },
+];
 function MerDomain({ id }) {
   const d = M.domains.find(x => x.node.localId === id);
+  /* D-123: the sections below the header table live behind a tabbed panel — the
+     map-slice preview and journeys sections retired (the full Context map page,
+     dtab=map, already covers the map at proper diagram depth; journeys read thin
+     at domain altitude). Hooks stay above the early return. */
+  const [domTab, setDomTab] = useState('units');
+  useEffect(() => { setDomTab('units'); }, [id]);
   if (!d) return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown domain. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
-  const isClaims = id === 'DOM-CLAIMS';
   const member = M.members[id] || null;
   const units = M.memberUnits[id] || [];
-  const ctxIds = new Set(d.contexts.map(c => c.id));
-  const slice = M.seams.filter(s => ctxIds.has(s.from.id) || ctxIds.has(s.to.id) || s.from.id === d.node.id || s.to.id === d.node.id);
   const portfolio = M.products.filter(p => p.packages.some(pk => pk.ctx && M.ctxDomain.get(pk.ctx.id) && M.ctxDomain.get(pk.ctx.id).id === d.node.id));
-  const journeys = M.journeys.filter(j => (j.home && j.home.id === d.node.id) || j.crosses.some(c => c.id === d.node.id));
   return (
     <div className="asc-page">
       <div className="mer-crumb"><button type="button" className="mer-link" onClick={goChart}>Meridian org</button> / <b>{d.node.label}</b></div>
@@ -486,124 +494,105 @@ function MerDomain({ id }) {
         {d.node.props.journeyNote && <div className="mer-fact"><span className="k">Note</span><span className="v">{d.node.props.journeyNote}</span></div>}
       </div>
 
-      {units.length > 0 && (
+      <div className="ddd-tabs">
+        {DOMAIN_TABS.map(t => (
+          <button key={t.key} type="button" className={'ddd-tab' + (domTab === t.key ? ' on' : '')} onClick={() => setDomTab(t.key)}>{t.label}</button>
+        ))}
+      </div>
+
+      {domTab === 'units' && (
+        units.length > 0 ? (
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">Sub-structure</div>
+              <div className="asc-sec-sub">Two management logics inside one envelope — flat product side, hierarchical operations side</div>
+            </div>
+            <div className="mer-units">
+              {units.map(u => (
+                <div className="mer-unit" key={u.id}>
+                  <div className="mer-u-top"><b>{u.label}</b><span className="mer-u-size">{u.props.size}</span></div>
+                  <div className="mer-u-shape">{u.props.shape}</div>
+                  <div className="mer-u-note">{u.props.note}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : <div className="ddd-empty-inline">No sub-structure recorded for this domain.</div>
+      )}
+
+      {domTab === 'funding' && (
+        member ? <FundingRhythm domainId={id} /> : <div className="ddd-empty-inline">No funding rhythm recorded for this domain.</div>
+      )}
+
+      {domTab === 'subdomains' && (
         <div className="asc-section">
           <div className="asc-sec-head">
-            <div className="asc-sec-title">Sub-structure</div>
-            <div className="asc-sec-sub">Two management logics inside one envelope — flat product side, hierarchical operations side</div>
+            <div className="asc-sec-title">Subdomains — the walls</div>
+            <div className="asc-sec-sub">Classified before staffed · each owned by exactly one durable team</div>
           </div>
-          <div className="mer-units">
-            {units.map(u => (
-              <div className="mer-unit" key={u.id}>
-                <div className="mer-u-top"><b>{u.label}</b><span className="mer-u-size">{u.props.size}</span></div>
-                <div className="mer-u-shape">{u.props.shape}</div>
-                <div className="mer-u-note">{u.props.note}</div>
-              </div>
-            ))}
+          <div className="mer-subgrid">
+            {d.contexts.map(c => {
+              const dep = M.depth.get(c.localId);
+              const team = M.org.byId.get((M.org.out(c.id, 'owned_by')[0] || {}).to);
+              return (
+                <div className="mer-sub" key={c.id} onClick={() => goContext(c.localId)}>
+                  <div className="mer-sub-top"><Chip c={c.props.classification} /><h3>{c.label}</h3></div>
+                  <div className="mer-sub-bc">model: <b>{c.props.bcName}</b></div>
+                  <p className="mer-sub-p">{dep ? dep.node.props.purpose : (c.props.publishes || '')}</p>
+                  <div className="mer-sub-foot">{team ? <>{team.label} · {team.props.size} people</> : null}<span className="mer-open">open →</span></div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {member && <FundingRhythm domainId={id} />}
-
-      <div className="asc-section">
-        <div className="asc-sec-head">
-          <div className="asc-sec-title">Subdomains — the walls</div>
-          <div className="asc-sec-sub">Classified before staffed · each owned by exactly one durable team</div>
-        </div>
-        <div className="mer-subgrid">
-          {d.contexts.map(c => {
-            const dep = M.depth.get(c.localId);
-            const team = M.org.byId.get((M.org.out(c.id, 'owned_by')[0] || {}).to);
-            return (
-              <div className="mer-sub" key={c.id} onClick={() => goContext(c.localId)}>
-                <div className="mer-sub-top"><Chip c={c.props.classification} /><h3>{c.label}</h3></div>
-                <div className="mer-sub-bc">model: <b>{c.props.bcName}</b></div>
-                <p className="mer-sub-p">{dep ? dep.node.props.purpose : (c.props.publishes || '')}</p>
-                <div className="mer-sub-foot">{team ? <>{team.label} · {team.props.size} people</> : null}<span className="mer-open">open →</span></div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="asc-section">
-        <div className="asc-sec-head">
-          <div className="asc-sec-title">This domain on the context map</div>
-          <div className="asc-sec-sub">Every standing relationship, typed by pattern</div>
-        </div>
-        <div className="mer-map">
-          {slice.map((s, i) => (
-            <div className="mer-seam" key={i}>
-              <span className="mer-seam-ends">
-                <b className={s.from.type === 'External' ? 'ext' : ''}>{s.from.label}</b>
-                <span className="mer-arrow">→</span>
-                <b className={s.to.type === 'External' ? 'ext' : ''}>{s.to.label}</b>
-              </span>
-              <Pattern p={s.pattern} status={s.status} />
-              <span className="mer-seam-what">{s.what}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {journeys.length > 0 && (
+      {domTab === 'portfolio' && (
         <div className="asc-section">
-          <div className="asc-sec-head"><div className="asc-sec-title">Journeys</div></div>
-          <div className="mer-journeys">
-            {journeys.map(j => (
-              <div className="mer-jr" key={j.node.id}>
-                <b>{j.node.label}</b>
-                <div className="mer-jr-home">{j.home && j.home.id === d.node.id ? <span className="badge ok">home domain</span> : <span className="badge">crosses here · home {j.home ? j.home.label : '—'}</span>}</div>
-                <div className="mer-jr-meas">{(j.node.props.measures || []).join(' · ')}</div>
-              </div>
-            ))}
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Product portfolio — the furniture</div>
+            <div className="asc-sec-sub">Packaging over this domain's contexts · a module in another domain's colour means composition through a contract</div>
           </div>
+          {portfolio.length > 0 ? (
+            <div className="mer-prods">
+              {portfolio.map(p => (
+                <div className="mer-prod" key={p.node.id}>
+                  <div className="mer-prod-top">
+                    <b>{p.node.label}</b><span className="mer-prod-kind">{p.node.props.kind}</span>
+                    <button type="button" className="badge mer-gatelink" title="The full product page: the six-phase journey with every section — Envision entries, Discover, Design (bounded contexts · context map · system design), Build, Operate, Realize (R1, D-104)."
+                      onClick={() => window.__cynOpenV4Product && window.__cynOpenV4Product(p.node.localId)}>
+                      open the product page →</button>
+                    {M.prods4[p.node.localId] && (() => {
+                      const gts = (M.prods4[p.node.localId].idx.nodes('Product')[0].props || {}).gates || {};
+                      const n = Object.keys(gts).length;
+                      return (
+                        <button type="button" className="badge ok mer-gatelink" title={Object.entries(gts).map(([k, v]) => `${k}: ${v}`).join('\n')}
+                          onClick={() => goProduct(p.node.localId)}>
+                          <span className="dot ok"></span>lifecycle · {n} gate{n === 1 ? '' : 's'} ✓{n < 4 ? ` of 4 — depth is honest` : ''} →</button>
+                      );
+                    })()}
+                  </div>
+                  <div className="mer-prod-owner">Owner: {p.owner ? p.owner.label : '—'}</div>
+                  <p className="mer-prod-note">{p.node.props.note}</p>
+                  <div className="mer-mods">
+                    {p.packages.map((pk, i) => (pk.modules || []).map(m => {
+                      const home = pk.ctx ? M.ctxDomain.get(pk.ctx.id) : null;
+                      const foreign = home && home.id !== d.node.id;
+                      return (
+                        <button type="button" key={i + m} className={'mer-mod' + (foreign ? ' foreign' : '')}
+                          title={pk.ctx ? `context: ${pk.ctx.label}${foreign ? ` (${home.label})` : ''}` : ''}
+                          onClick={() => pk.ctx && goContext(pk.ctx.localId)}>
+                          {m}<span className="ctx">{pk.ctx ? pk.ctx.props.bcName : ''}</span>
+                        </button>
+                      );
+                    }))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : <div className="ddd-empty-inline">No products package this domain's contexts yet.</div>}
         </div>
       )}
-
-      <div className="asc-section">
-        <div className="asc-sec-head">
-          <div className="asc-sec-title">Product portfolio — the furniture</div>
-          <div className="asc-sec-sub">Packaging over this domain's contexts · a module in another domain's colour means composition through a contract</div>
-        </div>
-        <div className="mer-prods">
-          {portfolio.map(p => (
-            <div className="mer-prod" key={p.node.id}>
-              <div className="mer-prod-top">
-                <b>{p.node.label}</b><span className="mer-prod-kind">{p.node.props.kind}</span>
-                <button type="button" className="badge mer-gatelink" title="The full product page: the six-phase journey with every section — Envision entries, Discover, Design (bounded contexts · context map · system design), Build, Operate, Realize (R1, D-104)."
-                  onClick={() => window.__cynOpenV4Product && window.__cynOpenV4Product(p.node.localId)}>
-                  open the product page →</button>
-                {M.prods4[p.node.localId] && (() => {
-                  const gts = (M.prods4[p.node.localId].idx.nodes('Product')[0].props || {}).gates || {};
-                  const n = Object.keys(gts).length;
-                  return (
-                    <button type="button" className="badge ok mer-gatelink" title={Object.entries(gts).map(([k, v]) => `${k}: ${v}`).join('\n')}
-                      onClick={() => goProduct(p.node.localId)}>
-                      <span className="dot ok"></span>lifecycle · {n} gate{n === 1 ? '' : 's'} ✓{n < 4 ? ` of 4 — depth is honest` : ''} →</button>
-                  );
-                })()}
-              </div>
-              <div className="mer-prod-owner">Owner: {p.owner ? p.owner.label : '—'}</div>
-              <p className="mer-prod-note">{p.node.props.note}</p>
-              <div className="mer-mods">
-                {p.packages.map((pk, i) => (pk.modules || []).map(m => {
-                  const home = pk.ctx ? M.ctxDomain.get(pk.ctx.id) : null;
-                  const foreign = home && home.id !== d.node.id;
-                  return (
-                    <button type="button" key={i + m} className={'mer-mod' + (foreign ? ' foreign' : '')}
-                      title={pk.ctx ? `context: ${pk.ctx.label}${foreign ? ` (${home.label})` : ''}` : ''}
-                      onClick={() => pk.ctx && goContext(pk.ctx.localId)}>
-                      {m}<span className="ctx">{pk.ctx ? pk.ctx.props.bcName : ''}</span>
-                    </button>
-                  );
-                }))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       <DerivedStrip graph={member ? member.g : M.org.g} extra={member ? <>member graph <code>{member.ns}:*</code> · walls gated "Walls hold?" ✓</> : null} />
     </div>
