@@ -208,14 +208,38 @@ import { buildDerivedFlows } from '../flow/derived-flows';
           climax: (ucs[Math.max(0, Math.ceil(ucs.length / 2) - 1)] || {}).label || '', resolution: (ucs[ucs.length - 1] || {}).label || '',
           capabilities: comps.map(c => c.label).join(', '),
         })),
-        usecases: ucs.map(uc => ({
-          id: uc.localId, driverRef: (ucVds(uc)[0] || {}).localId, title: uc.label,
-          journeyId: (P.byId.get((P.out(uc.id, 'belongs_to')[0] || {}).to) || {}).localId,
-          primaryActor: (ucActor(uc) || {}).localId, supportingActors: '',
-          frs: ucFrs(uc).map(f => f.localId),
-          trigger: uc.props.note || '', preconditions: '', orchestration: '', repeatability: '', postconditions: '',
-          mainFlow: [], acceptance: atsFor(uc).map(a => { const gw = gherkin(a.props.gherkin); return { title: a.localId + (a.props.status ? ` · ${a.props.status}` : ''), ...gw }; }),
-        })),
+        usecases: ucs.map(uc => {
+          const fset = ucFrs(uc);
+          const myAts = atsFor(uc);
+          const parsed = myAts.map(a => ({ a, gw: gherkin(a.props.gherkin) }));
+          const wallIds = [...new Set(fset.map(f => (frCtx(f) || {}).localId).filter(Boolean))];
+          const supporting = [...new Set(wallIds.flatMap(w => {
+            const d = dep(w);
+            return d ? d.contracts.filter(k => (k.node.props.dir || '') === 'consumes').map(k => (k.counterpart || {}).label).filter(Boolean) : [];
+          }))].join(', ');
+          const esc = s => String(s || '').replace(/[\[\]()"{}|]/g, ' ').slice(0, 70).trim();
+          const steps = fset.map(f => f.label);
+          /* the mermaid workflow: trigger → each realizing FR → the gated outcome */
+          const wf = ['flowchart TD', `  T([${esc(uc.props.note || uc.label)}])`];
+          let prev = 'T';
+          steps.forEach((st, i) => { wf.push(`  ${prev} --> S${i}[${esc(st)}]`); prev = `S${i}`; });
+          const thenEnd = parsed[0] && parsed[0].gw.then[0];
+          if (thenEnd) wf.push(`  ${prev} --> E([${esc(thenEnd)}])`);
+          return {
+            id: uc.localId, driverRef: (ucVds(uc)[0] || {}).localId, title: uc.label,
+            journeyId: (P.byId.get((P.out(uc.id, 'belongs_to')[0] || {}).to) || {}).localId,
+            primaryActor: (ucActor(uc) || {}).localId, supportingActors: supporting,
+            frs: fset.map(f => f.localId),
+            trigger: uc.props.note || '',
+            preconditions: [...new Set(parsed.flatMap(p => p.gw.given))].join('; '),
+            postconditions: [...new Set(parsed.flatMap(p => p.gw.then))].join('; '),
+            orchestration: steps.join(' → '),
+            repeatability: '',
+            mainFlow: steps,
+            workflow: steps.length ? wf.join('\n') : undefined,
+            acceptance: parsed.map(({ a, gw }) => ({ title: `${a.localId} — gated acceptance${a.props.status ? ` · ${a.props.status}` : ''}`, ...gw })),
+          };
+        }),
         specs: {
           functional: frs.map(f => ({
             id: f.localId, area: (frComp(f) || {}).label || '', text: f.label, traceJ: (jrns[0] || {}).localId,
