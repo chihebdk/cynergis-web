@@ -671,7 +671,7 @@ function OrgApp() {
   };
 
   return (
-    <div className="asc-app" style={{ gridTemplateRows:'56px 1fr' }}>
+    <div className="asc-app" style={{ gridTemplateRows:'80px 1fr' }}>
       <header className="asc-topbar">
         <div className="asc-brand" onClick={goOrg}>
           <img className="asc-logo" src="/onthos-logo.png" alt="Onthos" />

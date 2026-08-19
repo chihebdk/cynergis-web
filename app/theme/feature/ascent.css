@@ -20,17 +20,17 @@ button{ font-family:inherit; }
 .serif-head .asc-domain-hero h1{ letter-spacing:-0.01em; }
 
 /* ---------------- shell ---------------- */
-.asc-app{ display:grid; grid-template-rows:56px 1fr; height:100vh; overflow:hidden; }
+.asc-app{ display:grid; grid-template-rows:80px 1fr; height:100vh; overflow:hidden; }
 
 .asc-topbar{
   display:flex; align-items:center; gap:18px;
-  padding:0 22px; height:56px;
+  padding:0 22px; height:80px;
   background:var(--panel); border-bottom:1px solid var(--line);
 }
 .asc-brand{ display:flex; align-items:baseline; gap:12px; cursor:pointer; }
 /* D-128: the Onthos wordmark replaces the letter mark; the org name sits
    beside it as the mono subtitle it always was */
-.asc-logo{ height:32px; width:auto; display:block; align-self:center; }
+.asc-logo{ height:64px; width:auto; display:block; align-self:center; }
 .asc-brand-org{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-3); align-self:center; padding-top:3px; }
 
 /* Back button — wired to browser history (URL routing) */
