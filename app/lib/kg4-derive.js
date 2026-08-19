@@ -174,11 +174,21 @@ import './ddd-data';
         },
         personas: personas.map((p, i) => {
           const myUcs = ucs.filter(u => (ucActor(u) || {}).id === p.id);
+          const myVds = [...new Set(myUcs.flatMap(u => ucVds(u)))];
+          const myWalls = [...new Set(myUcs.flatMap(u => ucFrs(u).map(f => (frCtx(f) || {}).localId)).filter(Boolean))];
+          const apps = myWalls.flatMap(w => ((dep(w) || {}).apps || []).map(a => a.label));
           return {
             id: p.localId, name: p.label, role: p.label, tier: i < 2 ? 'Primary' : 'Secondary',
-            situation: p.props.note || '', goal: myUcs.map(u => u.label).join('; '),
-            successMetric: [...new Set(myUcs.flatMap(u => ucVds(u).flatMap(v => v.props.measuredBy || [])))].join(', '),
-            touchpoints: prod.label, volume: '', frequency: '', permissions: '', authority: '', collaboration: '', tools: '', regulatory: '', obstacle: '', solution: '', quote: '',
+            situation: p.props.note || '',
+            goal: myUcs.map(u => u.label).join('; ') || (jrns[0] || {}).label || '',
+            obstacle: first(pp.problem),
+            solution: first(pp.bet),
+            successMetric: [...new Set(myUcs.flatMap(u => ucVds(u).flatMap(v => v.props.measuredBy || [])))]
+              .map(id => (scById[id] || { label: id }).label || id).join(' · '),
+            touchpoints: prod.label, tools: apps.join(' · '),
+            collaboration: myVds.map(v => v.label).join(' · '),
+            frequency: myUcs.length ? `${myUcs.length} use case${myUcs.length === 1 ? '' : 's'} on this product` : '',
+            volume: '', permissions: '', authority: '', regulatory: '', quote: '',
           };
         }),
         stakeholders: stakes.map(st => ({ id: st.localId, name: st.label, role: 'Stakeholder', interest: st.props.stake || '' })),
@@ -210,7 +220,13 @@ import './ddd-data';
             traceSC: [...new Set(frs.length ? P.inn(f.id, 'realizes').map(e => P.byId.get(e.from)).filter(Boolean).flatMap(u => ucVds(u).flatMap(v => v.props.measuredBy || [])) : [])][0] || '',
           })),
           nonfunctional: nfrs.map(n => ({ id: n.localId, cat: 'NFR', text: n.label })),
-          policies: [],
+          /* policies = the ops agents' recorded guardrails on the packaged walls */
+          policies: walls.flatMap(w => {
+            const d = dep(w.localId);
+            const ops = d && d.agents.find(a => a.props.kind === 'operations');
+            return ops ? (ops.props.guardrails || []).filter(gd => !/D-056/.test(gd)).map((gd, i) => ({
+              id: `POL-${w.localId.replace('CTX-', '')}-${i + 1}`, name: gd.split('—')[0].trim(), statement: `${gd} (recorded on ${ops.label}, ${w.label}).`, traceFR: '' })) : [];
+          }),
         },
         release: {
           strategy: pp.bet,
@@ -320,7 +336,10 @@ import './ddd-data';
         };
       });
 
-      DDD[pid] = { contexts, relations, realizations };
+      /* canvas:false → the Context map / System design pages render the REAL
+         typed-seam register (D-105); the interactive canvas stays authored
+         content (ClaimsCore only, D-108) */
+      DDD[pid] = { canvas: false, contexts, relations, realizations };
     }
   }
 })();
