@@ -37,6 +37,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
       dtab: q.get('dtab') || null,   // domain-view tab (D-119: overview | map)
       sbtab: q.get('sbtab') || null,   // subdomain-view tab (D-121: overview | the element tabs)
       mprod: q.get('mprod') || null, mtab: q.get('mtab') || null,   // v4 product lifecycle (D-095)
+      chp: q.get('chp') || null, chtab: q.get('chtab') || null,   // chapter workspace (D-126: overview | domains)
     };
   };
   window.cynBuildUrl = (n) => {
@@ -50,6 +51,7 @@ if (typeof window !== 'undefined' && !window.__cynRouter) {
         if (n.bc && n.sbtab) q.set('sbtab', n.sbtab);
         if (n.mprod) { q.set('mprod', n.mprod); if (n.mtab && n.mtab !== 'envision') q.set('mtab', n.mtab); }
       }
+      if (n.sub === 'chapters' && n.chp) { q.set('chp', n.chp); if (n.chtab && n.chtab !== 'overview') q.set('chtab', n.chtab); }
     }
     else if (n.v === 'pf') { if (n.pf) q.set('pf', n.pf); if (n.sub && n.sub !== 'dashboard') q.set('sub', n.sub); }
     else if (n.v === 'prod') {
@@ -456,6 +458,14 @@ function merScopeFromUrl(q) {
   };
 }
 
+/* chapter lookup for the header path + workspace rail (D-126) */
+function merChapterName(id) {
+  const K = typeof window !== 'undefined' && window.__KG4__;
+  if (!K || !K.org || !id) return null;
+  const n = K.org.nodes.find(x => x.type === 'Chapter' && x.localId === id);
+  return n ? n.label : null;
+}
+
 /* subdomain metadata for the rail (D-121): does a DDD element cover it, and
    which products package it (the "contributes to" list) */
 function merCtxMeta(bcId) {
@@ -545,7 +555,7 @@ function OrgApp() {
     const nav = { v: view === 'portfolio' ? 'pf' : view === 'product' ? 'prod' : 'org',
       pf: pid, prod: prod ? prod.id : null, sub: n.sub,
       phase: n.phase, entry: n.entry, ctx: n.ctx, tab: n.tab,
-      dom: n.dom, bc: n.bc, mprod: n.mprod, mtab: n.mtab, dtab: n.dtab, sbtab: n.sbtab };
+      dom: n.dom, bc: n.bc, mprod: n.mprod, mtab: n.mtab, dtab: n.dtab, sbtab: n.sbtab, chp: n.chp, chtab: n.chtab };
     window.__cynNav = nav;   // plain assignment only — no setState/ping during render
     return { view, pid, prod, sub: n.sub };
   }, []);
@@ -665,8 +675,33 @@ function OrgApp() {
         {(() => {
           /* D-115: the path reads Organization > Domain > Product, synced with the
              Meridian drills (dom/bc/mprod). "Portfolio" survives only on the legacy
-             WealthGrow surfaces. */
+             WealthGrow surfaces.
+             D-126: the path is CONTEXT-AWARE — it only appears where a drill can
+             happen. Overview/Platforms/Risks/Governance show nothing; Chapters
+             shows Organization alone; a chapter workspace shows Organization ·
+             Chapter · name; Domains (and any dom/bc/mprod drill) keeps the full
+             three-segment path; legacy surfaces are untouched. */
           const q = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
+          if (view === 'org') {
+            const drill = q.dom || q.bc || q.mprod;
+            const sec = sub === 'meridian' ? (drill ? 'domains' : 'overview') : sub;
+            if (sec === 'chapters') {
+              const chName = q.chp ? merChapterName(q.chp) : null;
+              return (
+                <div className="asc-scope asc-scope-path">
+                  <button className={chName ? '' : 'on'} onClick={goOrg}><Ico k="org" w={13} /> Organization</button>
+                  {chName && (
+                    <button className="on">
+                      <Ico k="cap" w={13} />
+                      <span className="lab2">Chapter<span className="sep">·</span><span className="ent">{chName}</span></span>
+                    </button>
+                  )}
+                </div>
+              );
+            }
+            const pathOn = drill || sec === 'domains' || sec === 'chart' || sec === 'dashboard' || sec === 'prioritize';
+            if (!pathOn) return null;
+          }
           const mer = view === 'org' ? merScopeFromUrl(q) : {};
           const legacyPf = pf && !pf._v4 && view !== 'org';
           const domName = view === 'org' ? mer.domName : (pf ? pf.name : null);
@@ -770,6 +805,23 @@ function OrgApp() {
                         ? React.createElement(window.MerDomainSystem, { id: domScope })
                         : React.createElement(window.MeridianOrg)}
                   </main>
+                </div>;
+              }
+              if (sec === 'chapters' && q.chp && window.MerChapterPage) {
+                /* D-126: a chapter is its own workspace — Overview (roster +
+                   skill catalog) and Domains (the coverage sections), like the
+                   domain workspace pattern. */
+                const chName = merChapterName(q.chp);
+                const chActive = q.chtab === 'domains' ? 'domains' : 'overview';
+                const goChTab = (t) => { setSub('chapters'); window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'chapters', chp: q.chp, chtab: t === 'overview' ? null : t, ...RESET }); setTimeout(scrollTop, 0); };
+                return <div className="asc-body">
+                  <aside className="asc-rail">
+                    <div className="asc-rail-sect">{chName || q.chp}</div>
+                    <div className={'asc-nav' + (chActive === 'overview' ? ' on' : '')} onClick={() => goChTab('overview')}><Ico k="org" w={15} /> Overview</div>
+                    <div className={'asc-nav' + (chActive === 'domains' ? ' on' : '')} onClick={() => goChTab('domains')}><Ico k="dash" w={15} /> Domains</div>
+                    <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => navSub('chapters')}><Ico k="back" w={15} /> All chapters</div>
+                  </aside>
+                  <main className="asc-main">{React.createElement(window.MerChapterPage, { id: q.chp, view: chActive })}</main>
                 </div>;
               }
               return <div className="asc-body">

@@ -267,3 +267,10 @@ button.mer-om { font: inherit; }
 .mer-seat-skill { color: var(--ink-3); line-height: 1.5; }
 .mer-seat-skill .badge { margin-right: 5px; }
 .mer-seat-level { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+
+/* D-126: chapters become workspaces — clickable roster cards + chapter-lens highlights */
+.mer-unit.click { cursor: pointer; transition: border-color .12s ease, box-shadow .12s ease; }
+.mer-unit.click:hover { border-color: var(--accent); box-shadow: 0 1px 6px rgba(0, 0, 0, .06); }
+.mer-unit.on { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.mer-covmatrix tr.hi td { background: var(--accent-soft); }
+.mer-seat.hi { border-color: var(--accent); }

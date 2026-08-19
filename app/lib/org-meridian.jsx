@@ -1816,8 +1816,7 @@ if (typeof window !== 'undefined') window.MerDomainSystem = MerDomainSystem;
    Sections 3–5 scope to Claims (the only domain with full agent-pair +
    skill depth); 1–2 read org-wide and stay honestly thin elsewhere.
    ============================================================ */
-function MerChapters() {
-  if (!M) return null;
+function chaptersModel() {
   const claimsMember = M.members['DOM-CLAIMS'];
   const claimsCtxIds = claimsMember ? claimsMember.nodes('BoundedContext').map(c => c.localId) : [];
 
@@ -1891,33 +1890,36 @@ function MerChapters() {
     tierStats[tier].people += size; tierStats[tier].walls += 1;
   }
   const totalPeople = Object.values(tierStats).reduce((s, t) => s + t.people, 0);
+  return { claimsMember, skillToAgent, allSkills, chaptersAt, rosterAt, LEVEL_RANK, competencies, claimsCtxNodes, tierRank, tierStats, totalPeople };
+}
 
+/* D-126 nav: the chapter workspace lives at sub=chapters & chp=<id> */
+const goChapter = id => { window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'chapters', chp: id, phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' }); setTimeout(() => document.querySelector('.asc-main')?.scrollTo(0, 0), 0); };
+const goChapters = () => { window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'chapters', phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' }); setTimeout(() => document.querySelector('.asc-main')?.scrollTo(0, 0), 0); };
+
+/* the sections, each standalone so the index and the chapter workspace compose them (D-126) */
+function ChSecRoster({ activeId }) {
   return (
-    <div className="asc-page">
-      <div className="asc-page-head">
-        <div>
-          <div className="asc-eyebrow">Organization · chapters</div>
-          <h1 className="asc-page-title">Chapters</h1>
-          <p className="asc-page-sub">The craft axis: who supplies and develops a skill, correlated with where product work needs it and where an agent skill already carries part of it. Core/supporting/generic classification stays a property of each subdomain, shown on the chart and the context pages.</p>
-        </div>
+    <div className="asc-section">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title">Chapters roster</div>
+        <div className="asc-sec-sub">Craft standards, indicative headcount and allocation rule — select a chapter to open its workspace</div>
       </div>
-
-      <div className="asc-section">
-        <div className="asc-sec-head">
-          <div className="asc-sec-title">Chapters roster</div>
-          <div className="asc-sec-sub">Craft standards, indicative headcount and allocation rule — derived from the org graph</div>
-        </div>
         <div className="mer-units">
           {M.chapters.map(({ node: ch, staffed }) => (
-            <div className="mer-unit" key={ch.id}>
+            <div className={'mer-unit click' + (activeId === ch.localId ? ' on' : '')} key={ch.id} role="button" tabIndex={0} onClick={() => goChapter(ch.localId)}>
               <div className="mer-u-top"><b>{ch.label}</b><span className="mer-u-size">{ch.props.size}</span></div>
               <div className="mer-u-shape">{ch.props.owns}</div>
               <div className="mer-u-note">{ch.props.allocation} · staffs {staffed} team{staffed === 1 ? '' : 's'}</div>
             </div>
           ))}
         </div>
-      </div>
-
+    </div>
+  );
+}
+function ChSecCatalog() {
+  const { allSkills } = chaptersModel();
+  return (
       <div className="asc-section">
         <div className="asc-sec-head">
           <div className="asc-sec-title">Skill catalog</div>
@@ -1938,8 +1940,11 @@ function MerChapters() {
           {allSkills.length === 0 && <div className="ddd-empty-inline">No skills authored yet.</div>}
         </div>
       </div>
-
-      {claimsMember && (
+  );
+}
+function ChSecMatrix({ hi }) {
+  const { claimsMember, claimsCtxNodes, chaptersAt } = chaptersModel();
+  return claimsMember ? (
         <div className="asc-section">
           <div className="asc-sec-head">
             <div className="asc-sec-title">Coverage matrix — Claims</div>
@@ -1949,7 +1954,7 @@ function MerChapters() {
             <thead><tr><th>chapter</th>{claimsCtxNodes.map(c => <th key={c.id}>{c.node.label}</th>)}</tr></thead>
             <tbody>
               {M.org.nodes('Chapter').map(ch => (
-                <tr key={ch.id}>
+                <tr key={ch.id} className={hi === ch.localId ? 'hi' : ''}>
                   <td className="mer-covrow-h">{ch.label}</td>
                   {claimsCtxNodes.map(c => {
                     const here = chaptersAt(c.id).some(x => x.id === ch.id);
@@ -1969,9 +1974,11 @@ function MerChapters() {
           </table>
           <div className="mer-covlegend">● chapter represented (org graph) · letter badge = an agent skill is deployed on that wall, tier initial (S·A·O·C)</div>
         </div>
-      )}
-
-      {claimsMember && (
+  ) : null;
+}
+function ChSecTeamRoster({ hi }) {
+  const { claimsMember, claimsCtxNodes, rosterAt } = chaptersModel();
+  return claimsMember ? (
         <div className="asc-section">
           <div className="asc-sec-head">
             <div className="asc-sec-title">Team roster — Claims</div>
@@ -1986,7 +1993,7 @@ function MerChapters() {
                   <div className="mer-roster-ctx-h">{node.label}</div>
                   <div className="mer-roster-seats">
                     {seats.flatMap(p => (p.props.skills || []).map((s, i) => (
-                      <div className="mer-seat" key={p.id + '-' + i}>
+                      <div className={'mer-seat' + (hi && p.props.chapter === hi ? ' hi' : '')} key={p.id + '-' + i}>
                         <div className="mer-seat-top"><b>{p.label}</b><span className="mer-seat-role">{p.props.role}</span></div>
                         <div className="mer-seat-skill">
                           <span className={'badge ' + (s.kind === 'technical' ? 'info' : 'violet')}>{s.kind}</span>
@@ -2001,9 +2008,11 @@ function MerChapters() {
             })}
           </div>
         </div>
-      )}
-
-      {claimsMember && competencies.length > 0 && (
+  ) : null;
+}
+function ChSecCoverageReq() {
+  const { claimsMember, competencies } = chaptersModel();
+  return claimsMember && competencies.length > 0 ? (
         <div className="asc-section">
           <div className="asc-sec-head">
             <div className="asc-sec-title">Skill coverage requirement — Claims</div>
@@ -2031,9 +2040,11 @@ function MerChapters() {
             })}
           </div>
         </div>
-      )}
-
-      {claimsMember && (
+  ) : null;
+}
+function ChSecWhitespace() {
+  const { claimsMember, claimsCtxNodes } = chaptersModel();
+  return claimsMember ? (
         <div className="asc-section">
           <div className="asc-sec-head">
             <div className="asc-sec-title">Agent-skill whitespace — Claims</div>
@@ -2058,9 +2069,11 @@ function MerChapters() {
               ))}
           </div>
         </div>
-      )}
-
-      {claimsMember && totalPeople > 0 && (
+  ) : null;
+}
+function ChSecStats() {
+  const { claimsMember, tierRank, tierStats, totalPeople } = chaptersModel();
+  return claimsMember && totalPeople > 0 ? (
         <div className="asc-section">
           <div className="asc-sec-head">
             <div className="asc-sec-title">Coverage stats — Claims</div>
@@ -2073,13 +2086,81 @@ function MerChapters() {
             <div className="ovw-stat"><b>{totalPeople}</b><span>total, 7 walls</span></div>
           </div>
         </div>
-      )}
+  ) : null;
+}
 
-      <DerivedStrip graph={M.org.g} extra={<>chapters + staffs edges from <code>meridian:*</code> · skills from every product's lifecycle graph · roster (Person) and requirement (Competency) nodes new in D-125</>} />
+/* the Chapters index (D-126): the roster only — each card opens its chapter workspace */
+function MerChapters() {
+  if (!M) return null;
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Organization · chapters</div>
+          <h1 className="asc-page-title">Chapters</h1>
+          <p className="asc-page-sub">The craft axis: who supplies and develops a skill, correlated with where product work needs it and where an agent skill already carries part of it. Select a chapter to open its workspace — the skill catalog and the per-domain coverage views live inside.</p>
+        </div>
+      </div>
+      <ChSecRoster />
+      <DerivedStrip graph={M.org.g} extra={<>chapters + staffs edges from <code>meridian:*</code></>} />
     </div>
   );
 }
 if (typeof window !== 'undefined') window.MerChapters = MerChapters;
+
+/* the chapter workspace (D-126): Overview = chapter roster + skill catalog in
+   tabs; Domains = the five coverage sections in tabs (Claims depth today). */
+const CH_OVW_TABS = [
+  { key: 'roster', label: 'Chapter roster' },
+  { key: 'catalog', label: 'Skill catalog' },
+];
+const CH_DOM_TABS = [
+  { key: 'matrix', label: 'Coverage matrix' },
+  { key: 'team', label: 'Team roster' },
+  { key: 'req', label: 'Skill coverage requirement' },
+  { key: 'white', label: 'Agent-skill whitespace' },
+  { key: 'stats', label: 'Coverage stats' },
+];
+function MerChapterPage({ id, view }) {
+  const [tab, setTab] = useState(view === 'domains' ? 'matrix' : 'roster');
+  useEffect(() => { setTab(view === 'domains' ? 'matrix' : 'roster'); }, [id, view]);
+  if (!M) return null;
+  const ch = M.org.byLocal.get(id);
+  if (!ch || ch.type !== 'Chapter') return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown chapter. <button type="button" className="mer-link" onClick={goChapters}>Back to chapters</button></div></div>;
+  const staffed = M.org.out(ch.id, 'staffs').length;
+  const tabs = view === 'domains' ? CH_DOM_TABS : CH_OVW_TABS;
+  return (
+    <div className="asc-page">
+      <div className="mer-crumb"><button type="button" className="mer-link" onClick={goChapters}>Chapters</button> / <b>{ch.label}</b></div>
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">Organization · chapter{view === 'domains' ? ' · domains' : ''}</div>
+          <h1 className="asc-page-title">{ch.label}</h1>
+          <p className="asc-page-sub">{ch.props.owns}</p>
+        </div>
+      </div>
+      <div className="mer-facts">
+        <div className="mer-fact"><span className="k">Headcount</span><span className="v">{ch.props.size}</span></div>
+        {ch.props.allocation && <div className="mer-fact"><span className="k">Allocation rule</span><span className="v">{ch.props.allocation}</span></div>}
+        <div className="mer-fact"><span className="k">Staffs</span><span className="v">{staffed} team{staffed === 1 ? '' : 's'} across the org</span></div>
+      </div>
+      <div className="ddd-tabs">
+        {tabs.map(t => (
+          <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => setTab(t.key)}>{t.label}</button>
+        ))}
+      </div>
+      {view !== 'domains' && tab === 'roster' && <ChSecRoster activeId={id} />}
+      {view !== 'domains' && tab === 'catalog' && <ChSecCatalog />}
+      {view === 'domains' && tab === 'matrix' && <ChSecMatrix hi={id} />}
+      {view === 'domains' && tab === 'team' && <ChSecTeamRoster hi={id} />}
+      {view === 'domains' && tab === 'req' && <ChSecCoverageReq />}
+      {view === 'domains' && tab === 'white' && <ChSecWhitespace />}
+      {view === 'domains' && tab === 'stats' && <ChSecStats />}
+      <DerivedStrip graph={M.org.g} extra={<>chapters + staffs edges from <code>meridian:*</code> · skills from every product's lifecycle graph · roster (Person) and requirement (Competency) from D-125</>} />
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerChapterPage = MerChapterPage;
 
 /* honest scaffolds for the sections the redesign has not reached yet */
 const ORG_SECTION_NOTES = {
