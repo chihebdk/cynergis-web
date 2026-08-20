@@ -1550,56 +1550,6 @@ const CHAIN_STRIP = [
     ex: 'Subrogation, salvage, fraud, loss experience feeding pricing' },
 ];
 
-/* D-132: the org's PULSE — reviews, queues and health as recorded in the graphs */
-function OrgPulse() {
-  const reviews = M.domains.filter(d => d.node.props.kind === 'stream').map(d => {
-    const r = (M.memberReviews[d.node.localId] || [])[0];
-    return r ? { d, r } : null;
-  }).filter(Boolean);
-  const pend = [], ambers = [];
-  let gates = 0, gateTotal = 0;
-  for (const [pid, { idx }] of Object.entries(M.prods4)) {
-    const P = idx.nodes('Product')[0] || { props: {} };
-    gateTotal += 4; gates += Object.keys(P.props.gates || {}).length;
-    for (const a of idx.nodes('Approval')) if (a.status !== 'superseded' && a.props.status === 'pending') pend.push({ pid, name: P.label, a });
-    for (const s of idx.nodes('Slo')) if (s.props.health && s.props.health !== 'green') ambers.push({ pid, name: P.label, s });
-  }
-  return (
-    <div className="asc-section">
-      <div className="asc-sec-head">
-        <div className="asc-sec-title">State of the organization</div>
-        <div className="asc-sec-sub">Not the shape — the pulse: what is pending, what is amber, and what each domain's last outcome review decided. Everything derived from the graphs.</div>
-      </div>
-      <div className="ovw-pulse">
-        <div className="ovw-pcard">
-          <div className="ovw-pcard-h"><b>{pend.length}</b> pending decision{pend.length === 1 ? '' : 's'}</div>
-          {pend.length ? pend.map(({ pid, name, a }) => (
-            <button type="button" key={a.id} className="mer-link" onClick={() => goProduct(pid, 'operate')}>{a.localId} · {a.label} ({name}) →</button>
-          )) : <span className="ovw-pnone">Nothing waiting on a human decision.</span>}
-        </div>
-        <div className="ovw-pcard">
-          <div className="ovw-pcard-h"><b>{ambers.length}</b> SLO{ambers.length === 1 ? '' : 's'} off green</div>
-          {ambers.length ? ambers.map(({ pid, name, s }) => (
-            <button type="button" key={pid + s.id} className="mer-link" onClick={() => goProduct(pid, 'operate')}>{s.label} · {s.props.current} against {s.props.target} ({name}) →</button>
-          )) : <span className="ovw-pnone">All recorded SLOs green.</span>}
-        </div>
-        <div className="ovw-pcard">
-          <div className="ovw-pcard-h"><b>{gates}/{gateTotal}</b> phase gates recorded ✓</div>
-          <span className="ovw-pnone">Envision · Discover · Design · Build, per product — every tick a recorded gate run.</span>
-        </div>
-      </div>
-      <div className="ovw-reviews">
-        {reviews.map(({ d, r }) => (
-          <button type="button" key={d.node.id} className="ovw-review" onClick={() => goDomain(d.node.localId)}>
-            <b>{d.node.label}</b>
-            <span className={'badge ' + (r.props.rebalancePct ? '' : 'ok')}>{r.props.quarter} · {r.props.decision}{r.props.rebalancePct ? ` ${r.props.rebalancePct > 0 ? '+' : ''}${r.props.rebalancePct}%` : ''}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* D-132: the verbatim chart's labels → live workspaces (event delegation keeps
    the embedded HTML byte-for-byte) */
 const REF_DOM = { 'Product & Pricing': 'DOM-PRICING', 'Distribution & Quoting': 'DOM-DISTRIBUTION', 'Underwriting & Policy': 'DOM-UW-POLICY', 'Claims': 'DOM-CLAIMS', 'Billing & Money Movement': 'DOM-BILLING' };
@@ -1633,8 +1583,6 @@ function MerOverview() {
           </div>
         </div>
       </div>
-
-      <OrgPulse />
 
       <div className="asc-section">
         <div className="asc-sec-head">
