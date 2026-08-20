@@ -500,18 +500,6 @@ const BC_TAB_ITEMS = [
   { key: 'contracts', label: 'Contracts' }, { key: 'lang', label: 'Ubiquitous Language' },
 ];
 
-/* the domain's contexts, for the domain-view rail (D-119) */
-function merDomainContexts(domId) {
-  const K = typeof window !== 'undefined' && window.__KG4__;
-  if (!K || !K.org) return [];
-  const g = K.org;
-  const d = g.nodes.find(n => n.localId === domId);
-  if (!d) return [];
-  return g.edges.filter(e => e.type === 'contains' && e.from === d.id)
-    .map(e => g.nodes.find(n => n.id === e.to)).filter(Boolean)
-    .map(c => ({ id: c.localId, label: c.label }));
-}
-
 /* ---------- left-rail nav ---------- */
 function NavRail({ sect, items, active, onSelect, foot }) {
   return (
@@ -799,18 +787,25 @@ function OrgApp() {
                 </div>;
               }
               if (domScope) {
-                const ctxs = merDomainContexts(domScope);
-                const dActive = q.bc ? q.bc : (q.dtab === 'map' ? 'map' : q.dtab === 'system' ? 'system' : 'overview');
+                /* D-133: the D-123 tabbed panel lives in the rail; the per-
+                   subdomain list retired — the Subdomains PAGE is the navigator */
+                const dActive = q.dtab || 'overview';
                 const goDomTab = (dtab) => { setSub('meridian'); window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: domScope, dtab, ...RESET }); setTimeout(scrollTop, 0); };
+                const DOM_RAIL = [
+                  { key: 'units', label: 'Org sub-structure', ico: 'org' },
+                  { key: 'funding', label: 'Funding & review', ico: 'board' },
+                  { key: 'subdomains', label: 'Subdomains', ico: 'product' },
+                  { key: 'portfolio', label: 'Product portfolio', ico: 'portfolio' },
+                  { key: 'prioritize', label: 'Prioritize products', ico: 'board' },
+                  { key: 'map', label: 'Context map', ico: 'dash' },
+                  { key: 'system', label: 'System map', ico: 'layers' },
+                ];
                 return <div className="asc-body">
                   <aside className="asc-rail">
                     <div className="asc-rail-sect">{merScope.domName}</div>
                     <div className={'asc-nav' + (dActive === 'overview' ? ' on' : '')} onClick={() => goMerDomain(domScope)}><Ico k="org" w={15} /> Overview</div>
-                    <div className={'asc-nav' + (dActive === 'map' ? ' on' : '')} onClick={() => goDomTab('map')}><Ico k="dash" w={15} /> Context map</div>
-                    <div className={'asc-nav' + (dActive === 'system' ? ' on' : '')} onClick={() => goDomTab('system')}><Ico k="layers" w={15} /> System map</div>
-                    <div className="asc-rail-sect" style={{ marginTop:'14px' }}>Subdomains</div>
-                    {ctxs.map(c => (
-                      <div key={c.id} className={'asc-nav' + (dActive === c.id ? ' on' : '')} onClick={() => goMerContext(c.id)}><Ico k="product" w={15} /> {c.label}</div>
+                    {DOM_RAIL.map(it => (
+                      <div key={it.key} className={'asc-nav' + (dActive === it.key ? ' on' : '')} onClick={() => goDomTab(it.key)}><Ico k={it.ico} w={15} /> {it.label}</div>
                     ))}
                     <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => navSub('domains')}><Ico k="back" w={15} /> All domains</div>
                   </aside>

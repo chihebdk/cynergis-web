@@ -455,22 +455,15 @@ function FundingRhythm({ domainId = 'DOM-CLAIMS' }) {
 }
 
 /* ---------- domain page ---------- */
-const DOMAIN_TABS = [
-  { key: 'units', label: 'Org sub-structure' },
-  { key: 'funding', label: 'Funding & review' },
-  { key: 'subdomains', label: 'Subdomains' },
-  { key: 'portfolio', label: 'Product portfolio' },
-  { key: 'prioritize', label: 'Prioritize products' },
-];
 function MerDomain({ id }) {
   const d = M.domains.find(x => x.node.localId === id);
-  /* D-123: the sections below the header table live behind a tabbed panel — the
-     map-slice preview and journeys sections retired (the full Context map page,
-     dtab=map, already covers the map at proper diagram depth; journeys read thin
-     at domain altitude). Hooks stay above the early return. */
-  const [domTab, setDomTab] = useState('units');
+  /* D-133: the D-123 tabbed panel moved into the domain rail — sections are
+     URL-driven (dtab), so every one deep-links. Overview = the identity card
+     (facts); the rail carries the rest. Hooks stay above the early return. */
+  const q133 = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
+  const domTab = ['units', 'funding', 'subdomains', 'portfolio', 'prioritize'].includes(q133.dtab) ? q133.dtab : 'overview';
   const [prioSel, setPrioSel] = useState(null);   // D-127: the open WSJF breakdown
-  useEffect(() => { setDomTab('units'); setPrioSel(null); }, [id]);
+  useEffect(() => { setPrioSel(null); }, [id]);
   if (!d) return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown domain. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
   const member = M.members[id] || null;
   const units = M.memberUnits[id] || [];
@@ -489,18 +482,14 @@ function MerDomain({ id }) {
         </div>
       </div>
 
-      <div className="mer-facts">
-        <div className="mer-fact"><span className="k">Accountable executive</span><span className="v">{d.node.props.owner}</span></div>
-        {d.node.props.envelope && <div className="mer-fact"><span className="k">Envelope</span><span className="v">{d.node.props.envelope}</span></div>}
-        {d.node.props.standingMeasures && <div className="mer-fact"><span className="k">Standing measures</span><span className="v">{d.node.props.standingMeasures.join(' · ')}</span></div>}
-        {d.node.props.journeyNote && <div className="mer-fact"><span className="k">Note</span><span className="v">{d.node.props.journeyNote}</span></div>}
-      </div>
-
-      <div className="ddd-tabs">
-        {DOMAIN_TABS.map(t => (
-          <button key={t.key} type="button" className={'ddd-tab' + (domTab === t.key ? ' on' : '')} onClick={() => setDomTab(t.key)}>{t.label}</button>
-        ))}
-      </div>
+      {domTab === 'overview' && (
+        <div className="mer-facts">
+          <div className="mer-fact"><span className="k">Accountable executive</span><span className="v">{d.node.props.owner}</span></div>
+          {d.node.props.envelope && <div className="mer-fact"><span className="k">Envelope</span><span className="v">{d.node.props.envelope}</span></div>}
+          {d.node.props.standingMeasures && <div className="mer-fact"><span className="k">Standing measures</span><span className="v">{d.node.props.standingMeasures.join(' · ')}</span></div>}
+          {d.node.props.journeyNote && <div className="mer-fact"><span className="k">Note</span><span className="v">{d.node.props.journeyNote}</span></div>}
+        </div>
+      )}
 
       {domTab === 'units' && (
         units.length > 0 ? (
