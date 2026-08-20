@@ -40,6 +40,14 @@ import { buildDerivedFlows } from '../flow/derived-flows';
     const d = org.byId.get(e.from), c = org.byId.get(e.to);
     if (d && c && d.type === 'Domain') ctxDomain.set(c.localId, d);
   }
+  /* every Skill node across the mesh, by localId — an agent's carried skill
+     may live in another product's graph (e.g. the workbench's briefer on the
+     Coverage wall) */
+  const skillIdx = {};
+  for (const spg of Object.values(K4.products)) {
+    const W = wrap(spg);
+    for (const sk of W.nodes('Skill')) skillIdx[sk.localId] = { name: sk.label, tier: sk.props.tier || 'Suggest' };
+  }
 
   const gherkin = txt => {
     const out = { given: [], when: [], then: [] };
@@ -324,6 +332,7 @@ import { buildDerivedFlows } from '../flow/derived-flows';
             name: ops.label, asBuilt: ops.localId,
             charter: `Deployed at ${ops.props.tier}${ops.props.tierNote ? ` — ${ops.props.tierNote}` : ''}`,
             permissions: opsPermissions,
+            skills: (ops.props.skills || []).map(id => ({ name: (skillIdx[id] || { name: id }).name, tier: (skillIdx[id] || {}).tier || ops.props.tier })),
           } : null,
         };
       }).filter(Boolean);
