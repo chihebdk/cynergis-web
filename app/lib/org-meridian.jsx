@@ -1550,6 +1550,69 @@ const CHAIN_STRIP = [
     ex: 'Subrogation, salvage, fraud, loss experience feeding pricing' },
 ];
 
+/* D-132: the org's PULSE — reviews, queues and health as recorded in the graphs */
+function OrgPulse() {
+  const reviews = M.domains.filter(d => d.node.props.kind === 'stream').map(d => {
+    const r = (M.memberReviews[d.node.localId] || [])[0];
+    return r ? { d, r } : null;
+  }).filter(Boolean);
+  const pend = [], ambers = [];
+  let gates = 0, gateTotal = 0;
+  for (const [pid, { idx }] of Object.entries(M.prods4)) {
+    const P = idx.nodes('Product')[0] || { props: {} };
+    gateTotal += 4; gates += Object.keys(P.props.gates || {}).length;
+    for (const a of idx.nodes('Approval')) if (a.status !== 'superseded' && a.props.status === 'pending') pend.push({ pid, name: P.label, a });
+    for (const s of idx.nodes('Slo')) if (s.props.health && s.props.health !== 'green') ambers.push({ pid, name: P.label, s });
+  }
+  return (
+    <div className="asc-section">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title">State of the organization</div>
+        <div className="asc-sec-sub">Not the shape — the pulse: what is pending, what is amber, and what each domain's last outcome review decided. Everything derived from the graphs.</div>
+      </div>
+      <div className="ovw-pulse">
+        <div className="ovw-pcard">
+          <div className="ovw-pcard-h"><b>{pend.length}</b> pending decision{pend.length === 1 ? '' : 's'}</div>
+          {pend.length ? pend.map(({ pid, name, a }) => (
+            <button type="button" key={a.id} className="mer-link" onClick={() => goProduct(pid, 'operate')}>{a.localId} · {a.label} ({name}) →</button>
+          )) : <span className="ovw-pnone">Nothing waiting on a human decision.</span>}
+        </div>
+        <div className="ovw-pcard">
+          <div className="ovw-pcard-h"><b>{ambers.length}</b> SLO{ambers.length === 1 ? '' : 's'} off green</div>
+          {ambers.length ? ambers.map(({ pid, name, s }) => (
+            <button type="button" key={pid + s.id} className="mer-link" onClick={() => goProduct(pid, 'operate')}>{s.label} · {s.props.current} against {s.props.target} ({name}) →</button>
+          )) : <span className="ovw-pnone">All recorded SLOs green.</span>}
+        </div>
+        <div className="ovw-pcard">
+          <div className="ovw-pcard-h"><b>{gates}/{gateTotal}</b> phase gates recorded ✓</div>
+          <span className="ovw-pnone">Envision · Discover · Design · Build, per product — every tick a recorded gate run.</span>
+        </div>
+      </div>
+      <div className="ovw-reviews">
+        {reviews.map(({ d, r }) => (
+          <button type="button" key={d.node.id} className="ovw-review" onClick={() => goDomain(d.node.localId)}>
+            <b>{d.node.label}</b>
+            <span className={'badge ' + (r.props.rebalancePct ? '' : 'ok')}>{r.props.quarter} · {r.props.decision}{r.props.rebalancePct ? ` ${r.props.rebalancePct > 0 ? '+' : ''}${r.props.rebalancePct}%` : ''}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* D-132: the verbatim chart's labels → live workspaces (event delegation keeps
+   the embedded HTML byte-for-byte) */
+const REF_DOM = { 'Product & Pricing': 'DOM-PRICING', 'Distribution & Quoting': 'DOM-DISTRIBUTION', 'Underwriting & Policy': 'DOM-UW-POLICY', 'Claims': 'DOM-CLAIMS', 'Billing & Money Movement': 'DOM-BILLING' };
+const REF_CH = { 'Product management': 'CH-PM', 'Engineering': 'CH-ENG', 'Design & research': 'CH-DESIGN', 'Data & actuarial': 'CH-DATA', 'First-line risk & compliance': 'CH-RISK' };
+function refchartClick(e) {
+  let el = e.target;
+  for (let hop = 0; el && hop < 4; hop++, el = el.parentElement) {
+    const label = String(el.innerText || '').split('\n')[0].trim();
+    if (REF_DOM[label]) { goDomain(REF_DOM[label]); return; }
+    if (REF_CH[label]) { goChapter(REF_CH[label]); return; }
+  }
+}
+
 function MerOverview() {
   if (!M) return <div className="asc-page"><div className="asc-panel asc-panel-pad">The v4 graphs are not generated yet — run <code>node kg/generate-v4.js</code>.</div></div>;
   const orgNode = M.org.byLocal.get('ORG');
@@ -1561,29 +1624,30 @@ function MerOverview() {
           <h1 className="asc-page-title">{orgNode.label}</h1>
           <p className="asc-page-sub">How Meridian is structured: the value chain and the domains that own it, the chapters that staff them, and the platform band they stand on.</p>
           <div className="ovw-stats">
-            <div className="ovw-stat"><b>{M.domains.filter(d => d.node.props.kind === 'stream').length}</b><span>stream domains</span></div>
-            <div className="ovw-stat"><b>{M.org.nodes('BoundedContext').length}</b><span>subdomains</span></div>
-            <div className="ovw-stat"><b>{M.org.nodes('Team').length}</b><span>durable teams</span></div>
-            <div className="ovw-stat"><b>{M.products.length}</b><span>products</span></div>
-            <div className="ovw-stat"><b>{M.chapters.length}</b><span>chapters</span></div>
-            <div className="ovw-stat"><b>≈270</b><span>prod &amp; eng seats</span></div>
+            <button type="button" className="ovw-stat click" onClick={() => goSec('domains')}><b>{M.domains.filter(d => d.node.props.kind === 'stream').length}</b><span>stream domains</span></button>
+            <button type="button" className="ovw-stat click" onClick={() => goSec('domains')}><b>{M.org.nodes('BoundedContext').length}</b><span>subdomains</span></button>
+            <button type="button" className="ovw-stat click" onClick={() => goSec('domains')}><b>{M.org.nodes('Team').length}</b><span>durable teams</span></button>
+            <button type="button" className="ovw-stat click" onClick={() => goSec('domains')}><b>{M.products.length}</b><span>products</span></button>
+            <button type="button" className="ovw-stat click" onClick={goChapters}><b>{M.chapters.length}</b><span>chapters</span></button>
+            <button type="button" className="ovw-stat click" onClick={goChapters}><b>≈270</b><span>prod &amp; eng seats</span></button>
           </div>
         </div>
       </div>
 
+      <OrgPulse />
+
       <div className="asc-section">
         <div className="asc-sec-head">
           <div className="asc-sec-title">The value chain, and the domains under it</div>
-          <div className="asc-sec-sub">How the business earns and pays out — and the domain accountable for each step.</div>
+          <div className="asc-sec-sub">How the business earns and pays out — and the domain accountable for each step. Every cell opens its domain workspace.</div>
         </div>
-        {/* D-116: read-only for now — navigation lives on the Domains entry */}
         <div className="ovw-strip">
           {CHAIN_STRIP.map((c, i) => (
-            <div className="ovw-cs" key={i}>
+            <button type="button" className="ovw-cs click" key={i} onClick={() => goDomain(c.id)}>
               <span className="step">{c.step}</span>
               <span className="dom">{c.dom}</span>
               <span className="ex">{c.ex}</span>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -1597,7 +1661,10 @@ function MerOverview() {
             <div className="asc-sec-title">The chart — domains × chapters</div>
             <div className="asc-sec-sub">Columns are the domain groups: durable, cross-functional, persistently funded, one named owner each. Rows are the chapters that supply people and set craft standards. Counts are product &amp; engineering seats — the operational workforce sits inside each domain's operations leg.</div>
           </div>
-          <div className="ovw-refchart" dangerouslySetInnerHTML={{ __html: window.__REFCHART__.html }} />
+          <div className="ovw-evnote">
+            The sponsor's own chart, embedded byte-for-byte as evidence <b>S2</b> (captured 2026-08-16). It is a historical artifact — the org has evolved since, so its counts may drift from the spec. Live derived counts: <button type="button" className="mer-link" onClick={() => goSec('domains')}>the Domains page →</button>. Domain and chapter names on the chart open their live workspaces.
+          </div>
+          <div className="ovw-refchart" onClick={refchartClick} dangerouslySetInnerHTML={{ __html: window.__REFCHART__.html }} />
         </div>
       )}
 
@@ -1943,6 +2010,8 @@ function chaptersModel() {
 /* D-126 nav: the chapter workspace lives at sub=chapters & chp=<id> */
 const goChapter = id => { window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'chapters', chp: id, phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' }); setTimeout(() => document.querySelector('.asc-main')?.scrollTo(0, 0), 0); };
 const goChapters = () => { window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'chapters', phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' }); setTimeout(() => document.querySelector('.asc-main')?.scrollTo(0, 0), 0); };
+/* D-132: overview click-through — any org rail section by name */
+const goSec = s => { window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: s, phase: 'Envision', entry: 'overview', ctx: null, tab: 'flow' }); setTimeout(() => document.querySelector('.asc-main')?.scrollTo(0, 0), 0); };
 
 /* the sections, each standalone so the index and the chapter workspace compose them (D-126) */
 function ChSecRoster() {
