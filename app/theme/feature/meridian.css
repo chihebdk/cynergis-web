@@ -228,7 +228,8 @@ button.mer-om { font: inherit; }
    The verbatim embed keeps ONLY the matrix; the platform band, specialist
    teams and standing functions are re-designed as app sections below. */
 .asc-section .ovw-refchart .band, .asc-section .ovw-refchart .platnote,
-.asc-section .ovw-refchart .legend, .asc-section .ovw-refchart .standing { display: none; }
+.asc-section .ovw-refchart .legend, .asc-section .ovw-refchart .standing,
+.asc-section .ovw-refchart .control { display: none; }   /* D-134: re-rendered as cards below */
 .ovw-stats { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
 .ovw-stat { display:flex; flex-direction:column; gap:2px; padding:10px 16px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--panel); min-width:104px; }
 .ovw-stat b { font-size:20px; line-height:1.1; }

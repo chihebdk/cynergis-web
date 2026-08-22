@@ -1662,6 +1662,21 @@ function MerOverview() {
         </div>
       </div>
 
+      {/* D-134: the embed's "Outside the matrix, independent" band re-rendered
+          as cards (same grammar as the platform band) — future click targets
+          are now identifiable; the verbatim block hides via CSS, HTML intact */}
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Outside the matrix — independent assurance</div>
+          <div className="asc-sec-sub">Oversight lines with their own solid lines. Who operates a control and who oversees it must be two different names on this chart.</div>
+        </div>
+        <div className="ovw-mini">
+          <div className="ovw-minicard"><b>Second line — risk &amp; compliance</b><span>Independent risk, compliance, the actuarial function and security risk oversight. Model validation lives here and stays here — the rating engine and fraud models are exactly the assets a regulator will ask about.</span></div>
+          <div className="ovw-minicard"><b>Third line — internal audit</b><span>Independent assurance over the first and second lines, with its own solid line to the board.</span></div>
+          <div className="ovw-minicard"><b>The appointed actuary</b><span>A statutory role that keeps its own solid line — never inside the domains it opines on.</span></div>
+        </div>
+      </div>
+
       <DerivedStrip graph={M.org.g} extra={<>value chain + matrix from the org model · platform band and counts derived from <code>meridian:*</code></>} />
     </div>
   );
