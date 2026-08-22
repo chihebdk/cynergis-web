@@ -602,20 +602,20 @@ function MerDomain({ id }) {
         units.length > 0 ? (
           <div className="asc-section">
             <div className="asc-sec-head">
-              <div className="asc-sec-title">Sub-structure</div>
+              <div className="asc-sec-title">Structure</div>
               <div className="asc-sec-sub">Two management logics inside one envelope — flat product side, hierarchical operations side</div>
             </div>
             <div className="mer-units">
               {units.map(u => (
                 <div className="mer-unit" key={u.id}>
                   <div className="mer-u-top"><b>{u.label}</b><span className="mer-u-size">{u.props.size}</span></div>
-                  <div className="mer-u-shape">{u.props.shape}</div>
+                  {u.props.shape && !/layer/i.test(u.props.shape) && <div className="mer-u-shape">{u.props.shape}</div>}
                   <div className="mer-u-note">{u.props.note}</div>
                 </div>
               ))}
             </div>
           </div>
-        ) : <div className="ddd-empty-inline">No sub-structure recorded for this domain.</div>
+        ) : <div className="ddd-empty-inline">No structure recorded for this domain.</div>
       )}
 
       {domTab === 'funding' && (
