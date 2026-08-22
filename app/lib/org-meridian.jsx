@@ -4,7 +4,6 @@ import './kg-v4.gen';
 import './org-refchart';
 /* the flow canvas, for the domain-level maps (D-120) — client-only, heavy */
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
-const OrgTreeFlow = dynamic(() => import('./OrgTreeFlow.jsx'), { ssr: false });   // D-139: static structure/KPI trees
 import { stageChange } from './kg-query';
 /* ============================================================
    Cynergis — the Meridian org altitude (v4, D-094).
@@ -490,23 +489,6 @@ function MerDomain({ id }) {
            now NAMED), plus two static diagrams: the envelope as an org-
            structure tree, and the standing measures as a KPI tree fed by
            the products' own metrics (fuzzy name-join, honest when empty). */
-        const units = M.memberUnits[id] || [];
-        const teams = M.org.nodes('Team').filter(t => M.org.out(t.id, 'part_of').some(e => e.to === d.node.id));
-        const peUnit = units.find(u => /product & engineering|engineering/i.test(u.label));
-        const orgTree = {
-          id: 'exec', label: d.node.props.ownerName || d.node.props.owner, sub: d.node.props.ownerName ? d.node.props.owner : 'accountable executive', tone: 'exec',
-          children: units.length
-            ? units.map(u => ({
-                id: u.localId, label: u.label, sub: `${u.props.size} · ${u.props.shape}`, tone: 'unit',
-                children: (peUnit && u.localId === peUnit.localId)
-                  ? teams.map(t => ({ id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}` }))
-                  : [],
-              }))
-            : teams.map(t => ({ id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}` })),
-        };
-        /* D-140: the scoreboard replaces the KPI tree — state over topology.
-           num/prog are direction-agnostic; trends parse the outcome reviews'
-           own evidence strings (real historical points, nothing seeded). */
         const num = v => { const m2 = String(v ?? '').replace(/,/g, '').match(/-?\d+(\.\d+)?/); return m2 ? parseFloat(m2[0]) : null; };
         const prog = (b, c, t) => { if (b == null || c == null || t == null || b === t) return null; return Math.max(0, Math.min(1, (b - c) / (b - t))); };
         const measures = d.node.props.standingMeasures || [];
@@ -560,16 +542,7 @@ function MerDomain({ id }) {
         return (<>
           <div className="mer-facts">
             <div className="mer-fact"><span className="k">Accountable executive</span><span className="v">{d.node.props.ownerName ? <><b>{d.node.props.ownerName}</b> · {d.node.props.owner}</> : d.node.props.owner}</span></div>
-            {d.node.props.envelope && <div className="mer-fact"><span className="k">Envelope</span><span className="v">{d.node.props.envelope}</span></div>}
             {d.node.props.journeyNote && <div className="mer-fact"><span className="k">Note</span><span className="v">{d.node.props.journeyNote}</span></div>}
-          </div>
-
-          <div className="asc-section">
-            <div className="asc-sec-head">
-              <div className="asc-sec-title">The envelope, as a structure</div>
-              <div className="asc-sec-sub">Executive → the envelope's legs → the durable teams (static diagram — the Org sub-structure page carries the detail)</div>
-            </div>
-            <OrgTreeFlow tree={orgTree} height={teams.length > 4 ? 400 : 330} title={`${d.node.label} — the envelope, as a structure`} />
           </div>
 
           <div className="asc-section">
