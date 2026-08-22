@@ -674,11 +674,13 @@ function MerContext({ id }) {
     return (
       <div className="asc-page">
         <div className="mer-crumb">
-          <button type="button" className="mer-link" onClick={goChart}>Meridian org</button> / {domain && <><button type="button" className="mer-link" onClick={() => goDomain(domain.localId)}>{domain.label}</button> / </>}<button type="button" className="mer-link" onClick={() => pushSbtab('overview')}>{c.label}</button>
+          <button type="button" className="mer-link" onClick={goChart}>Meridian org</button> / {domain && (domain.localId === 'DOM-PLATFORM'
+            ? <><button type="button" className="mer-link" onClick={() => goSec('platforms')}>Platforms</button> / </>
+            : <><button type="button" className="mer-link" onClick={() => goDomain(domain.localId)}>{domain.label}</button> / </>)}<button type="button" className="mer-link" onClick={() => pushSbtab('overview')}>{c.label}</button>
         </div>
         <div className="asc-page-head">
           <div>
-            <div className="asc-eyebrow">Subdomain · {domain ? domain.label : ''}</div>
+            <div className="asc-eyebrow">{domain && domain.localId === 'DOM-PLATFORM' ? 'Platform capability' : 'Subdomain'} · {domain ? domain.label : ''}</div>
             <h1 className="asc-page-title">{c.label} <Chip c={c.props.classification} /></h1>
           </div>
         </div>
@@ -692,11 +694,13 @@ function MerContext({ id }) {
   return (
     <div className="asc-page">
       <div className="mer-crumb">
-        <button type="button" className="mer-link" onClick={goChart}>Meridian org</button> / {domain && <><button type="button" className="mer-link" onClick={() => goDomain(domain.localId)}>{domain.label}</button> / </>}<b>{c.label}</b>
+        <button type="button" className="mer-link" onClick={goChart}>Meridian org</button> / {domain && (domain.localId === 'DOM-PLATFORM'
+            ? <><button type="button" className="mer-link" onClick={() => goSec('platforms')}>Platforms</button> / </>
+            : <><button type="button" className="mer-link" onClick={() => goDomain(domain.localId)}>{domain.label}</button> / </>)}<b>{c.label}</b>
       </div>
       <div className="asc-page-head">
         <div>
-          <div className="asc-eyebrow">Bounded context · {domain ? domain.label : ''}</div>
+          <div className="asc-eyebrow">{domain && domain.localId === 'DOM-PLATFORM' ? 'Platform capability' : 'Bounded context'} · {domain ? domain.label : ''}</div>
           <h1 className="asc-page-title">{c.label} <Chip c={c.props.classification} /></h1>
           <p className="asc-page-sub">{dep ? dep.node.props.purpose : (c.props.publishes || `Model: ${c.props.bcName}.`)}</p>
         </div>
@@ -716,7 +720,7 @@ function MerContext({ id }) {
         <div className="asc-section">
           <div className="asc-sec-head">
             <div className="asc-sec-title">The model — language &amp; invariants</div>
-            <div className="asc-sec-sub">From the Claims member graph · every model states the invariant it defends</div>
+            <div className="asc-sec-sub">From the {domain ? domain.label : 'domain'} member graph · every model states the invariant it defends</div>
           </div>
           <div className="mer-models">
             {dep.models.map(m => (

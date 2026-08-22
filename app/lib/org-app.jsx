@@ -701,6 +701,19 @@ function OrgApp() {
             }
           }
           const mer = view === 'org' ? merScopeFromUrl(q) : {};
+          /* D-137: platform contexts are the BAND's capabilities, not stream
+             subdomains — the path reads Organization › Platform · name */
+          if (view === 'org' && q.bc && mer.domId === 'DOM-PLATFORM') {
+            return (
+              <div className="asc-scope asc-scope-path">
+                <button onClick={goOrg}><Ico k="org" w={13} /> Organization</button>
+                <button className="on">
+                  <Ico k="layers" w={13} />
+                  <span className="lab2">Platform<span className="sep">·</span><span className="ent">{mer.bcName}</span></span>
+                </button>
+              </div>
+            );
+          }
           const legacyPf = pf && !pf._v4 && view !== 'org';
           const domName = view === 'org' ? mer.domName : (pf ? pf.name : null);
           const domOn = (view === 'org' && !!q.dom && !q.bc && !q.mprod) || view === 'portfolio';
@@ -781,7 +794,9 @@ function OrgApp() {
                         <div key={pr.id} className="asc-nav" onClick={() => { const r = cynResolveProduct(pr.id); if (r) openProduct(r.prod); }}><Ico k="product" w={15} /> {pr.label}</div>
                       ))}
                     </>}
-                    <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => goMerDomain(domScope)}><Ico k="back" w={15} /> {merScope.domName}</div>
+                    {domScope === 'DOM-PLATFORM'
+                      ? <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => navSub('platforms')}><Ico k="back" w={15} /> Platforms</div>
+                      : <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => goMerDomain(domScope)}><Ico k="back" w={15} /> {merScope.domName}</div>}
                   </aside>
                   <main className="asc-main">{React.createElement(window.MeridianOrg)}</main>
                 </div>;
