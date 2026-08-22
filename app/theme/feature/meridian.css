@@ -330,3 +330,13 @@ button.mer-om { font: inherit; }
 .okr-kr-val { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 .okr-teams { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
 .okr-team { font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 2.5px 9px; background: var(--panel-2); }
+
+/* D-141: Structure — team people cards */
+.stp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.stp-card { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); padding: 11px 13px; font-size: 12px; }
+.stp-card.lead { border-color: var(--accent); }
+.stp-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.stp-top b { font-size: 13px; font-weight: 600; color: var(--ink); }
+.stp-role { color: var(--ink-3); margin-top: 1px; }
+.stp-focus { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); color: var(--ink-2); }
+.stp-skill { margin-top: 4px; font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-ink); }

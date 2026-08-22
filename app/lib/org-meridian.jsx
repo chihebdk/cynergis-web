@@ -4,6 +4,7 @@ import './kg-v4.gen';
 import './org-refchart';
 /* the flow canvas, for the domain-level maps (D-120) — client-only, heavy */
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
+const OrgTreeFlow = dynamic(() => import('./OrgTreeFlow.jsx'), { ssr: false });   // D-141: the drillable structure chart
 import { stageChange } from './kg-query';
 /* ============================================================
    Cynergis — the Meridian org altitude (v4, D-094).
@@ -462,7 +463,8 @@ function MerDomain({ id }) {
   const q133 = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
   const domTab = ['units', 'funding', 'subdomains', 'portfolio', 'prioritize'].includes(q133.dtab) ? q133.dtab : 'overview';
   const [prioSel, setPrioSel] = useState(null);   // D-127: the open WSJF breakdown
-  useEffect(() => { setPrioSel(null); }, [id]);
+  const [selTeam, setSelTeam] = useState(null);   // D-141: the drilled team on Structure
+  useEffect(() => { setPrioSel(null); setSelTeam(null); }, [id]);
   if (!d) return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown domain. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
   const member = M.members[id] || null;
   const units = M.memberUnits[id] || [];
@@ -594,25 +596,56 @@ function MerDomain({ id }) {
         </>);
       })()}
 
-      {domTab === 'units' && (
-        units.length > 0 ? (
+      {domTab === 'units' && (() => {
+        /* D-141: the drillable org chart — executive → legs → teams; click a
+           team to open its people (seeded seats, real modules as assignments) */
+        const teams = M.org.nodes('Team').filter(t => M.org.out(t.id, 'part_of').some(e => e.to === d.node.id));
+        const peUnit = units.find(u => /product & engineering|engineering/i.test(u.label));
+        const teamNode = t => ({ id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}`, meta: { team: t.localId } });
+        const tree = {
+          id: 'exec', label: d.node.props.ownerName || d.node.props.owner, sub: d.node.props.owner, tone: 'exec',
+          children: units.length
+            ? units.map(u => ({ id: u.localId, label: u.label, sub: `${u.props.size} · ${u.props.shape && !/layer/i.test(u.props.shape) ? u.props.shape : 'one envelope'}`, tone: 'unit',
+                children: (peUnit && u.localId === peUnit.localId) ? teams.map(teamNode) : [] }))
+            : teams.map(teamNode),
+        };
+        const sel = selTeam ? M.org.byLocal.get(selTeam) : null;
+        const people = sel ? M.org.inn(sel.id, 'member_of').map(e => M.org.byId.get(e.from)).filter(Boolean) : [];
+        const leadId = (people.find(pp => pp.props.lead) || people.find(pp => /product manager|product lead/i.test(pp.props.role || '')) || {}).id;
+        const wall = sel ? (M.org.inn(sel.id, 'owned_by').map(e => M.org.byId.get(e.from)).find(n2 => n2 && n2.type === 'BoundedContext')) : null;
+        return (<>
           <div className="asc-section">
             <div className="asc-sec-head">
-              <div className="asc-sec-title">Structure</div>
-              <div className="asc-sec-sub">Two management logics inside one envelope — flat product side, hierarchical operations side</div>
+              <div className="asc-sec-title">Reporting structure</div>
+              <div className="asc-sec-sub">Executive → the envelope's legs → the durable teams. Click a team to open its people.</div>
             </div>
-            <div className="mer-units">
-              {units.map(u => (
-                <div className="mer-unit" key={u.id}>
-                  <div className="mer-u-top"><b>{u.label}</b><span className="mer-u-size">{u.props.size}</span></div>
-                  {u.props.shape && !/layer/i.test(u.props.shape) && <div className="mer-u-shape">{u.props.shape}</div>}
-                  <div className="mer-u-note">{u.props.note}</div>
-                </div>
-              ))}
-            </div>
+            <OrgTreeFlow tree={tree} height={teams.length > 4 ? 400 : 330} title={`${d.node.label} — reporting structure`} onMeta={m2 => setSelTeam(m2.team)} />
           </div>
-        ) : <div className="ddd-empty-inline">No structure recorded for this domain.</div>
-      )}
+          {sel && (
+            <div className="asc-section">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title">{sel.label} — {people.length} people</div>
+                <div className="asc-sec-sub">
+                  {sel.props.teamType}{wall && <> · owns <button type="button" className="mer-link" onClick={() => goContext(wall.localId)}>{wall.label} →</button></>} · illustrative seats, real assignments (the wall's packaged modules)
+                </div>
+              </div>
+              <div className="stp-grid">
+                {people.slice().sort((x, y) => (x.id === leadId ? -1 : y.id === leadId ? 1 : 0)).map(pp => (
+                  <div className={'stp-card' + (pp.id === leadId ? ' lead' : '')} key={pp.id}>
+                    <div className="stp-top"><b>{pp.label}</b>{pp.id === leadId && <span className="badge accent">lead</span>}</div>
+                    <div className="stp-role">{pp.props.role}</div>
+                    {pp.props.focus && <div className="stp-focus">{pp.props.focus}</div>}
+                    {(pp.props.skills || []).map((sk, i4) => (
+                      <div className="stp-skill" key={i4}>{sk.name} · {sk.level}{sk.assistedBy ? ' · agent-assisted' : ''}</div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {!sel && <div className="ddd-empty-inline">No team selected — click a team on the chart to see its people and assignments.</div>}
+        </>);
+      })()}
 
       {domTab === 'funding' && (
         member ? <FundingRhythm domainId={id} /> : <div className="ddd-empty-inline">No funding rhythm recorded for this domain.</div>

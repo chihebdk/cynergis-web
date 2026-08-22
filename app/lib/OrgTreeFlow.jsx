@@ -19,7 +19,7 @@ function subtreeWidth(n) {
   return Math.max(n.children.reduce((s, c) => s + subtreeWidth(c), 0) + GX * (n.children.length - 1), W);
 }
 
-function build(tree) {
+function build(tree, clickable) {
   const nodes = [], edges = [];
   const place = (n, x, depth, parent) => {
     const w = subtreeWidth(n);
@@ -34,7 +34,8 @@ function build(tree) {
           </div>
         ),
       },
-      style: { width: W, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none' },
+      style: { width: W, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none', cursor: (clickable && n.meta) ? 'pointer' : 'default' },
+      meta: n.meta,
       draggable: false, connectable: false, selectable: false,
       sourcePosition: 'bottom', targetPosition: 'top',
     });
@@ -46,19 +47,20 @@ function build(tree) {
   return { nodes, edges };
 }
 
-function Tree({ nodes, edges, interactive }) {
+function Tree({ nodes, edges, interactive, onMeta }) {
   return (
     <ReactFlow
       nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.12 }}
       nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
       panOnDrag={!!interactive} zoomOnScroll={!!interactive} zoomOnPinch={!!interactive}
       zoomOnDoubleClick={false} preventScrolling={!!interactive} proOptions={{ hideAttribution: true }}
+      onNodeClick={onMeta ? ((e, node) => { if (node.meta) onMeta(node.meta); }) : undefined}
     />
   );
 }
 
-export default function OrgTreeFlow({ tree, height = 340, title }) {
-  const { nodes, edges } = React.useMemo(() => build(tree), [tree]);
+export default function OrgTreeFlow({ tree, height = 340, title, onMeta }) {
+  const { nodes, edges } = React.useMemo(() => build(tree, !!onMeta), [tree, onMeta]);
   const [expanded, setExpanded] = React.useState(false);
   React.useEffect(() => {
     if (!expanded) return;
@@ -69,7 +71,7 @@ export default function OrgTreeFlow({ tree, height = 340, title }) {
   return (
     <div style={{ height, border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--panel)', overflow: 'hidden', position: 'relative' }}>
       <button type="button" className="otf-expand" title="Full view" aria-label="Expand diagram" onClick={() => setExpanded(true)}>⤢</button>
-      <Tree nodes={nodes} edges={edges} />
+      <Tree nodes={nodes} edges={edges} onMeta={onMeta} />
       {expanded && createPortal(
         <div className="otf-ovl" onClick={() => setExpanded(false)}>
           <div className="otf-modal" onClick={e => e.stopPropagation()}>
@@ -78,7 +80,7 @@ export default function OrgTreeFlow({ tree, height = 340, title }) {
               <span className="otf-hint">drag to pan · scroll to zoom · Esc to close</span>
               <button type="button" className="otf-x" aria-label="Close" onClick={() => setExpanded(false)}>×</button>
             </div>
-            <div className="otf-mb"><Tree nodes={nodes} edges={edges} interactive /></div>
+            <div className="otf-mb"><Tree nodes={nodes} edges={edges} interactive onMeta={onMeta} /></div>
           </div>
         </div>, document.body)}
     </div>
