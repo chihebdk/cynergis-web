@@ -1544,7 +1544,7 @@ const CHAIN_STRIP = [
 /* D-132: the verbatim chart's labels → live workspaces (event delegation keeps
    the embedded HTML byte-for-byte) */
 const REF_DOM = { 'Product & Pricing': 'DOM-PRICING', 'Distribution & Quoting': 'DOM-DISTRIBUTION', 'Underwriting & Policy': 'DOM-UW-POLICY', 'Claims': 'DOM-CLAIMS', 'Billing & Money Movement': 'DOM-BILLING' };
-const REF_CH = { 'Product management': 'CH-PM', 'Engineering': 'CH-ENG', 'Design & research': 'CH-DESIGN', 'Data & actuarial': 'CH-DATA', 'First-line risk & compliance': 'CH-RISK' };
+const REF_CH = { 'Product management': 'CH-PM', 'Engineering': 'CH-ENG', 'Design & research': 'CH-DESIGN', 'Data & actuarial': 'CH-DATA' };
 function refchartClick(e) {
   let el = e.target;
   for (let hop = 0; el && hop < 4; hop++, el = el.parentElement) {
@@ -1555,6 +1555,18 @@ function refchartClick(e) {
 }
 
 function MerOverview() {
+  /* D-136: the first-line row leaves the matrix — hidden post-mount so the
+     verbatim embed stays byte-for-byte (a rowhead + its five cells) */
+  const refchartRef = React.useRef(null);
+  useEffect(() => {   // no deps: the embed can mount a render later than the page — idempotent hide
+    const root = refchartRef.current;
+    if (!root) return;
+    const head = [...root.querySelectorAll('.rowhead .name')].find(n => n.textContent.trim() === 'First-line risk & compliance');
+    if (head) {
+      let el = head.closest('.mcell');
+      for (let i = 0; el && i < 6; i++) { el.style.display = 'none'; el = el.nextElementSibling; }
+    }
+  });
   if (!M) return <div className="asc-page"><div className="asc-panel asc-panel-pad">The v4 graphs are not generated yet — run <code>node kg/generate-v4.js</code>.</div></div>;
   const orgNode = M.org.byLocal.get('ORG');
   return (
@@ -1603,7 +1615,7 @@ function MerOverview() {
           <div className="ovw-evnote">
             The sponsor's own chart, embedded byte-for-byte as evidence <b>S2</b> (captured 2026-08-16). It is a historical artifact — the org has evolved since, so its counts may drift from the spec. Live derived counts: <button type="button" className="mer-link" onClick={() => goSec('domains')}>the Domains page →</button>. Domain and chapter names on the chart open their live workspaces.
           </div>
-          <div className="ovw-refchart" onClick={refchartClick} dangerouslySetInnerHTML={{ __html: window.__REFCHART__.html }} />
+          <div className="ovw-refchart" ref={refchartRef} onClick={refchartClick} dangerouslySetInnerHTML={{ __html: window.__REFCHART__.html }} />
         </div>
       )}
 
@@ -1662,17 +1674,25 @@ function MerOverview() {
         </div>
       </div>
 
-      {/* D-135 (option 1): the three-lines story lives on the Risk & compliance
-          chapter workspace; the Overview keeps one clickable pointer */}
+      {/* D-136 (option 2): risk & compliance leaves the matrix entirely — one
+          band, three clickable line-cards, one page (rail: Risk & compliance) */}
       <div className="asc-section">
         <div className="asc-sec-head">
-          <div className="asc-sec-title">Outside the matrix — independent assurance</div>
-          <div className="asc-sec-sub">Who operates a control and who oversees it must be two different names on this chart.</div>
+          <div className="asc-sec-title">Risk &amp; compliance</div>
+          <div className="asc-sec-sub">The three lines. Who operates a control and who oversees it must be two different names — each card opens the Risk &amp; compliance page.</div>
         </div>
-        <div className="ovw-mini" style={{ gridTemplateColumns: '1fr' }}>
-          <div className="ovw-minicard click" role="button" tabIndex={0} onClick={() => goChapter('CH-RISK')}>
-            <b>The three lines of risk &amp; compliance →</b>
-            <span>The first line sits INSIDE the matrix — the Risk &amp; compliance chapter's embedded seats in the stream teams. The second line (independent risk, compliance, actuarial, model validation) and third line (internal audit) keep their own solid lines outside every domain. The full story, line by line, lives on the chapter's workspace.</span>
+        <div className="ovw-mini">
+          <div className="ovw-minicard click" role="button" tabIndex={0} onClick={() => goSec('riskcomp')}>
+            <b>First line — in the flow →</b>
+            <span>Embedded control seats inside the stream teams (~15, 0.25–1 per team by regulatory density) plus the standing security functions. They operate the controls: regulatory clocks, in-flow checks, evidence discipline.</span>
+          </div>
+          <div className="ovw-minicard click" role="button" tabIndex={0} onClick={() => goSec('riskcomp')}>
+            <b>Second line — independent oversight →</b>
+            <span>Risk, compliance, the actuarial function and security risk oversight. Model validation lives here — the rating engine and fraud models are exactly the assets a regulator will ask about.</span>
+          </div>
+          <div className="ovw-minicard click" role="button" tabIndex={0} onClick={() => goSec('riskcomp')}>
+            <b>Third line — internal audit →</b>
+            <span>Independent assurance over the first and second lines, its own solid line to the board. The appointed actuary keeps a statutory solid line of the same kind.</span>
           </div>
         </div>
       </div>
@@ -2217,22 +2237,6 @@ function MerChapterPage({ id, view }) {
           ))}
         </div>
       )}
-      {/* D-135: the risk chapter is the navigable home of the whole three-lines
-          story — line 1 IS this chapter; lines 2/3 are independent and only
-          DESCRIBED here, never staffed here */}
-      {view !== 'domains' && id === 'CH-RISK' && (
-        <div className="asc-section">
-          <div className="asc-sec-head">
-            <div className="asc-sec-title">The three lines</div>
-            <div className="asc-sec-sub">Who operates a control and who oversees it must be two different names. This chapter is the first line; the other two keep their own solid lines, outside every domain.</div>
-          </div>
-          <div className="ovw-mini">
-            <div className="ovw-minicard"><b>First line — this chapter</b><span>Embedded control seats inside the stream teams: in-flow controls, regulatory clocks (SABS, statutory notice), evidence discipline. Solid line to the domain, craft line here. The standing security functions (CISO office, SOC) are first line too.</span></div>
-            <div className="ovw-minicard"><b>Second line — independent risk &amp; compliance <span className="badge">independent · not staffed here</span></b><span>Risk, compliance, the actuarial function and security risk oversight. Model validation lives here and stays here — the rating engine and fraud models are exactly the assets a regulator will ask about.</span></div>
-            <div className="ovw-minicard"><b>Third line — internal audit <span className="badge">independent · not staffed here</span></b><span>Independent assurance over the first and second lines, with its own solid line to the board. The appointed actuary keeps a statutory solid line of the same kind.</span></div>
-          </div>
-        </div>
-      )}
       {view !== 'domains' && <ChSecCatalog />}
       {view === 'domains' && tab === 'matrix' && <ChSecMatrix hi={id} />}
       {view === 'domains' && tab === 'team' && <ChSecTeamRoster hi={id} />}
@@ -2246,40 +2250,59 @@ function MerChapterPage({ id, view }) {
 if (typeof window !== 'undefined') window.MerChapterPage = MerChapterPage;
 
 /* honest scaffolds for the sections the redesign has not reached yet */
-const ORG_SECTION_NOTES = {
-  risks: {
-    title: 'Risks',
-    sub: 'The organization’s risk registers, rolled up.',
-    note: 'This section arrives with a later redesign pass. Today risks live per product (each lifecycle spec carries its risk register) and per domain (postures and watch items on the context pages).',
-    linkLabel: 'Open a product risk register →', target: () => goProduct('PROD-CLAIMSCORE', 'envision'),
-  },
-  governance: {
-    title: 'Governance',
-    sub: 'Gates, approvals, funding rhythm and the trust ladder.',
-    note: 'This section arrives with a later redesign pass. Today governance runs in the machinery: phase gates on every product, approval queues with human-reserved decisions, and the quarterly outcome reviews on every domain page.',
-    linkLabel: 'Open the Claims funding rhythm →', target: () => goDomain('DOM-CLAIMS'),
-  },
-};
-function MerOrgSection({ section }) {
-  const s = ORG_SECTION_NOTES[section];
-  if (!s) return null;
+/* D-136: Risks + Governance merge into ONE page — Risk & compliance, the
+   three-lines model told line by line (corpus content, evidence S2/S3). */
+function MerRiskCompliance() {
   return (
     <div className="asc-page">
       <div className="asc-page-head">
         <div>
-          <div className="asc-eyebrow">Organization · {section}</div>
-          <h1 className="asc-page-title">{s.title}</h1>
-          <p className="asc-page-sub">{s.sub}</p>
+          <div className="asc-eyebrow">Organization · risk &amp; compliance</div>
+          <h1 className="asc-page-title">Risk &amp; compliance</h1>
+          <p className="asc-page-sub">The three lines of the model, in one place. The discipline that holds it together: who operates a control and who oversees it must be two different names on the chart.</p>
         </div>
       </div>
-      <div className="asc-panel asc-panel-pad">
-        <p style={{ margin: 0 }}>{s.note}</p>
-        <button type="button" className="mer-link" style={{ marginTop: 10 }} onClick={s.target}>{s.linkLabel}</button>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">First line — in the flow</div>
+          <div className="asc-sec-sub">Operates the controls, inside delivery. Solid line to the domain it serves.</div>
+        </div>
+        <div className="ovw-mini">
+          <div className="ovw-minicard"><b>Embedded control seats</b><span>~15 specialists allocated 0.25–1 per stream team by regulatory density: SABS and statutory-notice clocks, in-flow checks, evidence discipline. Live on the team roster where they sit (Coverage, AB, Fraud &amp; SIU).</span></div>
+          <div className="ovw-minicard"><b>CISO office</b><span>Policy, standards and security architecture — owns the requirement and the control.</span></div>
+          <div className="ovw-minicard"><b>SOC / security operations</b><span>The 24/7 operational security workforce — first line, not assurance.</span></div>
+        </div>
       </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Second line — independent oversight</div>
+          <div className="asc-sec-sub">Oversees and challenges the first line. Its own solid line — never staffed from delivery.</div>
+        </div>
+        <div className="ovw-mini">
+          <div className="ovw-minicard"><b>Risk &amp; compliance functions</b><span>Independent risk, regulatory compliance and market-conduct oversight, challenging the first line — including the security function.</span></div>
+          <div className="ovw-minicard"><b>The actuarial function</b><span>Reserve adequacy and rate-level opinion, independent of the pricing teams whose work it challenges.</span></div>
+          <div className="ovw-minicard"><b>Model validation</b><span>Lives here and stays here — the rating engine and the fraud &amp; triage models are exactly the assets a regulator will ask about.</span></div>
+        </div>
+      </div>
+
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Third line — independent assurance</div>
+          <div className="asc-sec-sub">Assures over both lines. Solid line to the board.</div>
+        </div>
+        <div className="ovw-mini2">
+          <div className="ovw-minicard"><b>Internal audit</b><span>Independent assurance over the first and second lines — processes, controls and the evidence trails they leave.</span></div>
+          <div className="ovw-minicard"><b>The appointed actuary</b><span>A statutory role with its own solid line — never inside the domains it opines on.</span></div>
+        </div>
+      </div>
+
+      <div className="mer-derived"><span className="mer-kg">KG</span> corpus surface — the three-lines model as recorded in the org documents (evidence S2 · S3); the embedded seats appear as people on their teams' rosters (<code>meridian:*</code> Person nodes).</div>
     </div>
   );
 }
-if (typeof window !== 'undefined') window.MerOrgSection = MerOrgSection;
+if (typeof window !== 'undefined') window.MerRiskCompliance = MerRiskCompliance;
 
 function MeridianOrg() {
   const n = typeof window !== 'undefined' && window.cynParseUrl ? window.cynParseUrl() : {};

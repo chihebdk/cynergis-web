@@ -842,8 +842,7 @@ function OrgApp() {
                     { id:'domains', label:'Domains', icon:'dash' },
                     { id:'chapters', label:'Chapters', icon:'cap' },
                     { id:'platforms', label:'Platforms', icon:'layers' },
-                    { id:'risks', label:'Risks', icon:'risk' },
-                    { id:'governance', label:'Governance', icon:'shield' },
+                    { id:'riskcomp', label:'Risk & compliance', icon:'shield' },
                   ]}
                   foot={<>
                     <div className="asc-rail-sect" style={{ marginTop:'14px' }}>Legacy</div>
@@ -858,7 +857,8 @@ function OrgApp() {
                     : sec === 'chart' ? React.createElement(window.MeridianOrg)
                     : sec === 'platforms' ? React.createElement(window.MerPlatforms)
                     : sec === 'chapters' ? React.createElement(window.MerChapters)
-                    : React.createElement(window.MerOrgSection, { section: sec })}
+                    : sec === 'riskcomp' ? React.createElement(window.MerRiskCompliance)
+                    : React.createElement(window.MerOverview || window.MeridianOrg)}
                 </main>
               </div>;
             })()
