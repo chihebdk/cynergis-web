@@ -475,7 +475,9 @@ function MerDomain({ id }) {
         <div>
           <div className="asc-eyebrow">Domain · {d.node.props.kind} · {d.node.props.valueChainStep}</div>
           <h1 className="asc-page-title">{d.node.label}</h1>
-          <p className="asc-page-sub">{d.node.props.summary}</p>
+          {/* D-133 polish: the description reads once, on Overview — section
+              pages keep only the identity line above */}
+          {domTab === 'overview' && <p className="asc-page-sub">{d.node.props.summary}</p>}
         </div>
         <div className="asc-head-actions">
           {d.node.props.deepSlice && <span className="badge ok"><span className="dot ok"></span>the worked deep slice</span>}
