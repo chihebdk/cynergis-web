@@ -602,8 +602,8 @@ function MerDomain({ id }) {
            details panel below for the selected node. */
         const teams = M.org.nodes('Team').filter(t => M.org.out(t.id, 'part_of').some(e => e.to === d.node.id));
         const peUnit = units.find(u => /product & engineering|engineering/i.test(u.label));
-        const H = { exec: { id: 'exec', label: d.node.props.ownerName || d.node.props.owner, sub: d.node.props.owner, tone: 'exec', kind: 'exec', children: [] } };
-        for (const u of units) { H[u.localId] = { id: u.localId, label: u.label, sub: `${u.props.size}`, tone: 'unit', kind: 'unit', parent: 'exec', children: [] }; H.exec.children.push(u.localId); }
+        const H = { exec: { id: 'exec', label: d.node.label, sub: `${d.node.props.owner} — ${d.node.props.ownerName || ''}`.replace(/ — $/, ''), tone: 'exec', kind: 'exec', children: [] } };
+        for (const u of units) { H[u.localId] = { id: u.localId, label: u.label, sub: u.props.leadName ? `${u.props.leadRole} — ${u.props.leadName}` : `${u.props.size}`, tone: 'unit', kind: 'unit', parent: 'exec', children: [], node: u }; H.exec.children.push(u.localId); }
         const teamParent = t => (peUnit ? peUnit.localId : 'exec');
         for (const t of teams) {
           H[t.localId] = { id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}`, kind: 'team', parent: units.length ? teamParent(t) : 'exec', children: [], node: t };
@@ -611,9 +611,12 @@ function MerDomain({ id }) {
           for (const e of M.org.inn(t.id, 'member_of')) {
             const pp = M.org.byId.get(e.from);
             if (!pp) continue;
-            H[pp.localId] = { id: pp.localId, label: pp.label, sub: pp.props.role + (pp.props.lead ? ' · lead' : ''), kind: 'person', parent: t.localId, children: [], node: pp };
+            H[pp.localId] = { id: pp.localId, label: pp.props.role + (pp.props.lead ? ' · lead' : ''), sub: pp.label, kind: 'person', parent: t.localId, children: [], node: pp };
             H[t.localId].children.push(pp.localId);
           }
+          const tl = H[t.localId].children.map(c => H[c].node).find(x => x.props.lead)
+            || H[t.localId].children.map(c => H[c].node).find(x => /product manager|product lead/i.test(x.props.role || ''));
+          if (tl) H[t.localId].sub = `${tl.props.role} — ${tl.label}`;
         }
         const focus = H[stFocus] ? stFocus : 'exec';
         const F = H[focus];
@@ -661,7 +664,12 @@ function MerDomain({ id }) {
             wallN ? ['Owns', wallN.label] : null,
           ].filter(Boolean), links: wallN ? [{ label: `open ${wallN.label} →`, go: () => goContext(wallN.localId) }] : [] };
         } else {
-          det = { title: S.label, rows: [['Scope', S.kind === 'exec' ? `${d.node.label} — accountable executive` : 'Envelope leg'], ['Reports', `${S.children.length} direct`]], links: [] };
+          det = { title: S.label, rows: [
+            ['Scope', S.kind === 'exec' ? 'Domain' : 'Envelope leg'],
+            S.kind === 'exec' && d.node.props.ownerName ? ['Manager', `${d.node.props.ownerName} · ${d.node.props.owner}`] : null,
+            S.kind === 'unit' && S.node && S.node.props.leadName ? ['Manager', `${S.node.props.leadName} · ${S.node.props.leadRole}`] : null,
+            ['Reports', `${S.children.length} direct`],
+          ].filter(Boolean), links: [] };
         }
         return (<>
           <div className="asc-section">
