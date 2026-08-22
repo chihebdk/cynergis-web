@@ -463,8 +463,9 @@ function MerDomain({ id }) {
   const q133 = (typeof window !== 'undefined' && window.cynParseUrl) ? window.cynParseUrl() : {};
   const domTab = ['units', 'funding', 'subdomains', 'portfolio', 'prioritize'].includes(q133.dtab) ? q133.dtab : 'overview';
   const [prioSel, setPrioSel] = useState(null);   // D-127: the open WSJF breakdown
-  const [selTeam, setSelTeam] = useState(null);   // D-141: the drilled team on Structure
-  useEffect(() => { setPrioSel(null); setSelTeam(null); }, [id]);
+  const [stFocus, setStFocus] = useState('exec');   // D-142: the chart's focus node
+  const [stSel, setStSel] = useState(null);          // D-142: the selected node (details panel)
+  useEffect(() => { setPrioSel(null); setStFocus('exec'); setStSel(null); }, [id]);
   if (!d) return <div className="asc-page"><div className="asc-panel asc-panel-pad">Unknown domain. <button type="button" className="mer-link" onClick={goChart}>Back to the org</button></div></div>;
   const member = M.members[id] || null;
   const units = M.memberUnits[id] || [];
@@ -597,53 +598,86 @@ function MerDomain({ id }) {
       })()}
 
       {domTab === 'units' && (() => {
-        /* D-141: the drillable org chart — executive → legs → teams; click a
-           team to open its people (seeded seats, real modules as assignments) */
+        /* D-142: focused drill — parent → focus → children (3 levels max),
+           details panel below for the selected node. */
         const teams = M.org.nodes('Team').filter(t => M.org.out(t.id, 'part_of').some(e => e.to === d.node.id));
         const peUnit = units.find(u => /product & engineering|engineering/i.test(u.label));
-        const teamNode = t => ({ id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}`, meta: { team: t.localId } });
-        const tree = {
-          id: 'exec', label: d.node.props.ownerName || d.node.props.owner, sub: d.node.props.owner, tone: 'exec',
-          children: units.length
-            ? units.map(u => ({ id: u.localId, label: u.label, sub: `${u.props.size} · ${u.props.shape && !/layer/i.test(u.props.shape) ? u.props.shape : 'one envelope'}`, tone: 'unit',
-                children: (peUnit && u.localId === peUnit.localId) ? teams.map(teamNode) : [] }))
-            : teams.map(teamNode),
+        const H = { exec: { id: 'exec', label: d.node.props.ownerName || d.node.props.owner, sub: d.node.props.owner, tone: 'exec', kind: 'exec', children: [] } };
+        for (const u of units) { H[u.localId] = { id: u.localId, label: u.label, sub: `${u.props.size}`, tone: 'unit', kind: 'unit', parent: 'exec', children: [] }; H.exec.children.push(u.localId); }
+        const teamParent = t => (peUnit ? peUnit.localId : 'exec');
+        for (const t of teams) {
+          H[t.localId] = { id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}`, kind: 'team', parent: units.length ? teamParent(t) : 'exec', children: [], node: t };
+          H[H[t.localId].parent].children.push(t.localId);
+          for (const e of M.org.inn(t.id, 'member_of')) {
+            const pp = M.org.byId.get(e.from);
+            if (!pp) continue;
+            H[pp.localId] = { id: pp.localId, label: pp.label, sub: pp.props.role + (pp.props.lead ? ' · lead' : ''), kind: 'person', parent: t.localId, children: [], node: pp };
+            H[t.localId].children.push(pp.localId);
+          }
+        }
+        const focus = H[stFocus] ? stFocus : 'exec';
+        const F = H[focus];
+        const mk = (nid, withKids) => { const n2 = H[nid]; return { id: n2.id, label: n2.label, sub: n2.sub, tone: n2.tone, meta: { id: n2.id }, children: withKids ? n2.children.map(c => mk(c, false)) : [] }; };
+        const tree = F.parent ? { ...mk(F.parent, false), children: [mk(focus, true)] } : mk(focus, true);
+        const onMeta = m2 => {
+          const n2 = H[m2.id]; if (!n2) return;
+          setStSel(m2.id);
+          if (n2.children.length && m2.id !== focus) setStFocus(m2.id);
+          else if (m2.id === F.parent) setStFocus(m2.id);
         };
-        const sel = selTeam ? M.org.byLocal.get(selTeam) : null;
-        const people = sel ? M.org.inn(sel.id, 'member_of').map(e => M.org.byId.get(e.from)).filter(Boolean) : [];
-        const leadId = (people.find(pp => pp.props.lead) || people.find(pp => /product manager|product lead/i.test(pp.props.role || '')) || {}).id;
-        const wall = sel ? (M.org.inn(sel.id, 'owned_by').map(e => M.org.byId.get(e.from)).find(n2 => n2 && n2.type === 'BoundedContext')) : null;
+        /* details for the selected node */
+        const S = H[stSel] ? H[stSel] : F;
+        let det = null;
+        if (S.kind === 'person') {
+          const pp = S.node, team = H[S.parent];
+          const leadP = team.children.map(c => H[c].node).find(x => x.props.lead) || team.children.map(c => H[c].node).find(x => /product manager|product lead/i.test(x.props.role || ''));
+          const wallN = M.org.inn(team.node.id, 'owned_by').map(e => M.org.byId.get(e.from)).find(n3 => n3 && n3.type === 'BoundedContext');
+          let prodN = null, objLabel = null;
+          if (pp.props.focus && wallN) {
+            for (const e of M.org.g.edges) {
+              if (e.type !== 'packages' || e.to !== wallN.id) continue;
+              if ((e.props.modules || []).includes(pp.props.focus)) { prodN = M.org.byId.get(e.from); break; }
+            }
+          }
+          if (prodN && M.prods4[prodN.localId]) {
+            const g4 = M.prods4[prodN.localId];
+            objLabel = (g4.idx.nodes('Objective')[0] || {}).label || null;
+          }
+          det = { title: pp.label, rows: [
+            ['Role', pp.props.role + (pp.props.lead ? ' · team lead' : '')],
+            ['Team', team.label + ' team'],
+            ['Manages', pp.props.lead ? `${team.children.length - 1} people` : '0 — individual contributor'],
+            leadP && !pp.props.lead ? ['Manager', leadP.label] : null,
+            pp.props.chapter ? ['Chapter (craft line)', (M.org.byLocal.get(pp.props.chapter) || { label: pp.props.chapter }).label] : null,
+            wallN ? ['Subdomain', wallN.label] : null,
+            pp.props.focus ? ['Assignment', pp.props.focus + (prodN ? ` · ${prodN.label}` : '')] : null,
+            objLabel ? ['Attached to OKR', objLabel] : null,
+            (pp.props.skills || []).length ? ['Skills', pp.props.skills.map(sk => `${sk.name} (${sk.level}${sk.assistedBy ? ' · agent-assisted' : ''})`).join(' · ')] : null,
+          ].filter(Boolean), links: wallN ? [{ label: `open ${wallN.label} →`, go: () => goContext(wallN.localId) }] : [] };
+        } else if (S.kind === 'team') {
+          const wallN = M.org.inn(S.node.id, 'owned_by').map(e => M.org.byId.get(e.from)).find(n3 => n3 && n3.type === 'BoundedContext');
+          det = { title: S.label + ' team', rows: [
+            ['Type', S.node.props.teamType], ['Size', `${S.node.props.size} people`],
+            wallN ? ['Owns', wallN.label] : null,
+          ].filter(Boolean), links: wallN ? [{ label: `open ${wallN.label} →`, go: () => goContext(wallN.localId) }] : [] };
+        } else {
+          det = { title: S.label, rows: [['Scope', S.kind === 'exec' ? `${d.node.label} — accountable executive` : 'Envelope leg'], ['Reports', `${S.children.length} direct`]], links: [] };
+        }
         return (<>
           <div className="asc-section">
             <div className="asc-sec-head">
               <div className="asc-sec-title">Reporting structure</div>
-              <div className="asc-sec-sub">Executive → the envelope's legs → the durable teams. Click a team to open its people.</div>
+              <div className="asc-sec-sub">Focused view — the parent, the focus and its reports. Click down to drill, click the top node to go back up; click anyone for details below.</div>
             </div>
-            <OrgTreeFlow tree={tree} height={teams.length > 4 ? 400 : 330} title={`${d.node.label} — reporting structure`} onMeta={m2 => setSelTeam(m2.team)} />
+            <OrgTreeFlow tree={tree} height={310} title={`${d.node.label} — reporting structure`} onMeta={onMeta} />
           </div>
-          {sel && (
-            <div className="asc-section">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title">{sel.label} — {people.length} people</div>
-                <div className="asc-sec-sub">
-                  {sel.props.teamType}{wall && <> · owns <button type="button" className="mer-link" onClick={() => goContext(wall.localId)}>{wall.label} →</button></>} · illustrative seats, real assignments (the wall's packaged modules)
-                </div>
-              </div>
-              <div className="stp-grid">
-                {people.slice().sort((x, y) => (x.id === leadId ? -1 : y.id === leadId ? 1 : 0)).map(pp => (
-                  <div className={'stp-card' + (pp.id === leadId ? ' lead' : '')} key={pp.id}>
-                    <div className="stp-top"><b>{pp.label}</b>{pp.id === leadId && <span className="badge accent">lead</span>}</div>
-                    <div className="stp-role">{pp.props.role}</div>
-                    {pp.props.focus && <div className="stp-focus">{pp.props.focus}</div>}
-                    {(pp.props.skills || []).map((sk, i4) => (
-                      <div className="stp-skill" key={i4}>{sk.name} · {sk.level}{sk.assistedBy ? ' · agent-assisted' : ''}</div>
-                    ))}
-                  </div>
-                ))}
-              </div>
+          <div className="asc-section">
+            <div className="asc-sec-head"><div className="asc-sec-title">{det.title}</div></div>
+            <div className="mer-facts">
+              {det.rows.map(([k2, v2]) => <div className="mer-fact" key={k2}><span className="k">{k2}</span><span className="v">{v2}</span></div>)}
+              {det.links.map(l2 => <div className="mer-fact" key={l2.label}><span className="k"></span><span className="v"><button type="button" className="mer-link" onClick={l2.go}>{l2.label}</button></span></div>)}
             </div>
-          )}
-          {!sel && <div className="ddd-empty-inline">No team selected — click a team on the chart to see its people and assignments.</div>}
+          </div>
         </>);
       })()}
 
