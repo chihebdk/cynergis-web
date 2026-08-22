@@ -48,8 +48,13 @@ function build(tree, clickable) {
 }
 
 function Tree({ nodes, edges, interactive, onMeta }) {
+  /* D-142 polish: re-center every time the tree re-windows (fitView alone
+     only applies on mount, so drilling left the new layout off-center). */
+  const [inst, setInst] = React.useState(null);
+  React.useEffect(() => { if (inst) inst.fitView({ padding: 0.12, duration: 180 }); }, [inst, nodes]);
   return (
     <ReactFlow
+      onInit={setInst}
       nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.12 }}
       nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
       panOnDrag={!!interactive} zoomOnScroll={!!interactive} zoomOnPinch={!!interactive}
