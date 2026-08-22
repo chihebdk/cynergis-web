@@ -1662,18 +1662,18 @@ function MerOverview() {
         </div>
       </div>
 
-      {/* D-134: the embed's "Outside the matrix, independent" band re-rendered
-          as cards (same grammar as the platform band) — future click targets
-          are now identifiable; the verbatim block hides via CSS, HTML intact */}
+      {/* D-135 (option 1): the three-lines story lives on the Risk & compliance
+          chapter workspace; the Overview keeps one clickable pointer */}
       <div className="asc-section">
         <div className="asc-sec-head">
           <div className="asc-sec-title">Outside the matrix — independent assurance</div>
-          <div className="asc-sec-sub">Oversight lines with their own solid lines. Who operates a control and who oversees it must be two different names on this chart.</div>
+          <div className="asc-sec-sub">Who operates a control and who oversees it must be two different names on this chart.</div>
         </div>
-        <div className="ovw-mini">
-          <div className="ovw-minicard"><b>Second line — risk &amp; compliance</b><span>Independent risk, compliance, the actuarial function and security risk oversight. Model validation lives here and stays here — the rating engine and fraud models are exactly the assets a regulator will ask about.</span></div>
-          <div className="ovw-minicard"><b>Third line — internal audit</b><span>Independent assurance over the first and second lines, with its own solid line to the board.</span></div>
-          <div className="ovw-minicard"><b>The appointed actuary</b><span>A statutory role that keeps its own solid line — never inside the domains it opines on.</span></div>
+        <div className="ovw-mini" style={{ gridTemplateColumns: '1fr' }}>
+          <div className="ovw-minicard click" role="button" tabIndex={0} onClick={() => goChapter('CH-RISK')}>
+            <b>The three lines of risk &amp; compliance →</b>
+            <span>The first line sits INSIDE the matrix — the Risk &amp; compliance chapter's embedded seats in the stream teams. The second line (independent risk, compliance, actuarial, model validation) and third line (internal audit) keep their own solid lines outside every domain. The full story, line by line, lives on the chapter's workspace.</span>
+          </div>
         </div>
       </div>
 
@@ -2215,6 +2215,22 @@ function MerChapterPage({ id, view }) {
           {CH_DOM_TABS.map(t => (
             <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => setTab(t.key)}>{t.label}</button>
           ))}
+        </div>
+      )}
+      {/* D-135: the risk chapter is the navigable home of the whole three-lines
+          story — line 1 IS this chapter; lines 2/3 are independent and only
+          DESCRIBED here, never staffed here */}
+      {view !== 'domains' && id === 'CH-RISK' && (
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">The three lines</div>
+            <div className="asc-sec-sub">Who operates a control and who oversees it must be two different names. This chapter is the first line; the other two keep their own solid lines, outside every domain.</div>
+          </div>
+          <div className="ovw-mini">
+            <div className="ovw-minicard"><b>First line — this chapter</b><span>Embedded control seats inside the stream teams: in-flow controls, regulatory clocks (SABS, statutory notice), evidence discipline. Solid line to the domain, craft line here. The standing security functions (CISO office, SOC) are first line too.</span></div>
+            <div className="ovw-minicard"><b>Second line — independent risk &amp; compliance <span className="badge">independent · not staffed here</span></b><span>Risk, compliance, the actuarial function and security risk oversight. Model validation lives here and stays here — the rating engine and fraud models are exactly the assets a regulator will ask about.</span></div>
+            <div className="ovw-minicard"><b>Third line — internal audit <span className="badge">independent · not staffed here</span></b><span>Independent assurance over the first and second lines, with its own solid line to the board. The appointed actuary keeps a statutory solid line of the same kind.</span></div>
+          </div>
         </div>
       )}
       {view !== 'domains' && <ChSecCatalog />}
