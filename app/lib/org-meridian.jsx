@@ -4,6 +4,7 @@ import './kg-v4.gen';
 import './org-refchart';
 /* the flow canvas, for the domain-level maps (D-120) — client-only, heavy */
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
+const OrgTreeFlow = dynamic(() => import('./OrgTreeFlow.jsx'), { ssr: false });   // D-139: static structure/KPI trees
 import { stageChange } from './kg-query';
 /* ============================================================
    Cynergis — the Meridian org altitude (v4, D-094).
@@ -139,7 +140,6 @@ const goChart = () => nav({});
 const goDomain = id => nav({ dom: id });
 const goContext = id => nav({ bc: id });
 const goProduct = (id, tab) => nav({ mprod: id, mtab: tab || 'envision' });
-const goDomTabLink = t => { const q0 = window.cynParseUrl ? window.cynParseUrl() : {}; nav({ dom: q0.dom, dtab: t }); };
 function DerivedStrip({ graph, extra }) {
   return (
     <div className="mer-derived">
@@ -486,136 +486,64 @@ function MerDomain({ id }) {
       </div>
 
       {domTab === 'overview' && (() => {
-        /* D-138: the rich domain overview — every figure a graph join.
-           Value realized sums the domain products' recorded rollups. */
-        const cls = { core: 0, supporting: 0, generic: 0 };
-        for (const c of (d.contexts || [])) cls[(c.props || {}).classification] = (cls[(c.props || {}).classification] || 0) + 1;
+        /* D-139: the sponsor's layout — the ORIGINAL facts table (executive
+           now NAMED), plus two static diagrams: the envelope as an org-
+           structure tree, and the standing measures as a KPI tree fed by
+           the products' own metrics (fuzzy name-join, honest when empty). */
+        const units = M.memberUnits[id] || [];
         const teams = M.org.nodes('Team').filter(t => M.org.out(t.id, 'part_of').some(e => e.to === d.node.id));
-        const seats = teams.reduce((sum, t) => sum + (Number(t.props.size) || 0), 0);
-        const wallsInfo = (d.contexts || []).map(c => {
-          const dep = M.depth.get(c.localId);
-          const ops = dep && (dep.agents || []).find(x => x.props.kind === 'operations');
-          return { c, team: dep && dep.team, ops, models: dep ? dep.models.length : 0 };
+        const peUnit = units.find(u => /product & engineering|engineering/i.test(u.label));
+        const orgTree = {
+          id: 'exec', label: d.node.props.ownerName || d.node.props.owner, sub: d.node.props.ownerName ? d.node.props.owner : 'accountable executive', tone: 'exec',
+          children: units.length
+            ? units.map(u => ({
+                id: u.localId, label: u.label, sub: `${u.props.size} · ${u.props.shape}`, tone: 'unit',
+                children: (peUnit && u.localId === peUnit.localId)
+                  ? teams.map(t => ({ id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}` }))
+                  : [],
+              }))
+            : teams.map(t => ({ id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}` })),
+        };
+        const measures = d.node.props.standingMeasures || [];
+        const domToks = new Set(d.node.label.toLowerCase().split(/[^a-z]+/));
+        const kpiKids = measures.map((m2, i2) => {
+          const toks = m2.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 3 && !domToks.has(w));
+          const hits = [];
+          for (const p of portfolio) {
+            const g4 = M.prods4[p.node.localId]; if (!g4) continue;
+            for (const sc of g4.idx.nodes('SuccessMetric')) {
+              const nm = (sc.label + ' ' + (sc.props.statement || '')).toLowerCase();
+              if (toks.some(t => nm.includes(t))) {
+                const o = g4.idx.nodes('Outcome').find(o2 => g4.idx.out(o2.id, 'actualizes').some(e => e.to === sc.id));
+                hits.push({ id: `m${i2}:${p.node.localId}:${sc.localId}`, label: sc.label, sub: `${o ? o.props.current : sc.props.baseline} → ${sc.props.target} · ${p.node.label}` });
+              }
+            }
+          }
+          return { id: 'm' + i2, label: m2, tone: 'kpi', sub: hits.length ? null : 'no product metric feeds this yet', children: hits.slice(0, 3) };
         });
-        const prodsInfo = portfolio.map(p => {
-          const g4 = M.prods4[p.node.localId];
-          const P = g4 ? g4.idx.nodes('Product')[0] : null;
-          const gates = P ? Object.keys((P.props || {}).gates || {}).length : 0;
-          const roll = P ? (P.props || {}).valueRollup : null;
-          const w = p.node.props.wsjf;
-          const wsjf = w ? ((w.bv + w.tc + w.rr) / Math.max(0.1, w.js)) : null;
-          return { p, gates, roll, wsjf };
-        });
-        const valueTotal = prodsInfo.reduce((sum, x) => sum + (x.roll ? parseFloat(String(x.roll.annualized).replace(/[^0-9.]/g, '')) || 0 : 0), 0);
-        const review = (M.memberReviews[id] || [])[0];
-        const pend = [], ambers = [];
-        for (const { p } of prodsInfo.map(x => ({ p: x.p }))) {
-          const g4 = M.prods4[p.node.localId];
-          if (!g4) continue;
-          for (const ap of g4.idx.nodes('Approval')) if (ap.status !== 'superseded' && ap.props.status === 'pending') pend.push({ pid: p.node.localId, ap });
-          for (const sl of g4.idx.nodes('Slo')) if (sl.props.health && sl.props.health !== 'green') ambers.push({ pid: p.node.localId, sl });
-        }
-        const myJourneys = M.journeys.filter(j => (j.home && j.home.id === d.node.id) || (j.crosses || []).some(x => x && x.id === d.node.id));
+        const kpiTree = { id: 'dom-kpi', label: d.node.label, sub: 'standing measures — the domain scoreboard', tone: 'exec', children: kpiKids };
         return (<>
-          <div className="ovw-stats" style={{ marginBottom: '16px' }}>
-            <div className="ovw-stat"><b>{(d.contexts || []).length}</b><span>subdomains · {cls.core || 0} core / {cls.supporting || 0} sup / {cls.generic || 0} gen</span></div>
-            <div className="ovw-stat"><b>{teams.length}</b><span>durable teams · {seats} seats</span></div>
-            <div className="ovw-stat"><b>{portfolio.length}</b><span>products</span></div>
-            <div className="ovw-stat"><b>{wallsInfo.filter(w => w.ops).length * 2}</b><span>agents on the walls</span></div>
-            {valueTotal > 0 && <div className="ovw-stat"><b>${valueTotal.toFixed(1)}M</b><span>value realized · annualized</span></div>}
-          </div>
-
           <div className="mer-facts">
-            <div className="mer-fact"><span className="k">Accountable executive</span><span className="v">{d.node.props.owner}</span></div>
+            <div className="mer-fact"><span className="k">Accountable executive</span><span className="v">{d.node.props.ownerName ? <><b>{d.node.props.ownerName}</b> · {d.node.props.owner}</> : d.node.props.owner}</span></div>
             {d.node.props.envelope && <div className="mer-fact"><span className="k">Envelope</span><span className="v">{d.node.props.envelope}</span></div>}
-            {d.node.props.standingMeasures && <div className="mer-fact"><span className="k">Standing measures</span><span className="v">{d.node.props.standingMeasures.join(' · ')}</span></div>}
             {d.node.props.journeyNote && <div className="mer-fact"><span className="k">Note</span><span className="v">{d.node.props.journeyNote}</span></div>}
           </div>
 
-          {(review || pend.length > 0 || ambers.length > 0) && (
-            <div className="asc-section">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title">Signals</div>
-                <div className="asc-sec-sub">The domain's pulse — the latest review, what waits on a human, what is off green</div>
-              </div>
-              <div className="ovw-reviews">
-                {review && (
-                  <button type="button" className="ovw-review" onClick={() => goDomTabLink('funding')}>
-                    <b>Last review</b>
-                    <span className={'badge ' + (review.props.rebalancePct ? '' : 'ok')}>{review.props.quarter} · {review.props.decision}{review.props.rebalancePct ? ` ${review.props.rebalancePct > 0 ? '+' : ''}${review.props.rebalancePct}%` : ''}</span>
-                  </button>
-                )}
-                {pend.map(({ pid, ap }) => (
-                  <button type="button" key={ap.id} className="ovw-review" onClick={() => goProduct(pid, 'operate')}>
-                    <b>{ap.localId}</b><span className="badge warn">pending decision</span>
-                  </button>
-                ))}
-                {ambers.map(({ pid, sl }) => (
-                  <button type="button" key={pid + sl.id} className="ovw-review" onClick={() => goProduct(pid, 'operate')}>
-                    <b>{sl.label}</b><span className="badge warn">{sl.props.current} vs {sl.props.target}</span>
-                  </button>
-                ))}
-                {!pend.length && !ambers.length && <span className="ovw-pnone-inline">Nothing pending · all recorded SLOs green.</span>}
-              </div>
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">The envelope, as a structure</div>
+              <div className="asc-sec-sub">Executive → the envelope's legs → the durable teams (static diagram — the Org sub-structure page carries the detail)</div>
             </div>
-          )}
+            <OrgTreeFlow tree={orgTree} height={teams.length > 4 ? 400 : 330} />
+          </div>
 
           <div className="asc-section">
             <div className="asc-sec-head">
-              <div className="asc-sec-title">The walls</div>
-              <div className="asc-sec-sub">Every subdomain, its owning team and its deployed agent tier — each chip opens the wall</div>
+              <div className="asc-sec-title">Standing measures — the KPI tree</div>
+              <div className="asc-sec-sub">Each standing measure, and the product metrics that feed it (current → target from each product's own recorded outcomes)</div>
             </div>
-            <div className="dov-walls">
-              {wallsInfo.map(({ c, team, ops, models }) => (
-                <button type="button" className="dov-wall" key={c.id} onClick={() => goContext(c.localId)}>
-                  <span className={'dov-dot ' + ((c.props || {}).classification || '')}></span>
-                  <b>{c.label}</b>
-                  <span className="dov-meta">{team ? `${team.props.size} ppl` : ''}{models ? ` · ${models} model${models === 1 ? '' : 's'}` : ''}</span>
-                  {ops && <span className="mer-covskill" title={`${ops.label} · ${ops.props.tier}`}>{String(ops.props.tier || '')[0]}</span>}
-                </button>
-              ))}
-            </div>
+            <OrgTreeFlow tree={kpiTree} height={360} />
           </div>
-
-          {prodsInfo.length > 0 && (
-            <div className="asc-section">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title">Products at a glance</div>
-                <div className="asc-sec-sub">Phase from the recorded gates · WSJF from the org spec · value from each product's own rollup</div>
-              </div>
-              <div className="mer-map">
-                {prodsInfo.map(({ p, gates, roll, wsjf }) => (
-                  <div className="mer-seam" key={p.node.id}>
-                    <span className="mer-seam-ends"><b>{p.node.label}</b></span>
-                    <span className={'badge ' + (gates >= 4 ? 'ok' : '')}>{gates}/4 gates</span>
-                    {wsjf != null && <span className="badge">WSJF {wsjf.toFixed(2)}</span>}
-                    <span className="mer-seam-what">
-                      {roll ? <>{roll.annualized} annualized of {roll.target} · {roll.rampQuarter}</> : 'no value rollup recorded yet'}
-                      {' · '}<button type="button" className="mer-link" onClick={() => window.__cynOpenV4Product && window.__cynOpenV4Product(p.node.localId)}>open the product →</button>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {myJourneys.length > 0 && (
-            <div className="asc-section">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title">Journeys</div>
-                <div className="asc-sec-sub">The customer journeys this domain homes or serves</div>
-              </div>
-              <div className="mer-journeys">
-                {myJourneys.map(j => (
-                  <div className="mer-jr" key={j.node.id}>
-                    <b>{j.node.label}</b>
-                    <div className="mer-jr-home">{j.home && j.home.id === d.node.id ? 'HOME domain' : `home: ${j.home ? j.home.label : '—'}`}</div>
-                    <div className="mer-jr-meas">{(j.node.props.measures || []).join(' · ')}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>);
       })()}
 

@@ -284,18 +284,12 @@ button.mer-om { font: inherit; }
 .mer-covmatrix tr.hi td { background: var(--accent-soft); }
 .mer-seat.hi { border-color: var(--accent); }
 
-/* D-138: the rich domain overview — wall chips + signal chips */
-.dov-walls { display: flex; flex-wrap: wrap; gap: 8px; }
-.dov-wall { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); padding: 6px 13px; font: inherit; font-size: 12.5px; color: var(--ink-2); cursor: pointer; transition: border-color .12s ease; }
-.dov-wall:hover { border-color: var(--accent); color: var(--ink); }
-.dov-wall b { font-weight: 600; color: var(--ink); }
-.dov-meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-3); }
-.dov-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--line-strong); }
-.dov-dot.core { background: var(--accent); }
-.dov-dot.supporting { background: var(--teal); }
-.dov-dot.generic { background: var(--ink-4); }
-.ovw-reviews { display: flex; flex-wrap: wrap; gap: 8px; }
-.ovw-review { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); padding: 5px 12px; font: inherit; font-size: 12px; color: var(--ink-2); cursor: pointer; }
-.ovw-review:hover { border-color: var(--accent); }
-.ovw-review b { font-weight: 600; color: var(--ink); }
-.ovw-pnone-inline { font-size: 12px; color: var(--ink-3); align-self: center; }
+/* D-139: the domain Overview's static trees (OrgTreeFlow) */
+.otf-node { box-sizing: border-box; width: 200px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; font-size: 12px; line-height: 1.35; }
+.otf-node b { display: block; font-weight: 600; color: var(--ink); font-size: 12.5px; }
+.otf-node span { display: block; color: var(--ink-3); font-size: 11px; margin-top: 2px; }
+.otf-node.exec { border-color: var(--accent); background: var(--accent-soft); }
+.otf-node.exec b { color: var(--accent-ink); }
+.otf-node.unit { border-color: var(--line-strong); background: var(--panel-2); }
+.otf-node.kpi { background: var(--panel-2); }
+.ovw-refchart th, .ovw-refchart td:first-child, .ovw-refchart .matrix > div:first-child { cursor: pointer; }
