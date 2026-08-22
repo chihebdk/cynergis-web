@@ -504,24 +504,59 @@ function MerDomain({ id }) {
               }))
             : teams.map(t => ({ id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}` })),
         };
+        /* D-140: the scoreboard replaces the KPI tree — state over topology.
+           num/prog are direction-agnostic; trends parse the outcome reviews'
+           own evidence strings (real historical points, nothing seeded). */
+        const num = v => { const m2 = String(v ?? '').replace(/,/g, '').match(/-?\d+(\.\d+)?/); return m2 ? parseFloat(m2[0]) : null; };
+        const prog = (b, c, t) => { if (b == null || c == null || t == null || b === t) return null; return Math.max(0, Math.min(1, (b - c) / (b - t))); };
         const measures = d.node.props.standingMeasures || [];
         const domToks = new Set(d.node.label.toLowerCase().split(/[^a-z]+/));
-        const kpiKids = measures.map((m2, i2) => {
+        const revsAsc = (M.memberReviews[id] || []).slice().sort((x, y) => String(x.props.quarter).localeCompare(String(y.props.quarter)));
+        const cards = measures.map(m2 => {
           const toks = m2.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 3 && !domToks.has(w));
-          const hits = [];
+          let hit = null, extra = 0;
           for (const p of portfolio) {
             const g4 = M.prods4[p.node.localId]; if (!g4) continue;
             for (const sc of g4.idx.nodes('SuccessMetric')) {
               const nm = (sc.label + ' ' + (sc.props.statement || '')).toLowerCase();
               if (toks.some(t => nm.includes(t))) {
                 const o = g4.idx.nodes('Outcome').find(o2 => g4.idx.out(o2.id, 'actualizes').some(e => e.to === sc.id));
-                hits.push({ id: `m${i2}:${p.node.localId}:${sc.localId}`, label: sc.label, sub: `${o ? o.props.current : sc.props.baseline} → ${sc.props.target} · ${p.node.label}` });
+                if (!hit) hit = { sc, o, pid: p.node.localId, prodName: p.node.label };
+                else extra++;
               }
             }
           }
-          return { id: 'm' + i2, label: m2, tone: 'kpi', sub: hits.length ? null : 'no product metric feeds this yet', children: hits.slice(0, 3) };
+          if (!hit) return { m: m2 };
+          const b = num(hit.sc.props.baseline), t = num(hit.sc.props.target), c = num(hit.o ? hit.o.props.current : hit.sc.props.baseline);
+          const trend = [hit.sc.props.baseline];
+          for (const rv of revsAsc) {
+            const ev = (rv.props.evidence || []).find(x => toks.some(tk => String(x).toLowerCase().includes(tk)));
+            if (ev != null && num(ev) != null) trend.push(`${num(ev)}`);
+          }
+          if (hit.o) trend.push(hit.o.props.current);
+          return { m: m2, hit, b, t, c, p: prog(b, c, t), trend: trend.filter((x, i3, arr) => i3 === 0 || num(x) !== num(arr[i3 - 1])), extra };
         });
-        const kpiTree = { id: 'dom-kpi', label: d.node.label, sub: 'standing measures — the domain scoreboard', tone: 'exec', children: kpiKids };
+        const okrs = portfolio.map(p => {
+          const g4 = M.prods4[p.node.localId]; if (!g4) return null;
+          const obj = g4.idx.nodes('Objective')[0]; if (!obj) return null;
+          const krs = g4.idx.out(obj.id, 'has').map(e => g4.idx.byId.get(e.to)).filter(Boolean).map(kr => {
+            const sc = g4.idx.byId.get((g4.idx.out(kr.id, 'targets')[0] || {}).to);
+            const o = sc && g4.idx.nodes('Outcome').find(o2 => g4.idx.out(o2.id, 'actualizes').some(e => e.to === sc.id));
+            const pr = sc ? prog(num(sc.props.baseline), num(o ? o.props.current : sc.props.baseline), num(sc.props.target)) : null;
+            return { kr, sc, o, pr };
+          });
+          const wallIds = [...new Set(p.packages.map(pk => pk.ctx && pk.ctx.localId).filter(Boolean))];
+          const teamsSeen = new Map();
+          for (const w of wallIds) {
+            const cn = M.org.byLocal.get(w);
+            const tn = cn && M.org.byId.get((M.org.out(cn.id, 'owned_by')[0] || {}).to);
+            if (tn && !teamsSeen.has(tn.localId)) teamsSeen.set(tn.localId, tn);
+          }
+          const teams2 = [...teamsSeen.values()];
+          const seats2 = teams2.reduce((sm, t2) => sm + (Number(t2.props.size) || 0), 0);
+          const P = g4.idx.nodes('Product')[0];
+          return { p, obj, krs, teams: teams2, seats: seats2, roll: P ? (P.props || {}).valueRollup : null };
+        }).filter(Boolean);
         return (<>
           <div className="mer-facts">
             <div className="mer-fact"><span className="k">Accountable executive</span><span className="v">{d.node.props.ownerName ? <><b>{d.node.props.ownerName}</b> · {d.node.props.owner}</> : d.node.props.owner}</span></div>
@@ -539,10 +574,53 @@ function MerDomain({ id }) {
 
           <div className="asc-section">
             <div className="asc-sec-head">
-              <div className="asc-sec-title">Standing measures — the KPI tree</div>
-              <div className="asc-sec-sub">Each standing measure, and the product metrics that feed it (current → target from each product's own recorded outcomes)</div>
+              <div className="asc-sec-title">The scoreboard</div>
+              <div className="asc-sec-sub">Each standing measure against its target — trend points read from the outcome reviews' own recorded evidence, provenance on every card</div>
             </div>
-            <OrgTreeFlow tree={kpiTree} height={360} title={`${d.node.label} — standing measures, the KPI tree`} />
+            <div className="dsb-grid">
+              {cards.map((cd, i3) => cd.hit ? (
+                <div className="dsb-card" key={i3}>
+                  <div className="dsb-name">{cd.m}{cd.extra > 0 && <span className="dsb-extra">+{cd.extra} more feed{cd.extra === 1 ? 's' : ''}</span>}</div>
+                  <div className="dsb-cur">{cd.hit.o ? cd.hit.o.props.current : cd.hit.sc.props.baseline}<span className="dsb-target">target {cd.hit.sc.props.target}</span></div>
+                  {cd.p != null && <div className="dsb-bar"><span style={{ width: `${Math.round(cd.p * 100)}%` }}></span></div>}
+                  {cd.p != null && <div className="dsb-pct">{Math.round(cd.p * 100)}% of the way from baseline</div>}
+                  {cd.trend && cd.trend.length > 1 && <div className="dsb-trend">{cd.trend.join(' → ')}</div>}
+                  <button type="button" className="mer-link dsb-prov" onClick={() => goProduct(cd.hit.pid, 'realize')}>fed by {cd.hit.prodName} · {cd.hit.sc.localId} →</button>
+                </div>
+              ) : (
+                <div className="dsb-card empty" key={i3}>
+                  <div className="dsb-name">{cd.m}</div>
+                  <div className="dsb-none">no product metric feeds this yet</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">Objectives &amp; key results</div>
+              <div className="asc-sec-sub">Each product's objective, KR progress from its recorded outcomes, and the investment behind it — the teams owning the walls it packages</div>
+            </div>
+            <div className="okr-list">
+              {okrs.map(({ p, obj, krs, teams: t2, seats: s2, roll }) => (
+                <div className="okr-card" key={obj.id}>
+                  <div className="okr-head">
+                    <button type="button" className="mer-link okr-obj" onClick={() => goProduct(p.node.localId, 'realize')}><b>{obj.label}</b> · {p.node.label} →</button>
+                    <span className="okr-invest">~{s2} seats · {t2.length} team{t2.length === 1 ? '' : 's'}{roll ? ` · ${roll.annualized} of ${roll.target}` : ''}</span>
+                  </div>
+                  <div className="okr-krs">
+                    {krs.map(({ kr, sc, o, pr }) => (
+                      <div className="okr-kr" key={kr.id}>
+                        <span className="okr-kr-nm">{kr.label}</span>
+                        {pr != null && <span className="dsb-bar sm"><span style={{ width: `${Math.round(pr * 100)}%` }}></span></span>}
+                        <span className="okr-kr-val">{sc ? `${o ? o.props.current : sc.props.baseline} / ${sc.props.target}` : '—'}{pr != null ? ` · ${Math.round(pr * 100)}%` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="okr-teams">{t2.map(t3 => <span className="okr-team" key={t3.id}>{t3.label.replace(/ team$/i, '')} · {t3.props.size}</span>)}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </>);
       })()}
