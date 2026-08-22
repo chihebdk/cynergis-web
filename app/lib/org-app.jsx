@@ -807,7 +807,7 @@ function OrgApp() {
                 const dActive = q.dtab || 'overview';
                 const goDomTab = (dtab) => { setSub('meridian'); window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: domScope, dtab, ...RESET }); setTimeout(scrollTop, 0); };
                 const DOM_RAIL = [
-                  { key: 'units', label: 'Org', ico: 'org' },
+                  { key: 'units', label: 'Structure', ico: 'org' },
                   { key: 'funding', label: 'Funding & review', ico: 'board' },
                   { key: 'subdomains', label: 'Subdomains', ico: 'product' },
                   { key: 'portfolio', label: 'Product portfolio', ico: 'portfolio' },
