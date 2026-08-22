@@ -12,7 +12,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { ReactFlow } from '@xyflow/react';
 
-const W = 200, GX = 18, GY = 118;
+const W = 210, NODE_H = 76, GX = 18, GY = 130;
 
 function subtreeWidth(n) {
   if (!n.children || !n.children.length) return W;
@@ -26,6 +26,7 @@ function build(tree, clickable) {
     nodes.push({
       id: n.id,
       position: { x: x + w / 2 - W / 2, y: depth * GY },
+      width: W, height: NODE_H,
       data: {
         label: (
           <div className={'otf-node' + (n.tone ? ' ' + n.tone : '')}>
@@ -34,7 +35,7 @@ function build(tree, clickable) {
           </div>
         ),
       },
-      style: { width: W, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none', cursor: (clickable && n.meta) ? 'pointer' : 'default' },
+      style: { width: W, height: NODE_H, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none', cursor: (clickable && n.meta) ? 'pointer' : 'default' },
       meta: n.meta,
       draggable: false, connectable: false, selectable: false,
       sourcePosition: 'bottom', targetPosition: 'top',

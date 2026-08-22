@@ -283,9 +283,10 @@ button.mer-om { font: inherit; }
 .mer-seat.hi { border-color: var(--accent); }
 
 /* D-139: the domain Overview's static trees (OrgTreeFlow) */
-.otf-node { box-sizing: border-box; width: 200px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; font-size: 12px; line-height: 1.35; }
-.otf-node b { display: block; font-weight: 600; color: var(--ink); font-size: 12.5px; }
-.otf-node span { display: block; color: var(--ink-3); font-size: 11px; margin-top: 2px; }
+.otf-node { box-sizing: border-box; width: 100%; height: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; font-size: 12px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.otf-node b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-weight: 600; color: var(--ink); font-size: 12.5px; }
+.otf-node span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--ink-3); font-size: 11px; margin-top: 2px; }
+.otf-node.person b, .otf-node.person span { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-top: 0; -webkit-line-clamp: 1; }
 .otf-node.exec { border-color: var(--accent); background: var(--accent-soft); }
 .otf-node.exec b { color: var(--accent-ink); }
 .otf-node.unit { border-color: var(--line-strong); background: var(--panel-2); }

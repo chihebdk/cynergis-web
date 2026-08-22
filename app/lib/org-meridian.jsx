@@ -601,22 +601,26 @@ function MerDomain({ id }) {
         /* D-142: focused drill — parent → focus → children (3 levels max),
            details panel below for the selected node. */
         const teams = M.org.nodes('Team').filter(t => M.org.out(t.id, 'part_of').some(e => e.to === d.node.id));
-        const peUnit = units.find(u => /product & engineering|engineering/i.test(u.label));
+        const legs = units.filter(u => !u.props.parent);
+        const peUnit = legs.find(u => /product & engineering|engineering/i.test(u.label));
         const H = { exec: { id: 'exec', label: d.node.label, sub: `${d.node.props.owner} — ${d.node.props.ownerName || ''}`.replace(/ — $/, ''), tone: 'exec', kind: 'exec', children: [] } };
-        for (const u of units) { H[u.localId] = { id: u.localId, label: u.label, sub: u.props.leadName ? `${u.props.leadRole} — ${u.props.leadName}` : `${u.props.size}`, tone: 'unit', kind: 'unit', parent: 'exec', children: [], node: u }; H.exec.children.push(u.localId); }
+        for (const u of legs) { H[u.localId] = { id: u.localId, label: u.label, sub: u.props.leadName ? `${u.props.leadRole} — ${u.props.leadName}` : `${u.props.size}`, tone: 'unit', kind: 'unit', parent: 'exec', children: [], node: u }; H.exec.children.push(u.localId); }
+        for (const su of units.filter(u => u.props.parent)) {
+          if (!H[su.props.parent]) continue;
+          H[su.localId] = { id: su.localId, label: su.label, sub: `${su.props.leadRole} — ${su.props.leadName}`, tone: 'unit', kind: 'sub', parent: su.props.parent, children: [], node: su };
+          H[su.props.parent].children.push(su.localId);
+        }
         const teamParent = t => (peUnit ? peUnit.localId : 'exec');
         for (const t of teams) {
-          H[t.localId] = { id: t.localId, label: t.label.replace(/ team$/i, ''), sub: `${t.props.size} ppl · ${t.props.teamType}`, kind: 'team', parent: units.length ? teamParent(t) : 'exec', children: [], node: t };
+          const members = M.org.inn(t.id, 'member_of').map(e => M.org.byId.get(e.from)).filter(Boolean);
+          const tl = members.find(x => x.props.lead) || members.find(x => /product manager|product lead/i.test(x.props.role || ''));
+          H[t.localId] = { id: t.localId, label: t.label.replace(/ team$/i, ''), sub: tl ? `${tl.props.role} — ${tl.label}` : `${t.props.size} ppl`, kind: 'team', parent: legs.length ? teamParent(t) : 'exec', children: [], node: t, lead: tl };
           H[H[t.localId].parent].children.push(t.localId);
-          for (const e of M.org.inn(t.id, 'member_of')) {
-            const pp = M.org.byId.get(e.from);
-            if (!pp) continue;
-            H[pp.localId] = { id: pp.localId, label: pp.props.role + (pp.props.lead ? ' · lead' : ''), sub: pp.label, kind: 'person', parent: t.localId, children: [], node: pp };
+          for (const pp of members) {
+            if (tl && pp.id === tl.id) continue; /* the manager lives in the parent box, not the row */
+            H[pp.localId] = { id: pp.localId, label: pp.props.role, sub: pp.label, tone: 'person', kind: 'person', parent: t.localId, children: [], node: pp };
             H[t.localId].children.push(pp.localId);
           }
-          const tl = H[t.localId].children.map(c => H[c].node).find(x => x.props.lead)
-            || H[t.localId].children.map(c => H[c].node).find(x => /product manager|product lead/i.test(x.props.role || ''));
-          if (tl) H[t.localId].sub = `${tl.props.role} — ${tl.label}`;
         }
         const focus = H[stFocus] ? stFocus : 'exec';
         const F = H[focus];
@@ -633,7 +637,7 @@ function MerDomain({ id }) {
         let det = null;
         if (S.kind === 'person') {
           const pp = S.node, team = H[S.parent];
-          const leadP = team.children.map(c => H[c].node).find(x => x.props.lead) || team.children.map(c => H[c].node).find(x => /product manager|product lead/i.test(x.props.role || ''));
+          const leadP = team.lead;
           const wallN = M.org.inn(team.node.id, 'owned_by').map(e => M.org.byId.get(e.from)).find(n3 => n3 && n3.type === 'BoundedContext');
           let prodN = null, objLabel = null;
           if (pp.props.focus && wallN) {
@@ -649,8 +653,8 @@ function MerDomain({ id }) {
           det = { title: pp.label, rows: [
             ['Role', pp.props.role + (pp.props.lead ? ' · team lead' : '')],
             ['Team', team.label + ' team'],
-            ['Manages', pp.props.lead ? `${team.children.length - 1} people` : '0 — individual contributor'],
-            leadP && !pp.props.lead ? ['Manager', leadP.label] : null,
+            ['Manages', '0 — individual contributor'],
+            leadP ? ['Manager', `${leadP.label} · ${leadP.props.role}`] : null,
             pp.props.chapter ? ['Chapter (craft line)', (M.org.byLocal.get(pp.props.chapter) || { label: pp.props.chapter }).label] : null,
             wallN ? ['Subdomain', wallN.label] : null,
             pp.props.focus ? ['Assignment', pp.props.focus + (prodN ? ` · ${prodN.label}` : '')] : null,
@@ -661,14 +665,17 @@ function MerDomain({ id }) {
           const wallN = M.org.inn(S.node.id, 'owned_by').map(e => M.org.byId.get(e.from)).find(n3 => n3 && n3.type === 'BoundedContext');
           det = { title: S.label + ' team', rows: [
             ['Type', S.node.props.teamType], ['Size', `${S.node.props.size} people`],
+            S.lead ? ['Manager', `${S.lead.label} · ${S.lead.props.role}`] : null,
+            S.lead ? ['Manages', `${S.children.length} direct reports`] : null,
             wallN ? ['Owns', wallN.label] : null,
           ].filter(Boolean), links: wallN ? [{ label: `open ${wallN.label} →`, go: () => goContext(wallN.localId) }] : [] };
         } else {
           det = { title: S.label, rows: [
-            ['Scope', S.kind === 'exec' ? 'Domain' : 'Envelope leg'],
+            ['Scope', S.kind === 'exec' ? 'Domain' : S.kind === 'sub' ? 'Operating team' : 'Envelope leg'],
             S.kind === 'exec' && d.node.props.ownerName ? ['Manager', `${d.node.props.ownerName} · ${d.node.props.owner}`] : null,
-            S.kind === 'unit' && S.node && S.node.props.leadName ? ['Manager', `${S.node.props.leadName} · ${S.node.props.leadRole}`] : null,
-            ['Reports', `${S.children.length} direct`],
+            S.kind !== 'exec' && S.node && S.node.props.leadName ? ['Manager', `${S.node.props.leadName} · ${S.node.props.leadRole}`] : null,
+            S.node && S.node.props.size ? ['Size', S.node.props.size] : null,
+            S.children.length ? ['Reports', `${S.children.length} direct`] : null,
           ].filter(Boolean), links: [] };
         }
         return (<>
