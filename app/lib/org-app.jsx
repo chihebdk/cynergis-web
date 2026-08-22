@@ -807,7 +807,7 @@ function OrgApp() {
                 const dActive = q.dtab || 'overview';
                 const goDomTab = (dtab) => { setSub('meridian'); window.cynPushUrl({ v: 'org', pf: null, prod: null, sub: 'meridian', dom: domScope, dtab, ...RESET }); setTimeout(scrollTop, 0); };
                 const DOM_RAIL = [
-                  { key: 'units', label: 'Org sub-structure', ico: 'org' },
+                  { key: 'units', label: 'Org', ico: 'org' },
                   { key: 'funding', label: 'Funding & review', ico: 'board' },
                   { key: 'subdomains', label: 'Subdomains', ico: 'product' },
                   { key: 'portfolio', label: 'Product portfolio', ico: 'portfolio' },
@@ -818,7 +818,7 @@ function OrgApp() {
                 return <div className="asc-body">
                   <aside className="asc-rail">
                     <div className="asc-rail-sect">{merScope.domName}</div>
-                    <div className={'asc-nav' + (dActive === 'overview' ? ' on' : '')} onClick={() => goMerDomain(domScope)}><Ico k="org" w={15} /> Overview</div>
+                    <div className={'asc-nav' + (dActive === 'overview' ? ' on' : '')} onClick={() => goMerDomain(domScope)}><Ico k="dash" w={15} /> Dashboard</div>
                     {DOM_RAIL.map(it => (
                       <div key={it.key} className={'asc-nav' + (dActive === it.key ? ' on' : '')} onClick={() => goDomTab(it.key)}><Ico k={it.ico} w={15} /> {it.label}</div>
                     ))}
