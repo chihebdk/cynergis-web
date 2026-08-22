@@ -196,7 +196,7 @@ function MerChart() {
         </div>
         <div className="mer-grid">
           {streams.map(d => (
-            <div className={'mer-dom' + (d.node.props.deepSlice ? ' deep' : '')} key={d.node.id} onClick={() => goDomain(d.node.localId)}>
+            <div className="mer-dom" key={d.node.id} onClick={() => goDomain(d.node.localId)}>
               <div className="mer-dom-step">{d.node.props.valueChainStep}</div>
               <h3>{d.node.label}</h3>
               <div className="mer-dom-owner">{d.node.props.owner}</div>
@@ -210,7 +210,6 @@ function MerChart() {
               </div>
               <div className="mer-dom-foot">
                 <span><b>{d.teams.length}</b> teams · <b>{d.teams.reduce((s, t) => s + (t.props.size || 0), 0)}</b> people</span>
-                {d.node.props.deepSlice && <span className="mer-deep">deep slice</span>}
               </div>
             </div>
           ))}
@@ -478,9 +477,6 @@ function MerDomain({ id }) {
           {/* D-133 polish: the description reads once, on Overview — section
               pages keep only the identity line above */}
           {domTab === 'overview' && <p className="asc-page-sub">{d.node.props.summary}</p>}
-        </div>
-        <div className="asc-head-actions">
-          {d.node.props.deepSlice && <span className="badge ok"><span className="dot ok"></span>the worked deep slice</span>}
         </div>
       </div>
 
