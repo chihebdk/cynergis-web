@@ -5,8 +5,11 @@
    Overview for the org-structure diagram and the KPI tree. Takes a
    nested tree spec { id, label, sub, tone, children } and lays it
    out top-down (subtree-width layout, no external layouter).
+   D-139 polish: an expand button opens the diagram full-view in a
+   modal (portal to body), where pan/zoom are enabled.
    ============================================================ */
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { ReactFlow } from '@xyflow/react';
 
 const W = 200, GX = 18, GY = 118;
@@ -43,16 +46,41 @@ function build(tree) {
   return { nodes, edges };
 }
 
-export default function OrgTreeFlow({ tree, height = 340 }) {
-  const { nodes, edges } = React.useMemo(() => build(tree), [tree]);
+function Tree({ nodes, edges, interactive }) {
   return (
-    <div style={{ height, border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--panel)', overflow: 'hidden' }}>
-      <ReactFlow
-        nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.12 }}
-        nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
-        panOnDrag={false} zoomOnScroll={false} zoomOnPinch={false} zoomOnDoubleClick={false}
-        preventScrolling={false} proOptions={{ hideAttribution: true }}
-      />
+    <ReactFlow
+      nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.12 }}
+      nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
+      panOnDrag={!!interactive} zoomOnScroll={!!interactive} zoomOnPinch={!!interactive}
+      zoomOnDoubleClick={false} preventScrolling={!!interactive} proOptions={{ hideAttribution: true }}
+    />
+  );
+}
+
+export default function OrgTreeFlow({ tree, height = 340, title }) {
+  const { nodes, edges } = React.useMemo(() => build(tree), [tree]);
+  const [expanded, setExpanded] = React.useState(false);
+  React.useEffect(() => {
+    if (!expanded) return;
+    const h = e => { if (e.key === 'Escape') setExpanded(false); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [expanded]);
+  return (
+    <div style={{ height, border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--panel)', overflow: 'hidden', position: 'relative' }}>
+      <button type="button" className="otf-expand" title="Full view" aria-label="Expand diagram" onClick={() => setExpanded(true)}>⤢</button>
+      <Tree nodes={nodes} edges={edges} />
+      {expanded && createPortal(
+        <div className="otf-ovl" onClick={() => setExpanded(false)}>
+          <div className="otf-modal" onClick={e => e.stopPropagation()}>
+            <div className="otf-mh">
+              <b>{title || 'Diagram'}</b>
+              <span className="otf-hint">drag to pan · scroll to zoom · Esc to close</span>
+              <button type="button" className="otf-x" aria-label="Close" onClick={() => setExpanded(false)}>×</button>
+            </div>
+            <div className="otf-mb"><Tree nodes={nodes} edges={edges} interactive /></div>
+          </div>
+        </div>, document.body)}
     </div>
   );
 }

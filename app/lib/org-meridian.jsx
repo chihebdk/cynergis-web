@@ -534,7 +534,7 @@ function MerDomain({ id }) {
               <div className="asc-sec-title">The envelope, as a structure</div>
               <div className="asc-sec-sub">Executive → the envelope's legs → the durable teams (static diagram — the Org sub-structure page carries the detail)</div>
             </div>
-            <OrgTreeFlow tree={orgTree} height={teams.length > 4 ? 400 : 330} />
+            <OrgTreeFlow tree={orgTree} height={teams.length > 4 ? 400 : 330} title={`${d.node.label} — the envelope, as a structure`} />
           </div>
 
           <div className="asc-section">
@@ -542,7 +542,7 @@ function MerDomain({ id }) {
               <div className="asc-sec-title">Standing measures — the KPI tree</div>
               <div className="asc-sec-sub">Each standing measure, and the product metrics that feed it (current → target from each product's own recorded outcomes)</div>
             </div>
-            <OrgTreeFlow tree={kpiTree} height={360} />
+            <OrgTreeFlow tree={kpiTree} height={360} title={`${d.node.label} — standing measures, the KPI tree`} />
           </div>
         </>);
       })()}
