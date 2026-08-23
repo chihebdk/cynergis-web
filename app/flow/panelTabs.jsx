@@ -294,7 +294,9 @@ function EventCardsBody({ node }) {
   // event → its arch block (authored or derived) names the triggered event function
   const arch = isEvent ? (node.arch || deriveArch(node)) : null;
   const comp = (arch && componentById(arch.component)) || componentForNode(node) || null;
-  const domain = comp ? (A.domains || []).find((dm) => (dm.components || []).some((c) => c.id === comp.id)) : null;
+  /* fraud's __ARCH__ domains only apply to fraud components — a v4 arch block
+     (arch.prod set) must not match them on colliding C-ids (D-146 fix) */
+  const domain = (comp && !(arch && arch.prod)) ? (A.domains || []).find((dm) => (dm.components || []).some((c) => c.id === comp.id)) : null;
   const resourceRec = (id) => (A.resources || []).find((r) => r.id === id);
   const bc = node.bc || (typeof window !== "undefined" && window.__cynNav?.ctx) || null;
   const emKeyFor = (t) => (({ Event: "messageTrigger", User: "userTrigger", API: "apiTrigger", Schedule: "scheduleTrigger" })[t.type]) || "sequentialFlowTrigger";
