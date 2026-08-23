@@ -69,13 +69,19 @@ export function buildDerivedFlows() {
     let parent = 'start';
     const nodes = items.map(({ uc, fset, P }, i) => {
       const myAts = P.nodes('AcceptanceTest').filter(a => P.out(a.id, 'tests').some(e => e.to === uc.id));
+      /* the graph records who performs the use case — a Persona is a human
+         trigger, anything else (system, org ref) is external. No performer
+         recorded → empty actor, and the canvas badge stays hidden (honest). */
+      const actorN = P.byId.get((P.out(uc.id, 'performed_by')[0] || {}).to);
       const id = `dv-${ctx.toLowerCase()}-${i}`;
       const n = {
         id, type: 'SimpleNode', parentId: parent, kind: 'event',
         summary: uc.label, isPivotal: i === 0,
         aggregate: model ? model.label : wall.label,
         description: uc.props.note || '',
-        trigger: { kind: 'external', actor: '', mechanism: '', label: uc.props.note || uc.label },
+        trigger: actorN
+          ? { kind: actorN.type === 'Persona' ? 'human' : 'external', actor: actorN.label, mechanism: '', label: uc.props.note || uc.label }
+          : { kind: 'external', actor: '', mechanism: '', label: uc.props.note || uc.label },
         commands: fset.map(f => ({ label: f.label, on: model ? model.label : wall.label, desc: '' })),
         businessRules: myAts.map(a => ({ label: `${a.localId} — gated acceptance`, desc: String(a.props.gherkin || '').split('\n').join(' · ') })),
         policies: i === items.length - 1 ? pubs2.map(({ k, cp }) => ({ label: k.label, desc: k.props.mechanism || '', crosses: (cp || {}).label || '' })) : [],

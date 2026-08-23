@@ -11,7 +11,7 @@ export const flowConfig = {
     SimpleNode: {
       toolbar: [],
       contextMenu: ["copyNode", "cutNode", "deleteNode", "pasteNode", "submapStart", "submapEnd", "markEndNode"],
-      decorators: ["Grounding"],
+      decorators: ["Grounding", "TriggerBadge"],
       showEndMarker: true,
     },
     ReferenceNode: { toolbar: [], contextMenu: ["deleteNode"], decorators: [], showEndMarker: true },
@@ -51,7 +51,7 @@ export const contextMapConfig = {
   nodeTypes: {
     // ContextKind decorator renders the node's classifying label (component / seam /
     // external) under the box — the context map has no property panel.
-    SimpleNode: { toolbar: [], contextMenu: [], decorators: ["ContextKind"], showEndMarker: true },
+    SimpleNode: { toolbar: [], contextMenu: [], decorators: ["ContextKind", "TriggerBadge"], showEndMarker: true },
     SubmapNode: { toolbar: [], contextMenu: ["submapExpand"], decorators: [], showEndMarker: true },
     SubmapEndNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: false },
     ReferenceNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },

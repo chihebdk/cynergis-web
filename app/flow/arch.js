@@ -137,6 +137,15 @@ export function archLabel(id) {
   return id;
 }
 
+// Spec-side trigger kinds (who/why set an event off) — same icon language as
+// ENTRY_META below so a human trigger looks identical on every canvas.
+export const TRIGGER_KIND_META = {
+  human:    { icon: "🧑", label: "Human trigger" },
+  policy:   { icon: "☴", label: "Automation — a rule reacts to an event or clock" },
+  external: { icon: "⇄", label: "External party or feed" },
+  upstream: { icon: "↳", label: "Upstream step" },
+};
+
 // Entry-point taxonomy (adopted from FlowAI's trigger types).
 export const ENTRY_META = {
   apiTrigger: { icon: "❲❳", label: "API call" },

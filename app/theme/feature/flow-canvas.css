@@ -143,6 +143,27 @@
   box-shadow: none !important;
   top: -1.85rem !important;
 }
+/* Trigger-kind badge floated above the card's top-left corner (D-143). */
+.cyn-trigbadge {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 11px; line-height: 1;
+  background: var(--panel, #fff);
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 6px; padding: 2px 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: default;
+}
+.cyn-trigbadge i { font-style: normal; font-size: 9px; color: var(--ink-3, #6b7280); }
+/* Trigger legend, bottom-right of the canvas shell. */
+.cyn-triglegend {
+  position: absolute; bottom: 8px; right: 10px; z-index: 20;
+  font-size: 10px; color: var(--ink-3, #6b7280);
+  background: color-mix(in srgb, var(--panel, #fff) 88%, transparent);
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 6px; padding: 3px 8px;
+  pointer-events: none; white-space: nowrap;
+}
+
 /* Context-map node kind label, shown under the box. */
 .cyn-ctxkind {
   font-size: 9px;

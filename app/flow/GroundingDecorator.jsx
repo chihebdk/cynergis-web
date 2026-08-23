@@ -2,7 +2,7 @@
 
 import { useNodeId } from "@xyflow/react";
 import { useNodeCache, useDecoratorsStore } from "@flowai/canvas";
-import { componentById, deriveArch } from "./arch";
+import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META } from "./arch";
 
 function grounding(node) {
   if (!node) return { refs: 0, assumed: 0 };
@@ -42,6 +42,53 @@ export function registerGroundingDecorator() {
   store.register("Grounding", Grounding);
   store.setDecorator("Grounding", true);
   registered = true;
+}
+
+// ── Trigger-kind badge, floated above the card's top-left corner ──
+// Spec-side trigger (who/why — human/policy/external) wins; wire-side entry
+// point (API/message/schedule/db, from the arch registry) is the fallback.
+// HONESTY GATE: renders only when a trigger is genuinely recorded — a kind
+// with an empty actor AND mechanism (the old derived-flow default) shows
+// nothing rather than claiming a trigger nobody recorded.
+export function TriggerBadge() {
+  const id = useNodeId();
+  const { getItem } = useNodeCache();
+  const node = id ? getItem(id) : null;
+  if (!node) return null;
+  let icon = null, tip = null, extra = 0;
+  const t = node.trigger;
+  if (t && t.kind && (t.actor || t.mechanism)) {
+    const m = TRIGGER_KIND_META[t.kind] || TRIGGER_KIND_META.upstream;
+    icon = m.icon;
+    tip = `${m.label}${t.actor ? " — " + t.actor : ""}${t.mechanism ? " · " + t.mechanism : ""}`;
+  }
+  if (!icon && node.kind === "event") {
+    const arch = archFor(node);
+    const em = arch?.entry ? ENTRY_META[arch.entry.type] : null;
+    if (em) {
+      icon = em.icon;
+      tip = `${em.label}${arch.entry.topic ? " — " + arch.entry.topic : ""}${arch.entry.label ? " · " + arch.entry.label : ""}`;
+      const comp = componentById(arch.component);
+      extra = Math.max(0, (comp?.trigger || []).length - 1);
+    }
+  }
+  if (!icon) return null;
+  // zero-footprint anchor (same pattern as Grounding) — never shifts the handle.
+  return (
+    <div style={{ position: "absolute", top: 0, left: 4, width: 0, height: 0, zIndex: 10 }}>
+      <span className="cyn-trigbadge" title={tip} style={{ position: "absolute", bottom: "5px", left: 0, whiteSpace: "nowrap" }}>
+        {icon}{extra > 0 ? <i>+{extra}</i> : null}
+      </span>
+    </div>
+  );
+}
+let tbRegistered = false;
+export function registerTriggerBadgeDecorator() {
+  if (tbRegistered) return;
+  const store = useDecoratorsStore.getState();
+  store.register("TriggerBadge", TriggerBadge);
+  store.setDecorator("TriggerBadge", true);
+  tbRegistered = true;
 }
 
 // ── Context-map node kind, shown UNDER the box ──

@@ -6,7 +6,7 @@ import { MapStateProvider } from "./providers.jsx";
 import { useGlobalCache } from "@flowai/state";
 import { flowConfig, contextMapConfig } from "./config";
 import { panelTabComponents, SystemMapModal } from "./panelTabs.jsx";
-import { registerGroundingDecorator, registerContextKindDecorator } from "./GroundingDecorator.jsx";
+import { registerGroundingDecorator, registerContextKindDecorator, registerTriggerBadgeDecorator } from "./GroundingDecorator.jsx";
 
 // FlowMapSelfWired handles node/edge building, layout, submaps, toolbars and editing.
 const FlowMapSelfWired = dynamic(
@@ -71,7 +71,7 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
   }, [isMapVariant]);
   const toggleExpand = () => (expanded ? collapse() : setExpanded(true));
 
-  useEffect(() => { registerGroundingDecorator(); registerContextKindDecorator(); }, []);
+  useEffect(() => { registerGroundingDecorator(); registerContextKindDecorator(); registerTriggerBadgeDecorator(); }, []);
 
   // Mirror the canvas's layout mode (org | htree) as a wrapper class. The org
   // layout places children at the Start node's REGISTERED width (165px) + 150px,
@@ -162,6 +162,7 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
         <div ref={paneWrapRef} className="w-full h-full min-h-[500px]">
           <GatedCanvas flowId={flowId} config={config} remountKey={remountKey} />
         </div>
+        <div className="cyn-triglegend" aria-hidden="true">Trigger&thinsp;: 🧑 human · ☴ automation · ⇄ external · ❲❳ API · ◷ schedule · 🗃 data change</div>
         {variant === "systemmap" && <SystemMapModal mapId={flowId} />}
       </div>
     </MapStateProvider>
