@@ -333,7 +333,7 @@ function TriggerList({ node }) {
             ))}
           </div>
         </div>
-        <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
+        <div className="flex-none w-[360px] min-h-0 overflow-y-auto">
           <CmpField k="Type"><TrigIcon k={meta.entry || cur.type} /> {cur.type}{cur.kind ? <span className="text-gray-500"> · {cur.kind}</span> : null}</CmpField>
           <CmpField k={`Source${(cur.sources || []).length > 1 ? "s" : ""} (publisher)`}>
             <span className="flex flex-col gap-1">{(cur.sources || []).map((s2) => <span key={s2}>{s2}</span>)}</span>
@@ -342,7 +342,7 @@ function TriggerList({ node }) {
           {fields.map((f) => <CmpField k={IMPL_LABEL[f] || f} key={f}>{impl[f]}</CmpField>)}
           {fields.length === 0 && <div className="text-[11px] text-gray-400">No implementation details recorded yet.</div>}
         </div>
-        <div className="flex-none w-[250px] min-w-0 flex flex-col min-h-0">
+        <div className="flex-1 min-w-0 flex flex-col min-h-0">
           <span className="cyn-cmp-k pb-2">Description</span>
           <div className="cyn-cmp-detail flex-1 min-h-0 overflow-y-auto p-3 text-[12px]">{node.description || "—"}</div>
         </div>
