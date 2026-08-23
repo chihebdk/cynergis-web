@@ -812,6 +812,7 @@ function OrgApp() {
                   { key: 'subdomains', label: 'Subdomains', ico: 'product' },
                   { key: 'portfolio', label: 'Product portfolio', ico: 'portfolio' },
                   { key: 'prioritize', label: 'Prioritize products', ico: 'board' },
+                  { key: 'workflows', label: 'Workflows', ico: 'flow' },
                   { key: 'map', label: 'Context map', ico: 'dash' },
                   { key: 'system', label: 'System map', ico: 'layers' },
                 ];
@@ -825,7 +826,9 @@ function OrgApp() {
                     <div className="asc-nav" style={{ marginTop:'8px' }} onClick={() => navSub('domains')}><Ico k="back" w={15} /> All domains</div>
                   </aside>
                   <main className="asc-main">
-                    {(!q.bc && q.dtab === 'map' && window.MerDomainMap)
+                    {(!q.bc && q.dtab === 'workflows' && window.MerDomainWorkflows)
+                      ? React.createElement(window.MerDomainWorkflows, { id: domScope })
+                      : (!q.bc && q.dtab === 'map' && window.MerDomainMap)
                       ? React.createElement(window.MerDomainMap, { id: domScope })
                       : (!q.bc && q.dtab === 'system' && window.MerDomainSystem)
                         ? React.createElement(window.MerDomainSystem, { id: domScope })

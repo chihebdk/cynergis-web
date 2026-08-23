@@ -6,6 +6,7 @@ import { systemMap, systemSubmaps } from "./systemmap-data";
 import { claimsFlows, ccContextMap, ccContextSubmaps, ccSystemMap, ccSystemSubmaps } from "./claims-flows";
 import { domainMaps, domainSubmaps } from "./domain-maps";
 import { buildDerivedFlows } from "./derived-flows";
+import { claimsWorkflow, claimsWorkflowSubmaps } from "./workflows";
 
 // In-memory store (mapper starter pattern), seeded with our flows as `map` docs.
 const collections = new Map();
@@ -26,6 +27,8 @@ for (const sm of ccContextSubmaps) getCollection("submap").set(sm.id, structured
 getCollection("map").set(ccSystemMap.id, structuredClone(ccSystemMap));
 for (const sm of ccSystemSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 for (const flow of buildDerivedFlows()) getCollection("map").set(flow.id, structuredClone(flow));   // D-131: every other wall
+getCollection("map").set(claimsWorkflow.id, structuredClone(claimsWorkflow));   // D-148: the end-to-end workflow
+for (const sm of claimsWorkflowSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 for (const m of domainMaps) getCollection("map").set(m.id, structuredClone(m));
 for (const sm of domainSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 

@@ -64,12 +64,16 @@ export const fnolFlow = {
            domain call — our landscape, across the boundary (the portal
              pane; another wall's module);
            external system call — outside the organization (police feed).
-         Entry-node coherence: a PIVOTAL node is the context's front door —
-         its doors are domain/external; interior nodes internal/sequential.
+         D-148 settles the kind question BY DRAWING: on the claims workflow
+         the pane and the workspace sit INSIDE the FNOL submap (the context
+         owns its channels — recorded packaging), so both are internal; the
+         police feed crosses in from an external square. Real domain calls
+         are the seams the workflow shows crossing submap boundaries:
+         completed-loss-report → Coverage, threshold-breach → Total loss.
          Spec artifacts: OpenAPI for API doors, AsyncAPI (consumer) for
          Message doors — both embed the shared parameter schema. */
       triggers: [
-        { kind: "domain call", type: "API",
+        { kind: "internal module call", type: "API",
           sources: ["Claimant (policyholder) — via Customer Portal · digital FNOL pane"],
           callers: [{ component: "C5", prod: "PROD-CUSTOMER-PORTAL" }],
           impl: { endpoint: "POST /claims/loss-reports", spec: "OpenAPI · claims-intake-api v1", schema: "LossReportIntake v1", gateway: "Public API gateway", authn: "Customer session (OIDC)" } },

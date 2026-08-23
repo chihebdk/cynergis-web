@@ -4,6 +4,7 @@ import './kg-v4.gen';
 import './org-refchart';
 /* the flow canvas, for the domain-level maps (D-120) — client-only, heavy */
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
+import { WORKFLOW_INVENTORY } from '../flow/workflows.js';   // D-148: pass-1 inventory
 const OrgTreeFlow = dynamic(() => import('./OrgTreeFlow.jsx'), { ssr: false });   // D-141: the drillable structure chart
 import { stageChange } from './kg-query';
 /* ============================================================
@@ -1967,6 +1968,79 @@ if (typeof window !== 'undefined') window.MerPlatforms = MerPlatforms;
 
 /* the domain's Context map page (D-119): every typed seam touching the
    domain's contexts, from the org graph's context map */
+/* ── D-148: the domain's Workflows page — big-picture first ──
+   Pass 1: the inventory (authored workflows + journeys still waiting for
+   one). Pass 2: the end-to-end canvas, walls as reusable submaps (collapse =
+   context map, expand = storming). Pass 3: the boundary check — every
+   boundary-crossing edge verified against the recorded seams. */
+function MerDomainWorkflows({ id }) {
+  if (!M) return null;
+  const d = M.domains.find(x => x.node.localId === id);
+  if (!d) return null;
+  const member = M.members[id];
+  const WF = WORKFLOW_INVENTORY;
+  const mine = WF.filter(w => w.domain === id);
+  const journeys = member ? member.nodes('Journey') : [];
+  const covered = new Set(mine.map(w => w.journey));
+  const candidates = journeys.filter(j => !covered.has(j.localId));
+  return (
+    <div className="asc-page">
+      <div className="asc-page-head">
+        <div>
+          <div className="asc-eyebrow">{d.node.label} · workflows</div>
+          <h1 className="asc-page-title">Workflows</h1>
+          <p className="asc-page-sub">The business workflow drawn end-to-end BEFORE decomposition — initiators and externals outside, each bounded context a reusable submap around its events. Collapse the boxes to read the context map; expand them to read the storming detail.</p>
+        </div>
+      </div>
+      {mine.map(w => (
+        <div key={w.id}>
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">{w.name}</div>
+              <div className="asc-sec-sub">Journey {w.journey} · crosses {w.walls.length} walls: {w.walls.join(' · ')}</div>
+            </div>
+            <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+              <FlowEmbed flowId={w.id} variant="contextmap" />
+            </div>
+          </div>
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">Boundary check</div>
+              <div className="asc-sec-sub">Every workflow edge that crosses a submap boundary, verified against the recorded seams</div>
+            </div>
+            {w.boundaryCheck.map((r, i) => (
+              <div className="mer-seam" key={i}>
+                <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{r.crossing}</b></span>
+                <span className={'badge ' + (r.ok ? 'ok' : 'err')}>{r.ok ? 'recorded seam' : 'NOT RECORDED'}</span>
+                <span className="mer-seam-what">{r.contract}{r.note ? <> — <i>{r.note}</i></> : null}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      {candidates.length > 0 && (
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Journeys awaiting a workflow</div>
+            <div className="asc-sec-sub">Recorded in Discover; not yet drawn end-to-end</div>
+          </div>
+          {candidates.map(j => (
+            <div className="mer-seam" key={j.id}>
+              <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{j.label}</b></span>
+              <span className="badge">not yet authored</span>
+              <span className="mer-seam-what">{j.props.note}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {mine.length === 0 && candidates.length === 0 && (
+        <div className="ddd-empty-inline">No journeys recorded for this domain yet.</div>
+      )}
+    </div>
+  );
+}
+if (typeof window !== 'undefined') window.MerDomainWorkflows = MerDomainWorkflows;
+
 function MerDomainMap({ id }) {
   if (!M) return null;
   const d = M.domains.find(x => x.node.localId === id);
