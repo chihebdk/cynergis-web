@@ -49,7 +49,7 @@ export const fnolFlow = {
   nodes: [
     { id: "f-reported", type: "SimpleNode", parentId: "start", kind: "event", summary: "Loss reported", isPivotal: true, aggregate: "AGG-LOSSREPORT", grounds: ["UC1", "FR1"],
       arch: { component: "C1", prod: "PROD-CLAIMSCORE" },
-      description: "A loss enters the company — app, web, phone, broker or police feed. Whatever the channel, it lands on ONE loss report; a later channel touching the same loss merges, never duplicates.",
+      description: "Someone tells us about a loss for the first time — a customer in the app or on the phone, a broker, or a police feed. The Loss report module opens a single loss report and records what was reported: the circumstances, the people and vehicles involved, and any alleged injuries. If the same loss comes in again through another channel, the module adds the new information to the existing report instead of creating a duplicate. At this point it is a report of what happened — not yet a claim.",
       trigger: { kind: "external", actor: "Claimant / broker / police feed", mechanism: "Any intake channel (digital FNOL, phone, broker, feed)",
         label: "The loss event arrives from outside — channels are ways INTO the same model, never separate models.", grounds: ["UC1", "FR1"] },
       commands: [
