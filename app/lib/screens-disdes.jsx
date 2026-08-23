@@ -1,4 +1,7 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
+import { WORKFLOW_INVENTORY } from '../flow/workflows.js';
+const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
 import './trace-core';
 import { componentArchetype } from '../flow/arch';
 import { kgTests, kgEvalRuns, kgAgents } from './kg-query';
@@ -622,6 +625,48 @@ const SD_TABS = [
   { key: 'contracts',    label: 'Contracts' },
   { key: 'security',     label: 'Security' },
 ];
+/* ── D-148: the product's Workflows page — the method's first Design step ──
+   The workflow is a PRODUCT artifact: built from this product's use cases
+   and requirements, drawn end-to-end before decomposition. The domain's
+   Workflows page re-mounts these as the cross-product roll-up. */
+function DesignWorkflows({ prd }) {
+  const nav = (typeof window !== 'undefined' && window.__cynNav) || {};
+  const WF = WORKFLOW_INVENTORY.filter(w => w.product === nav.prod);
+  if (!WF.length) return (
+    <div className="ddd-empty-inline">
+      No workflow authored for this product yet. The method: draw the business workflow end-to-end from the use cases (Discover), watch the bounded contexts emerge as submaps, then decompose — Bounded contexts and System design follow from it.
+    </div>
+  );
+  return (<>
+    {WF.map(w => (
+      <div key={w.id}>
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">{w.name}</div>
+            <div className="asc-sec-sub">Journey {w.journey} · crosses {w.walls.length} walls: {w.walls.join(' · ')} · collapse = context map, expand = storming</div>
+          </div>
+          <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+            <FlowEmbed flowId={w.id} variant="contextmap" />
+          </div>
+        </div>
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Boundary check</div>
+            <div className="asc-sec-sub">Every workflow edge that crosses a submap boundary, verified against the recorded seams</div>
+          </div>
+          {w.boundaryCheck.map((r, i) => (
+            <div className="mer-seam" key={i}>
+              <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{r.crossing}</b></span>
+              <span className={'badge ' + (r.ok ? 'ok' : 'err')}>{r.ok ? 'recorded seam' : 'NOT RECORDED'}</span>
+              <span className="mer-seam-what">{r.contract}{r.note ? <> — <i>{r.note}</i></> : null}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+  </>);
+}
+
 function DesignArchitecture({ prd }) {
   const A = window.__ARCH__;
   const open = useOpen();
@@ -2057,6 +2102,7 @@ function DisDesContent({ phase, entry, prd }) {
     'X/governance':          DesignControls,
     // Design (genuine outputs)
     'Design/arch':           DesignArchitecture,
+    'Design/workflows':      DesignWorkflows,
     // Build (as-built actuals — D-035)
     'Build/infra':           BuildInfrastructure,
     'Build/integ':           BuildIntegrations,

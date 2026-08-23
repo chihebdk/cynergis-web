@@ -109,6 +109,7 @@ export const WORKFLOW_INVENTORY = [
   {
     id: "wf-claims",
     domain: "DOM-CLAIMS",
+    product: "PROD-CLAIMSCORE",   /* owner: the product whose use cases form the spine (UC1–UC8); other products contribute surfaces */
     journey: "JR-CLAIM",
     name: "A loss is reported → the claim is settled",
     walls: ["CTX-FNOL", "CTX-COVERAGE", "CTX-AB", "CTX-TOTAL-LOSS"],

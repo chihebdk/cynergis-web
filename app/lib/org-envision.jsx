@@ -87,6 +87,9 @@ const PHASE_ENTRIES = {
     { key: 'scope',        label: 'Product scope',               ico: 'arrow' },
   ],
   Design: [
+    /* D-148: the method order — draw the business workflow first, decompose
+       into bounded contexts second, then the system design */
+    { key: 'workflows',   label: 'Workflows',                  ico: 'flow' },
     { key: 'contexts',    label: 'Bounded contexts',           ico: 'product' },
     { key: 'contextmap',  label: 'Context map',                ico: 'flow' },
     // D-045: renamed from Architecture — Design designs, Build architects. Key stays
