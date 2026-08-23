@@ -6,7 +6,7 @@ import { MapStateProvider } from "./providers.jsx";
 import { useGlobalCache } from "@flowai/state";
 import { flowConfig, contextMapConfig } from "./config";
 import { panelTabComponents, SystemMapModal } from "./panelTabs.jsx";
-import { registerGroundingDecorator, registerContextKindDecorator, registerTriggerBadgeDecorator, TrigIcon } from "./GroundingDecorator.jsx";
+import { registerGroundingDecorator, registerContextKindDecorator, registerTriggerBadgeDecorator } from "./GroundingDecorator.jsx";
 
 // FlowMapSelfWired handles node/edge building, layout, submaps, toolbars and editing.
 const FlowMapSelfWired = dynamic(
@@ -161,15 +161,6 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
         </button>
         <div ref={paneWrapRef} className="w-full h-full min-h-[500px]">
           <GatedCanvas flowId={flowId} config={config} remountKey={remountKey} />
-        </div>
-        <div className="cyn-triglegend" aria-hidden="true">
-          <b>Trigger</b>
-          <span><TrigIcon k="userTrigger" /> User</span>
-          <span><TrigIcon k="messageTrigger" /> Message</span>
-          <span><TrigIcon k="scheduleTrigger" /> Scheduler</span>
-          <span><TrigIcon k="apiTrigger" /> API</span>
-          <span><TrigIcon k="dbTrigger" /> DB Storage</span>
-          <span><TrigIcon k="sequentialFlowTrigger" /> Sequential</span>
         </div>
         {variant === "systemmap" && <SystemMapModal mapId={flowId} />}
       </div>
