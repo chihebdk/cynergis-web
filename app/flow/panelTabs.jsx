@@ -345,7 +345,7 @@ function CallerModal({ caller, onClose }) {
         </div>
         {!comp && <div className="text-[12px] text-gray-400">Component not resolved.</div>}
         {home && <div className="text-[12px] text-gray-600"><span className="text-gray-400 uppercase text-[9.5px] tracking-wide mr-2">Product</span>{home.label}</div>}
-        {wall && <div className="text-[12px] text-gray-600"><span className="text-gray-400 uppercase text-[9.5px] tracking-wide mr-2">Wall</span>{wall}</div>}
+        {wall && <div className="text-[12px] text-gray-600"><span className="text-gray-400 uppercase text-[9.5px] tracking-wide mr-2">Serves wall</span>{wall}</div>}
         {comp && (comp.note || comp.overview) && <div className="text-[12px] text-gray-600">{comp.note || comp.overview}</div>}
         {comp && comp.code && <div className="text-[11px] font-mono text-gray-500">{typeof comp.code === "string" ? comp.code : comp.code.path}</div>}
         <button type="button" className="self-start text-[12px] font-medium text-indigo-700 hover:underline" onClick={go}>open component page →</button>

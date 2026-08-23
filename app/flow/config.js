@@ -3,7 +3,7 @@
 // property tab carry the D-031 grounding.
 export const flowConfig = {
   fitView: true,                       // fit all nodes into view on load
-  layout: { available: ["org", "htree"], default: "htree" },
+  layout: { available: ["org", "htree"], default: "org" },   // Org is the default view (sponsor)
   // View-focused: no hover add-toolbar (it reserves vertical space taller than the
   // card and would shift the node's handle off-center → misaligned edges). Editing
   // stays available via the right-click context menu.

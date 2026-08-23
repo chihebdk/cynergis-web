@@ -54,16 +54,22 @@ export const fnolFlow = {
         label: "The loss event arrives from outside — channels are ways INTO the same model, never separate models.", grounds: ["UC1", "FR1"] },
       /* D-147 (final shape): every door triggers the SAME action with the SAME
          parameter schema (see params below). Entries = call types; kind names
-         the CALLING CODE's boundary relationship to this module:
-           internal module call — same wall (the portal's FNOL pane is
-             part_of CTX-FNOL: same bounded context, different product);
-           domain call — another bounded context in the same domain;
-           external system call — outside the organization.
-         Humans/systems live in sources. Spec artifacts: OpenAPI for API
-         doors, AsyncAPI (consumer) for Message doors — both embed the shared
-         parameter schema from the registry. */
+         the CALLING CODE's relationship to this context's MODEL boundary —
+         model/API membership decides, never packaging alignment:
+           internal module call — the module's own surfaces (the guided
+             intake workspace). The portal's FNOL pane is NOT internal even
+             though the portal graph packages it part_of CTX-FNOL: the pane
+             consumes the published intake API — a client of the boundary
+             cannot be inside it;
+           domain call — our landscape, across the boundary (the portal
+             pane; another wall's module);
+           external system call — outside the organization (police feed).
+         Entry-node coherence: a PIVOTAL node is the context's front door —
+         its doors are domain/external; interior nodes internal/sequential.
+         Spec artifacts: OpenAPI for API doors, AsyncAPI (consumer) for
+         Message doors — both embed the shared parameter schema. */
       triggers: [
-        { kind: "internal module call", type: "API",
+        { kind: "domain call", type: "API",
           sources: ["Claimant (policyholder) — via Customer Portal · digital FNOL pane"],
           callers: [{ component: "C5", prod: "PROD-CUSTOMER-PORTAL" }],
           impl: { endpoint: "POST /claims/loss-reports", spec: "OpenAPI · claims-intake-api v1", schema: "LossReportIntake v1", gateway: "Public API gateway", authn: "Customer session (OIDC)" } },
