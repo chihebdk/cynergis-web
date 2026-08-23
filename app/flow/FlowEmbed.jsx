@@ -164,13 +164,12 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
         </div>
         <div className="cyn-triglegend" aria-hidden="true">
           <b>Trigger</b>
-          <span><TrigIcon k="human" /> human</span>
-          <span><TrigIcon k="policy" /> automation</span>
-          <span><TrigIcon k="external" /> external</span>
-          <span><TrigIcon k="messageTrigger" /> message</span>
+          <span><TrigIcon k="userTrigger" /> User</span>
+          <span><TrigIcon k="messageTrigger" /> Message</span>
+          <span><TrigIcon k="scheduleTrigger" /> Scheduler</span>
           <span><TrigIcon k="apiTrigger" /> API</span>
-          <span><TrigIcon k="scheduleTrigger" /> schedule</span>
-          <span><TrigIcon k="dbTrigger" /> data change</span>
+          <span><TrigIcon k="dbTrigger" /> DB Storage</span>
+          <span><TrigIcon k="sequentialFlowTrigger" /> Sequential</span>
         </div>
         {variant === "systemmap" && <SystemMapModal mapId={flowId} />}
       </div>

@@ -156,13 +156,23 @@ export const POLICY_VIA_META = {
   inline:  { iconKey: "sequentialFlowTrigger", label: "In-process rule — same pipeline, no broker hop" },
 };
 
-// Entry-point taxonomy (adopted from FlowAI's trigger types).
+// Entry-point taxonomy — FlowAI's canonical trigger types with FlowAI's own
+// Iconify icons (reference/flowai …/triggers/SelectTriggerItems.tsx).
 export const ENTRY_META = {
-  apiTrigger: { icon: "❲❳", label: "API call" },
-  messageTrigger: { icon: "☴", label: "Message / topic" },
-  dbTrigger: { icon: "🗃", label: "Database change" },
-  scheduleTrigger: { icon: "◷", label: "Schedule" },
-  userTrigger: { icon: "🧑", label: "Human / UI" },
-  objectStorageTrigger: { icon: "▣", label: "Object storage" },
-  sequentialFlowTrigger: { icon: "↳", label: "Upstream step" },
+  apiTrigger: { icon: "eos-icons:api-outlined", label: "API" },
+  messageTrigger: { icon: "tabler:timeline-event", label: "Message" },
+  dbTrigger: { icon: "icon-park-outline:database-power", label: "DB Storage" },
+  scheduleTrigger: { icon: "ri:timer-flash-line", label: "Scheduler" },
+  userTrigger: { icon: "fluent-mdl2:user-event", label: "User" },
+  objectStorageTrigger: { icon: "carbon:volume-object-storage", label: "Object Storage" },
+  sequentialFlowTrigger: { icon: "fluent-mdl2:flow", label: "Sequential Flow" },
+};
+
+// Spec-side kind → FlowAI trigger type (for the node badge icon). A policy's
+// `via` refines this further (see POLICY_VIA_META.iconKey).
+export const KIND_TO_TYPE = {
+  human: "userTrigger",
+  external: "messageTrigger",
+  policy: "messageTrigger",
+  upstream: "sequentialFlowTrigger",
 };
