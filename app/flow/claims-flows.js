@@ -52,6 +52,25 @@ export const fnolFlow = {
       description: "Someone tells us about a loss for the first time — a customer in the app or on the phone, a broker, or a police feed. The Loss report module opens a single loss report and records what was reported: the circumstances, the people and vehicles involved, and any alleged injuries. If the same loss comes in again through another channel, the module adds the new information to the existing report instead of creating a duplicate. At this point it is a report of what happened — not yet a claim.",
       trigger: { kind: "external", actor: "Claimant / broker / police feed", mechanism: "Any intake channel (digital FNOL, phone, broker, feed)",
         label: "The loss event arrives from outside — channels are ways INTO the same model, never separate models.", grounds: ["UC1", "FR1"] },
+      /* D-147: the doors, enumerated — all converge on "Open loss report" (the
+         convergence invariant that makes multiple triggers legal). Ordered by
+         strategic dominance: digital first. impl blocks = architecture time. */
+      triggers: [
+        { kind: "human", type: "User", actor: "Claimant (policyholder)", source: "Customer Portal — Claims status & digital FNOL pane",
+          why: "The customer reports the loss digitally — the strategic default channel.", grounds: ["UC1", "FR1"],
+          impl: { surface: "Customer Portal · C5 pane", action: "Guided FNOL form — submit", authz: "Authenticated customer session" } },
+        { kind: "human", type: "User", actor: "Intake adjuster — claimant or third party by phone", source: "Loss report module — guided intake workspace",
+          why: "Licensed first-notice conversation: judgement-heavy intake, not scripting.", grounds: ["UC2", "FR1"],
+          impl: { surface: "Loss report module · intake workspace", action: "Guided conversation — complete & submit", authz: "Licensed intake role" } },
+        { kind: "human", type: "User", actor: "Broker, on behalf of the insured", source: "Loss report module — guided intake workspace (desk)",
+          why: "Broker-reported losses converge on the same licensed intake path — no broker FNOL pane exists.", grounds: ["UC1"],
+          impl: { surface: "Loss report module · intake workspace", action: "Guided conversation — complete & submit" } },
+        { kind: "external system", type: "Message", actor: "Police / reporting authority", source: "Provincial police-report feed",
+          why: "A reported collision reaches us without anyone calling.", grounds: ["UC1", "FR1"],
+          impl: { topic: "claims.loss-reports.police.v1", schema: "PoliceReportNotice v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claimscore-fnol-intake", delivery: "at-least-once · partition key: police report #",
+            idempotency: "Merges into the existing loss report — never a duplicate (FR1)", dlq: "claims.loss-reports.police.dlq" } },
+      ],
       commands: [
         { label: "Open loss report", on: "AGG-LOSSREPORT", desc: "Record circumstances, parties, vehicles and alleged injuries as reported — not yet a claim.", grounds: ["UC1", "FR1"] },
       ],

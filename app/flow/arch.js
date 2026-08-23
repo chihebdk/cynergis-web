@@ -139,6 +139,30 @@ export function archLabel(id) {
   return id;
 }
 
+// ── D-147: the comprehensive trigger record ──
+// A node may carry `triggers: []` — each { kind, type, actor, source, why,
+// grounds, impl:{...} }. kind = boundary classification (human · external
+// system · automation · upstream); type = one of FlowAI's seven wire types;
+// source = WHO PUBLISHES the thing we receive; impl = the per-type
+// architecture block. Design-complete = kind+type+actor+source; architecture-
+// complete = the type's required impl fields present. Started in Design,
+// completed in Architecture — the completion indicator is computed, never set.
+export const TRIGGER_TYPES = {
+  User:       { entry: "userTrigger",           required: ["surface", "action"], optional: ["authz"] },
+  Message:    { entry: "messageTrigger",        required: ["topic", "schema", "broker"], optional: ["consumerGroup", "delivery", "idempotency", "dlq"] },
+  Scheduler:  { entry: "scheduleTrigger",       required: ["schedule"], optional: ["owner", "misfire"] },
+  API:        { entry: "apiTrigger",            required: ["endpoint", "spec"], optional: ["gateway", "authn"] },
+  DB:         { entry: "dbTrigger",             required: ["store", "mechanism"], optional: ["operation", "stream"] },
+  Storage:    { entry: "objectStorageTrigger",  required: ["bucket", "event"], optional: ["pattern", "notification"] },
+  Sequential: { entry: "sequentialFlowTrigger", required: [], optional: [] },
+};
+export function triggerCompletion(t) {
+  const design = !!(t.kind && t.type && t.actor && t.source);
+  const meta = TRIGGER_TYPES[t.type];
+  const impl = t.impl || {};
+  return { design, arch: !!meta && meta.required.every((f) => !!impl[f]) };
+}
+
 // Spec-side trigger kinds (who/why set an event off) — same icon language as
 // ENTRY_META below so a human trigger looks identical on every canvas.
 export const TRIGGER_KIND_META = {

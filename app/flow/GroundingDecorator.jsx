@@ -3,7 +3,7 @@
 import { useNodeId } from "@xyflow/react";
 import { useNodeCache, useDecoratorsStore } from "@flowai/canvas";
 import { Icon } from "@iconify/react";
-import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE } from "./arch";
+import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE, TRIGGER_TYPES } from "./arch";
 
 function grounding(node) {
   if (!node) return { refs: 0, assumed: 0 };
@@ -74,8 +74,18 @@ export function TriggerBadge() {
   const node = id ? getItem(id) : null;
   if (!node) return null;
   let key = null, tip = null, extra = 0;
+  /* D-147: an enumerated trigger list wins — primary door's icon + "+n".
+     The state proxy only exposes FlowAI-schema fields; custom fields like
+     `triggers` live on the underlying .record. */
+  const list = ((node.record || node).triggers) || [];
+  if (list.length && TRIGGER_TYPES[list[0].type]) {
+    const pr = list[0];
+    key = TRIGGER_TYPES[pr.type].entry;
+    extra = list.length - 1;
+    tip = `${pr.type} — ${pr.actor} · ${pr.source}` + (extra ? ` (+${extra} more door${extra > 1 ? "s" : ""})` : "");
+  }
   const t = node.trigger;
-  if (t && t.kind && (t.actor || t.mechanism)) {
+  if (!key && t && t.kind && (t.actor || t.mechanism)) {
     const kind = TRIGGER_KIND_META[t.kind] ? t.kind : "upstream";
     const via = t.via && POLICY_VIA_META[t.via];
     key = via ? via.iconKey : KIND_TO_TYPE[kind];   /* one FlowAI type per node */

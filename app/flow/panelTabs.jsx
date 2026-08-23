@@ -6,7 +6,7 @@ import { useNodeCache } from "@flowai/canvas";
 import { useGlobalStore } from "@flowai/state";
 import { resolveGround } from "./data";
 import { TrigIcon } from "./GroundingDecorator.jsx";
-import { archLabel, deriveArch, ENTRY_META, POLICY_VIA_META, componentById, componentForNode, componentArchetype } from "./arch";
+import { archLabel, deriveArch, ENTRY_META, POLICY_VIA_META, TRIGGER_TYPES, triggerCompletion, componentById, componentForNode, componentArchetype } from "./arch";
 
 /* ── reference → "where it's defined" navigation ──
    Chips resolve to a view in the host app and navigate via the global router
@@ -285,6 +285,81 @@ function SimpleCard({ node }) {
 }
 
 /* ── EventCards: the panel body for an event node (or a legacy component node) ── */
+/* ── D-147: the multi-trigger view — every door selectable for its own detail ──
+   Left: one row per trigger (type icon · actor · completion dots). Right: the
+   selected trigger's full record — the design-time fields plus the per-type
+   implementation block, with computed design/architecture completion. The
+   convergence line above the list states WHY plurality is legal here. */
+const IMPL_LABEL = {
+  surface: "Surface", action: "Action", authz: "Authorization",
+  topic: "Topic", schema: "Schema", broker: "Broker", consumerGroup: "Consumer group",
+  delivery: "Delivery", idempotency: "Idempotency", dlq: "Dead letter",
+  schedule: "Schedule", owner: "Owner", misfire: "Misfire policy",
+  endpoint: "Endpoint", spec: "API spec", gateway: "Gateway", authn: "Authentication",
+  store: "Store", mechanism: "Mechanism", operation: "Operation", stream: "Stream",
+  bucket: "Bucket", event: "On event", pattern: "Pattern", notification: "Notification",
+  predecessor: "Predecessor",
+};
+function CompletionDots({ t }) {
+  const c = triggerCompletion(t);
+  return (
+    <span className="inline-flex items-center gap-1 text-[9px]">
+      <span className={c.design ? "text-emerald-700" : "text-gray-400"} title={`design ${c.design ? "complete" : "incomplete"}`}>design {c.design ? "✓" : "◻"}</span>
+      <span className={c.arch ? "text-emerald-700" : "text-amber-600"} title={`architecture ${c.arch ? "complete" : "incomplete"}`}>arch {c.arch ? "✓" : "◻"}</span>
+    </span>
+  );
+}
+function TriggerList({ node }) {
+  const trigs = node.triggers || [];
+  const done = trigs.map(triggerCompletion);
+  const dN = done.filter((c) => c.design).length, aN = done.filter((c) => c.arch).length;
+  const conv = (node.commands || []).map((c) => c.label).join(" · ");
+  return (
+    <CmpListDetail
+      items={trigs}
+      title={`${trigs.length} triggers · design ${dN}/${trigs.length} · architecture ${aN}/${trigs.length}`}
+      banner={conv ? (
+        <div className="px-4 pt-3 text-[11px] text-gray-600">
+          All doors converge on: <b>{conv}</b>{node.aggregate ? <> → <span className="font-mono text-[10px]">{node.aggregate}</span></> : null}
+          <span className="text-emerald-700"> · ✓ convergent</span>
+        </div>
+      ) : null}
+      nameOf={(t) => (
+        <span className="flex items-center gap-2 min-w-0">
+          <TrigIcon k={(TRIGGER_TYPES[t.type] || {}).entry || t.type} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">{t.type} · {t.actor}</span>
+            <span className="block truncate text-[10px] text-gray-500">{t.source}</span>
+          </span>
+          <CompletionDots t={t} />
+        </span>
+      )}
+      renderDetail={(t) => {
+        const meta = TRIGGER_TYPES[t.type] || { required: [], optional: [] };
+        const impl = t.impl || {};
+        const fields = [...meta.required, ...meta.optional];
+        return (
+          <div>
+            <CmpField k="Kind">{t.kind}</CmpField>
+            <CmpField k="Type"><TrigIcon k={meta.entry || t.type} /> {t.type}</CmpField>
+            <CmpField k="Actor">{t.actor}</CmpField>
+            <CmpField k="Source (publisher)">{t.source}</CmpField>
+            {t.why && <CmpField k="Why">{t.why}</CmpField>}
+            {(t.grounds || []).length > 0 && <CmpField k="Grounds"><GroundRow grounds={t.grounds} /></CmpField>}
+            <div className="cyn-cmp-k pt-3 pb-1">Implementation · {t.type}</div>
+            {fields.map((f) => (
+              <CmpField k={IMPL_LABEL[f] || f} key={f}>
+                {impl[f] || <span className={meta.required.includes(f) ? "text-amber-600" : "text-gray-400"}>{meta.required.includes(f) ? "— to be architected —" : "—"}</span>}
+              </CmpField>
+            ))}
+            <div className="pt-2"><CompletionDots t={t} /></div>
+          </div>
+        );
+      }}
+    />
+  );
+}
+
 function EventCardsBody({ node }) {
   const [tab, setTab] = useState("details");
   const [genSel, setGenSel] = useState([]);
@@ -391,7 +466,9 @@ function EventCardsBody({ node }) {
       </div>
     ),
     // this event's trigger: the spec side (who/why) + the entry point (how, on the wire)
-    trigger: () => (isEvent && node.trigger ? (
+    trigger: () => (isEvent && (((node.record || node).triggers) || []).length ? (
+      <TriggerList node={node.record || node} />
+    ) : isEvent && node.trigger ? (
       <div className="flex h-full w-full gap-5 p-4 min-h-0">
         <div className="flex-none w-[320px] flex flex-col gap-3 min-h-0 overflow-y-auto">
           <CmpField k="Kind">{tm.label}</CmpField>
