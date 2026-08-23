@@ -293,11 +293,59 @@ function SimpleCard({ node }) {
    shared parameter schema (same action behind every door). */
 const srcShort = (s2) => String(s2).split(" — ")[0];
 const srcRest = (s2) => (String(s2).split(" — ")[1] || "");
+/* the caller component's home page: its product's Design › System design */
+function callerHome(pid) {
+  const K4 = typeof window !== "undefined" && window.__KG4__;
+  if (!K4 || !K4.org) return null;
+  const g = K4.org;
+  const pn = g.nodes.find((n) => n.type === "Product" && n.localId === pid);
+  if (!pn) return null;
+  const pkg = g.edges.find((e) => e.type === "packages" && e.from === pn.id);
+  const ctx = pkg && g.nodes.find((n) => n.id === pkg.to);
+  const dom = ctx && g.nodes.find((n) => n.type === "Domain" && g.edges.some((e) => e.type === "contains" && e.from === n.id && e.to === ctx.id));
+  return { prod: pid, pf: dom ? dom.localId : null, label: pn.label };
+}
+/* the caller's wall, from its own product graph */
+function callerWall(pid, cid) {
+  const idx = typeof window !== "undefined" && window.__kg4ProdByPid;
+  const g4 = idx && idx[pid];
+  if (!g4) return null;
+  const c = g4.nodes.find((n) => n.type === "Component" && n.localId === cid);
+  const e = c && g4.edges.find((e2) => e2.type === "part_of" && e2.from === c.id);
+  const w = e && g4.nodes.find((n) => n.id === e.to);
+  return w ? w.localId : null;
+}
+function CallerDetails({ caller }) {
+  const comp = componentById(caller.component, caller.prod);
+  const home = callerHome(caller.prod);
+  const wall = callerWall(caller.prod, caller.component);
+  if (!comp) return <div className="text-[11px] text-gray-400 pt-2">Component not resolved.</div>;
+  const go = () => {
+    if (!home || typeof window === "undefined") return;
+    const t = { v: "prod", pf: home.pf, prod: home.prod, sub: "dashboard", phase: "Design", entry: "arch" };
+    /* cross-product jump: push the URL, then let the router's popstate
+       handler do the FULL apply (product resolution included) — 
+       __cynApplyProd alone only switches state within the mounted product */
+    window.cynPushUrl?.(t);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+  return (
+    <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 flex flex-col gap-1.5">
+      <div className="text-[12px]"><b>{comp.name}</b> <span className="font-mono text-[10px] text-gray-500">{comp.id}</span></div>
+      {home && <div className="text-[11px] text-gray-600">Product · {home.label}</div>}
+      {wall && <div className="text-[11px] text-gray-600">Wall · {wall}</div>}
+      {(comp.note || comp.overview) && <div className="text-[11px] text-gray-600">{comp.note || comp.overview}</div>}
+      {comp.code && <div className="text-[10px] font-mono text-gray-500">{typeof comp.code === "string" ? comp.code : comp.code.path}</div>}
+      <button type="button" className="self-start text-[11px] text-indigo-700 hover:underline" onClick={go}>open component page →</button>
+    </div>
+  );
+}
 function TriggerPanel({ node }) {
   const trigs = node.triggers || [];
   const params = node.params;
   const sources = trigs.flatMap((t) => (t.sources || []).map((s2) => ({ s2, t })));
   const conv = (node.commands || []).map((c) => c.label).join(" · ");
+  const [compSel, setCompSel] = useState(null);   // { component, prod } — the opened caller pill
   return (
     <CmpListDetail
       items={sources}
@@ -317,14 +365,33 @@ function TriggerPanel({ node }) {
           </span>
         </span>
       )}
-      renderDetail={(it) => (
-        <div>
-          <CmpField k="Kind">{it.t.kind || "—"}</CmpField>
-          <CmpField k="Type"><TrigIcon k={(TRIGGER_TYPES[it.t.type] || {}).entry || it.t.type} /> {it.t.type}</CmpField>
-          <CmpField k="Specification">{it.t.impl?.spec || "—"}</CmpField>
-          <CmpField k="Schema">{it.t.impl?.schema || (params && params.schema) || "—"}</CmpField>
-        </div>
-      )}
+      renderDetail={(it) => {
+        const callers = it.t.callers || [];
+        const open = compSel && callers.some((c) => c.component === compSel.component && c.prod === compSel.prod) ? compSel : null;
+        return (
+          <div>
+            <CmpField k="Kind">
+              <span className="inline-flex items-center flex-wrap gap-1.5">
+                {it.t.kind || "—"}
+                {callers.map((c) => {
+                  const comp = componentById(c.component, c.prod);
+                  const on = open && open.component === c.component && open.prod === c.prod;
+                  return (
+                    <button key={`${c.prod}:${c.component}`} type="button" className={`cyn-tpill tp-src${on ? " on" : ""}`}
+                      onClick={() => setCompSel(on ? null : c)}>
+                      {comp ? comp.name : c.component}
+                    </button>
+                  );
+                })}
+              </span>
+            </CmpField>
+            <CmpField k="Type"><TrigIcon k={(TRIGGER_TYPES[it.t.type] || {}).entry || it.t.type} /> {it.t.type}</CmpField>
+            <CmpField k="Specification">{it.t.impl?.spec || "—"}</CmpField>
+            <CmpField k="Schema">{it.t.impl?.schema || (params && params.schema) || "—"}</CmpField>
+            {open && <CallerDetails caller={open} />}
+          </div>
+        );
+      }}
     />
   );
 }
