@@ -6,7 +6,7 @@ import { useNodeCache } from "@flowai/canvas";
 import { useGlobalStore } from "@flowai/state";
 import { resolveGround } from "./data";
 import { TrigIcon } from "./GroundingDecorator.jsx";
-import { archLabel, deriveArch, ENTRY_META, componentById, componentForNode, componentArchetype } from "./arch";
+import { archLabel, deriveArch, ENTRY_META, POLICY_VIA_META, componentById, componentForNode, componentArchetype } from "./arch";
 
 /* ── reference → "where it's defined" navigation ──
    Chips resolve to a view in the host app and navigate via the global router
@@ -382,6 +382,9 @@ function EventCardsBody({ node }) {
           <CmpField k="Kind">{tm.label}</CmpField>
           <CmpField k="Actor">{node.trigger.actor}</CmpField>
           <CmpField k="How">{node.trigger.mechanism}</CmpField>
+          {node.trigger.via && POLICY_VIA_META[node.trigger.via] && (
+            <CmpField k="Runs as"><TrigIcon k={POLICY_VIA_META[node.trigger.via].iconKey} /> {POLICY_VIA_META[node.trigger.via].label}</CmpField>
+          )}
           <CmpField k="Crosses / grounds"><GroundRow grounds={node.trigger.grounds} crosses={node.trigger.crosses} /></CmpField>
         </div>
         <div className="flex-1 min-w-0 flex flex-col min-h-0">

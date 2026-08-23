@@ -167,6 +167,7 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
           <span><TrigIcon k="human" /> human</span>
           <span><TrigIcon k="policy" /> automation</span>
           <span><TrigIcon k="external" /> external</span>
+          <span><TrigIcon k="messageTrigger" /> message</span>
           <span><TrigIcon k="apiTrigger" /> API</span>
           <span><TrigIcon k="scheduleTrigger" /> schedule</span>
           <span><TrigIcon k="dbTrigger" /> data change</span>

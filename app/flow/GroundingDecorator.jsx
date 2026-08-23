@@ -2,7 +2,7 @@
 
 import { useNodeId } from "@xyflow/react";
 import { useNodeCache, useDecoratorsStore } from "@flowai/canvas";
-import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META } from "./arch";
+import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META } from "./arch";
 
 function grounding(node) {
   if (!node) return { refs: 0, assumed: 0 };
@@ -84,12 +84,14 @@ export function TriggerBadge() {
   const { getItem } = useNodeCache();
   const node = id ? getItem(id) : null;
   if (!node) return null;
-  let key = null, tip = null, extra = 0;
+  let key = null, viaKey = null, tip = null, extra = 0;
   const t = node.trigger;
   if (t && t.kind && (t.actor || t.mechanism)) {
     key = TRIGGER_KIND_META[t.kind] ? t.kind : "upstream";
     const m = TRIGGER_KIND_META[key];
     tip = `${m.label}${t.actor ? " — " + t.actor : ""}${t.mechanism ? " · " + t.mechanism : ""}`;
+    const via = t.via && POLICY_VIA_META[t.via];
+    if (via) { viaKey = via.iconKey; tip += ` · runs as: ${via.label}`; }
   }
   if (!key && node.kind === "event") {
     const arch = archFor(node);
@@ -106,7 +108,7 @@ export function TriggerBadge() {
   return (
     <div style={{ position: "absolute", top: 0, left: 4, width: 0, height: 0, zIndex: 10 }}>
       <span className="cyn-trigbadge" title={tip} style={{ position: "absolute", bottom: "5px", left: 0, whiteSpace: "nowrap" }}>
-        <TrigIcon k={key} />{extra > 0 ? <i>+{extra}</i> : null}
+        <TrigIcon k={key} />{viaKey ? <TrigIcon k={viaKey} /> : null}{extra > 0 ? <i>+{extra}</i> : null}
       </span>
     </div>
   );

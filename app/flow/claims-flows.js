@@ -66,7 +66,7 @@ export const fnolFlow = {
 
     { id: "f-triaged", type: "SimpleNode", parentId: "f-reported", kind: "event", summary: "Severity triaged", aggregate: "AGG-LOSSREPORT", grounds: ["UC2", "FR2"],
       description: "Model-assisted triage attaches a severity score, a lane and an initial reserve suggestion. The operator runs at Operate tier (promoted by APR-2) — adjusters audit a 10% sample.",
-      trigger: { kind: "policy", actor: "Notice-of-loss Operator (model-assisted)", mechanism: "First-notice conversation completes",
+      trigger: { kind: "policy", actor: "Notice-of-loss Operator (model-assisted)", mechanism: "First-notice conversation completes", via: "message",
         label: "The severity model scores automatically as intake completes — promoted Assist → Operate by APR-2, with the audit condition in its guardrails.", grounds: ["UC2", "FR2"] },
       commands: [
         { label: "Score severity & suggest initial reserve", on: "AGG-LOSSREPORT", desc: "Model-assisted estimate driving assignment and the first reserve suggestion.", grounds: ["FR2"] },
@@ -107,7 +107,7 @@ export const coverageFlow = {
   nodes: [
     { id: "cv-opened", type: "SimpleNode", parentId: "start", kind: "event", summary: "Claim opened against the snapshot", isPivotal: true, aggregate: "AGG-CLAIM", grounds: ["UC3", "FR3"],
       description: "The completed loss report opens the claim against the coverage picture as at DATE OF LOSS — the canonical design-time seam. Later policy changes never alter an open claim.",
-      trigger: { kind: "policy", actor: "Notice of loss (another context)", mechanism: "'completed loss report' event",
+      trigger: { kind: "policy", actor: "Notice of loss (another context)", mechanism: "'completed loss report' event", via: "message",
         label: "An inbound domain event across the internal customer–supplier seam — the claim opens as a reaction, with the triage payload attached.", crosses: "CTX-FNOL", grounds: ["UC3", "FR3"] },
       commands: [
         { label: "Open claim", on: "AGG-CLAIM", desc: "The adjudication file: coverages engaged, reserves, liability position, payments, status.", grounds: ["UC3"] },
@@ -186,7 +186,7 @@ export const abFlow = {
 
     { id: "ab-clock", type: "SimpleNode", parentId: "ab-received", branch: "80% of the clock, no decision", kind: "event", summary: "Clock escalated at 80%", aggregate: "AGG-TREATPLAN", grounds: ["FR8", "POL1"],
       description: "The clock guard fires before the statute does: at 80% with no decision, the file escalates to the queue head and the first-line risk seat is notified — before any deemed approval can occur.",
-      trigger: { kind: "policy", actor: "AB Clock Operator (Operate tier)", mechanism: "Adjournment clock reaches 80% with no decision",
+      trigger: { kind: "policy", actor: "AB Clock Operator (Operate tier)", mechanism: "Adjournment clock reaches 80% with no decision", via: "timer",
         label: "The guard runs at Operate because missing a clock IS the loss event — and the escalation cannot be muted.", grounds: ["FR8", "POL1"] },
       commands: [
         { label: "Escalate to the queue head", on: "AGG-TREATPLAN", desc: "The file jumps the queue — AT4: escalation precedes every clock expiry.", grounds: ["FR8"] },
@@ -216,7 +216,7 @@ export const totalLossFlow = {
   nodes: [
     { id: "tl-breach", type: "SimpleNode", parentId: "start", kind: "event", summary: "Threshold breached", isPivotal: true, aggregate: "AGG-SALVAGE", grounds: ["UC7", "FR9"],
       description: "Repair cost tipped past ACV — the repair file hands the vehicle to salvage disposition with the estimate of record attached, and the repair job closes.",
-      trigger: { kind: "policy", actor: "Estimating & repair (another context)", mechanism: "'threshold breach' event with the estimate of record",
+      trigger: { kind: "policy", actor: "Estimating & repair (another context)", mechanism: "'threshold breach' event with the estimate of record", via: "message",
         label: "An inbound event over the internal customer–supplier seam — the handoff carries the teardown facts (AT6).", grounds: ["UC7"] },
       commands: [
         { label: "Open salvage disposition", on: "AGG-SALVAGE", desc: "One disposition file for settlement AND recovery — opened at the moment of handoff.", grounds: ["FR9"] },
@@ -227,7 +227,7 @@ export const totalLossFlow = {
 
     { id: "tl-valued", type: "SimpleNode", parentId: "tl-breach", kind: "event", summary: "ACV determined", aggregate: "AGG-SALVAGE", grounds: ["FR9"],
       description: "Market valuation of the vehicle at date of loss — the settlement anchor and the argument to get right. Bought data, consumed through an ACL the model survives vendor switches behind.",
-      trigger: { kind: "policy", actor: "Valuation data vendors (behind the ACL)", mechanism: "Market valuation feed at date of loss",
+      trigger: { kind: "policy", actor: "Valuation data vendors (behind the ACL)", mechanism: "Market valuation feed at date of loss", via: "message",
         label: "Conformist behind an ACL — two vendor switches in a decade is the norm, and the model must survive both.", grounds: ["FR9"] },
       readModels: [
         { label: "Comparables with evidence attached", desc: "The Total-loss Operator at Suggest tier: acv.compare lays valuations against comparables — humans settle.", grounds: ["UC7"] },
@@ -249,7 +249,7 @@ export const totalLossFlow = {
 
     { id: "tl-disposed", type: "SimpleNode", parentId: "tl-settled", kind: "event", summary: "Salvage disposed & recovery credited", aggregate: "AGG-SALVAGE", isEndNode: true, grounds: ["FR9"],
       description: "Title branded, vehicle auctioned, net proceeds credited against indemnity — the recovery closes the same file the settlement opened.",
-      trigger: { kind: "policy", actor: "Salvage auction network", mechanism: "Disposal completes",
+      trigger: { kind: "policy", actor: "Salvage auction network", mechanism: "Disposal completes", via: "message",
         label: "Deterministic disposal on the auction network — brand filing and proceeds are code, not judgment.", grounds: ["FR9"] },
       commands: [
         { label: "File the title brand", on: "AGG-SALVAGE", desc: "Irreparable / salvage / rebuilt follows the VIN — the provincial record is the output.", grounds: ["FR9"] },

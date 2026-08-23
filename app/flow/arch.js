@@ -146,6 +146,16 @@ export const TRIGGER_KIND_META = {
   upstream: { label: "Upstream step" },
 };
 
+// How a POLICY trigger physically fires in running code (D-144). `via` on a
+// step's trigger names the mechanism; the badge shows it as a second icon and
+// the trigger tab as a "Runs as" line. Only rendered when recorded.
+export const POLICY_VIA_META = {
+  message: { iconKey: "messageTrigger",  label: "Message subscription — a consumer reacts to a published event" },
+  timer:   { iconKey: "scheduleTrigger", label: "Durable timer / schedule — fires at a set instant or interval" },
+  cdc:     { iconKey: "dbTrigger",       label: "Change data capture — reacts to a data change (outbox / stream)" },
+  inline:  { iconKey: "sequentialFlowTrigger", label: "In-process rule — same pipeline, no broker hop" },
+};
+
 // Entry-point taxonomy (adopted from FlowAI's trigger types).
 export const ENTRY_META = {
   apiTrigger: { icon: "❲❳", label: "API call" },

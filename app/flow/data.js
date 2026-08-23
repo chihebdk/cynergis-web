@@ -76,7 +76,7 @@ export const decisioningFlow = {
 
     { id: "e-approved-low", type: "SimpleNode", parentId: "e-scored", branch: "risk = low", kind: "event", summary: "Authorization approved", aggregate: "AGG-AUTH", isEndNode: true, grounds: ["FR1"],
       description: "Low risk — the authorization is approved straight through, with no customer friction.",
-      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = low",
+      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = low", via: "inline",
         label: "No human or external call — a low band auto-approves immediately as a reaction to the score.", grounds: ["FR1"] },
       commands: [{ label: "Apply decision (approve)", on: "AGG-AUTH", grounds: ["FR1"] }],
       arch: {
@@ -89,7 +89,7 @@ export const decisioningFlow = {
 
     { id: "e-stepup", type: "SimpleNode", parentId: "e-scored", branch: "risk = medium", kind: "event", summary: "Step-up issued", aggregate: "AGG-STEPUP", grounds: ["UC4", "FR7"],
       description: "Medium risk — the customer is challenged to prove it's them, and the authorization is held pending the outcome.",
-      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = medium",
+      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = medium", via: "inline",
         label: "A medium band never auto-approves; it routes to a step-up challenge automatically.", grounds: ["FR7"] },
       commands: [{ label: "Issue step-up challenge", on: "AGG-STEPUP", desc: "Challenge the customer (OTP or passkey) and hold the authorization pending the outcome.", grounds: ["FR7"] }],
       businessRules: [{ label: "A held authorization must resolve within the SLA window", desc: "A step-up cannot hold indefinitely; it either resolves or expires.", grounds: ["FR7"] }],
@@ -133,7 +133,7 @@ export const decisioningFlow = {
 
     { id: "e-blocked", type: "SimpleNode", parentId: "e-scored", branch: "risk = high", kind: "event", summary: "Authorization blocked", isPivotal: true, aggregate: "AGG-AUTH", isEndNode: true, grounds: ["UC2", "FR3"],
       description: "High risk — a reversible soft-hold is placed, and the block fans out: a case is opened and the customer is alerted.",
-      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = high",
+      trigger: { kind: "policy", actor: "Decisioning (automatic)", mechanism: "risk band = high", via: "inline",
         label: "A high band triggers an immediate reversible soft-hold — automatic, with no human in the loop.", grounds: ["FR3"] },
       commands: [{ label: "Apply decision (soft-hold)", on: "AGG-AUTH", desc: "Place a reversible hold rather than a hard decline, so a false positive can still be released.", grounds: ["FR3"] }],
       businessRules: [{ label: "An authorization cannot be both approved and blocked", desc: "AGG-AUTH holds exactly one effective decision; approve and block are mutually exclusive, and a reversal appends a superseding decision rather than mutating the log.", grounds: ["FR3"] }],
@@ -171,7 +171,7 @@ export const caseMgmtFlow = {
   nodes: [
     { id: "c-opened", type: "SimpleNode", parentId: "start", kind: "event", summary: "Case opened", isPivotal: true, aggregate: "AGG-CASE", grounds: ["UC3", "FR5"],
       description: "A block from Decisioning is queued as a fraud case for an analyst to work, linked to the triggering authorization.",
-      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event",
+      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'Authorization blocked' event", via: "message",
         label: "An inbound domain event from another context — Decisioning's block is picked up here as a fire-and-forget reaction across the seam.", crosses: "BC-DEC", grounds: ["FR5"] },
       commands: [{ label: "Open case", on: "AGG-CASE", grounds: ["FR5"] }],
       businessRules: [{ label: "A case must reference the triggering authorization", desc: "No orphan cases — every case links back to the exact authorization that was blocked, for traceability.", grounds: ["FR5"] }] },
@@ -195,7 +195,7 @@ export const caseMgmtFlow = {
 
     { id: "c-labelled", type: "SimpleNode", parentId: "c-disposed", kind: "event", summary: "Outcome labelled", aggregate: "AGG-CASE", isEndNode: true, grounds: ["FR6"],
       description: "The disposition is published as a labelled outcome — the ground truth that feeds model training and closes the decisioning loop.",
-      trigger: { kind: "policy", actor: "Case Management (automatic)", mechanism: "Case disposed",
+      trigger: { kind: "policy", actor: "Case Management (automatic)", mechanism: "Case disposed", via: "message",
         label: "A recorded disposition automatically publishes the labelled outcome — no extra human step.", grounds: ["FR6"] },
       commands: [{ label: "Publish outcome label", on: "AGG-CASE", grounds: ["FR6"] }],
       policies: [{ label: "When labelled → feed model training", desc: "The Feature Pipeline ingests the label so training data stays fresh — the loop from decision to disposition back into the model.", crosses: "BC-DEC", grounds: ["FR6"] }],
@@ -221,7 +221,7 @@ export const notifyFlow = {
   nodes: [
     { id: "n-sent", type: "SimpleNode", parentId: "start", kind: "event", summary: "Customer notified", isPivotal: true, grounds: ["FR4"],
       description: "A pure reaction: on a block, the customer is alerted with a confirm / deny action. This context owns no domain state of its own.",
-      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'block.placed' event (POL1)",
+      trigger: { kind: "policy", actor: "Decisioning (another context)", mechanism: "'block.placed' event (POL1)", via: "message",
         label: "An inbound domain event from Decisioning — the block is consumed here via a published-language contract.", crosses: "BC-DEC", grounds: ["POL1", "FR4"] },
       commands: [{ label: "Send notification (confirm / deny)", desc: "Push an alert the customer can act on, closing the loop on the block.", grounds: ["FR4"] }],
       hotspots: [{ label: "Channel choice + 60s delivery SLA", desc: "Which channel, and can we guarantee delivery within 60s? Points to an off-the-shelf provider.", grounds: ["FR4"] }] },
