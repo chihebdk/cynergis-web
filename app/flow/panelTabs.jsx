@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useNodeCache } from "@flowai/canvas";
 import { useGlobalStore } from "@flowai/state";
@@ -315,29 +316,42 @@ function callerWall(pid, cid) {
   const w = e && g4.nodes.find((n) => n.id === e.to);
   return w ? w.localId : null;
 }
-function CallerDetails({ caller }) {
+function CallerModal({ caller, onClose }) {
   const comp = componentById(caller.component, caller.prod);
   const home = callerHome(caller.prod);
   const wall = callerWall(caller.prod, caller.component);
-  if (!comp) return <div className="text-[11px] text-gray-400 pt-2">Component not resolved.</div>;
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [onClose]);
   const go = () => {
     if (!home || typeof window === "undefined") return;
     const t = { v: "prod", pf: home.pf, prod: home.prod, sub: "dashboard", phase: "Design", entry: "arch" };
     /* cross-product jump: push the URL, then let the router's popstate
-       handler do the FULL apply (product resolution included) — 
+       handler do the FULL apply (product resolution included) —
        __cynApplyProd alone only switches state within the mounted product */
     window.cynPushUrl?.(t);
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
-  return (
-    <div className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 flex flex-col gap-1.5">
-      <div className="text-[12px]"><b>{comp.name}</b> <span className="font-mono text-[10px] text-gray-500">{comp.id}</span></div>
-      {home && <div className="text-[11px] text-gray-600">Product · {home.label}</div>}
-      {wall && <div className="text-[11px] text-gray-600">Wall · {wall}</div>}
-      {(comp.note || comp.overview) && <div className="text-[11px] text-gray-600">{comp.note || comp.overview}</div>}
-      {comp.code && <div className="text-[10px] font-mono text-gray-500">{typeof comp.code === "string" ? comp.code : comp.code.path}</div>}
-      <button type="button" className="self-start text-[11px] text-indigo-700 hover:underline" onClick={go}>open component page →</button>
-    </div>
+  return createPortal(
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 10050, background: "rgba(15,18,30,.45)", display: "grid", placeItems: "center" }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ width: "min(460px, 92vw)", background: "var(--panel, #fff)", borderRadius: 14, padding: "18px 20px", boxShadow: "0 20px 60px rgba(0,0,0,.25)", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-[14px]"><b>{comp ? comp.name : caller.component}</b> <span className="font-mono text-[11px] text-gray-500">{caller.component}</span></div>
+          <button type="button" aria-label="Close" className="text-gray-400 hover:text-gray-700 text-[16px] leading-none" onClick={onClose}>×</button>
+        </div>
+        {!comp && <div className="text-[12px] text-gray-400">Component not resolved.</div>}
+        {home && <div className="text-[12px] text-gray-600"><span className="text-gray-400 uppercase text-[9.5px] tracking-wide mr-2">Product</span>{home.label}</div>}
+        {wall && <div className="text-[12px] text-gray-600"><span className="text-gray-400 uppercase text-[9.5px] tracking-wide mr-2">Wall</span>{wall}</div>}
+        {comp && (comp.note || comp.overview) && <div className="text-[12px] text-gray-600">{comp.note || comp.overview}</div>}
+        {comp && comp.code && <div className="text-[11px] font-mono text-gray-500">{typeof comp.code === "string" ? comp.code : comp.code.path}</div>}
+        <button type="button" className="self-start text-[12px] font-medium text-indigo-700 hover:underline" onClick={go}>open component page →</button>
+      </div>
+    </div>,
+    document.body
   );
 }
 function TriggerPanel({ node }) {
@@ -346,7 +360,9 @@ function TriggerPanel({ node }) {
   const sources = trigs.flatMap((t) => (t.sources || []).map((s2) => ({ s2, t })));
   const conv = (node.commands || []).map((c) => c.label).join(" · ");
   const [compSel, setCompSel] = useState(null);   // { component, prod } — the opened caller pill
-  return (
+  return (<>
+    {compSel && <CallerModal caller={compSel} onClose={() => setCompSel(null)} />}
+    {
     <CmpListDetail
       items={sources}
       title={`${sources.length} source${sources.length > 1 ? "s" : ""}`}
@@ -367,7 +383,6 @@ function TriggerPanel({ node }) {
       )}
       renderDetail={(it) => {
         const callers = it.t.callers || [];
-        const open = compSel && callers.some((c) => c.component === compSel.component && c.prod === compSel.prod) ? compSel : null;
         return (
           <div>
             <CmpField k="Kind">
@@ -375,10 +390,9 @@ function TriggerPanel({ node }) {
                 {it.t.kind || "—"}
                 {callers.map((c) => {
                   const comp = componentById(c.component, c.prod);
-                  const on = open && open.component === c.component && open.prod === c.prod;
                   return (
-                    <button key={`${c.prod}:${c.component}`} type="button" className={`cyn-tpill tp-src${on ? " on" : ""}`}
-                      onClick={() => setCompSel(on ? null : c)}>
+                    <button key={`${c.prod}:${c.component}`} type="button" className="cyn-tpill tp-comp"
+                      onClick={() => setCompSel(c)}>
                       {comp ? comp.name : c.component}
                     </button>
                   );
@@ -388,12 +402,11 @@ function TriggerPanel({ node }) {
             <CmpField k="Type"><TrigIcon k={(TRIGGER_TYPES[it.t.type] || {}).entry || it.t.type} /> {it.t.type}</CmpField>
             <CmpField k="Specification">{it.t.impl?.spec || "—"}</CmpField>
             <CmpField k="Schema">{it.t.impl?.schema || (params && params.schema) || "—"}</CmpField>
-            {open && <CallerDetails caller={open} />}
           </div>
         );
       }}
-    />
-  );
+    />}
+  </>);
 }
 
 function EventCardsBody({ node }) {
