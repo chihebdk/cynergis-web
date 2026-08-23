@@ -291,9 +291,22 @@ function EventCardsBody({ node }) {
   const A = (typeof window !== "undefined" && window.__ARCH__) || {};
 
   const isEvent = node.kind === "event";
-  // event → its arch block (authored or derived) names the triggered event function
+  // event → its arch block (authored or derived) names the implementing component
   const arch = isEvent ? (node.arch || deriveArch(node)) : null;
-  const comp = (arch && componentById(arch.component)) || componentForNode(node) || null;
+  const comp = (arch && componentById(arch.component, arch.prod)) || componentForNode(node) || null;
+  /* the implementation pattern (D-146 taxonomy): process manager by nature;
+     otherwise in-flow cardinality — 1 event → function, N → microservice */
+  const { getItems } = useNodeCache();
+  const implPattern = (() => {
+    if (!comp || !arch) return null;
+    if (/process manager|router|saga/i.test(comp.name)) return "process manager";
+    const evs = (getItems ? getItems() : []).filter((n) => n && n.kind === "event");
+    const same = evs.filter((n) => {
+      const a2 = n.arch || deriveArch(n) || {};
+      return a2.component === arch.component && (a2.prod || null) === (arch.prod || null);
+    }).length || 1;
+    return same === 1 ? "function" : "microservice";
+  })();
   /* fraud's __ARCH__ domains only apply to fraud components — a v4 arch block
      (arch.prod set) must not match them on colliding C-ids (D-146 fix) */
   const domain = (comp && !(arch && arch.prod)) ? (A.domains || []).find((dm) => (dm.components || []).some((c) => c.id === comp.id)) : null;
@@ -363,7 +376,7 @@ function EventCardsBody({ node }) {
       <div className="flex h-full w-full gap-5 p-4 min-h-0">
         <div className="flex-none w-[320px] flex flex-col gap-3">
           {isEvent && <CmpField k="Domain event">{node.summary}</CmpField>}
-          <CmpField k="Event function">{comp ? <>{comp.name} · <ArchChip id={comp.id} /></> : "— not architected —"}</CmpField>
+          <CmpField k="Implemented by">{comp ? <>{comp.name} · <ArchChip id={comp.id} />{implPattern ? <> · {implPattern}</> : null}</> : "— not architected —"}</CmpField>
           <CmpField k="Domain">{domain ? domain.name : null}</CmpField>
           <CmpField k="Bounded context">{bc && <CrossesBadge to={bc} />}</CmpField>
           {isEvent && node.aggregate && <CmpField k="Aggregate"><AggChip on={node.aggregate} /></CmpField>}

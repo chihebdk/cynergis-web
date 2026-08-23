@@ -531,7 +531,7 @@ const KG_VTYPE = {
   command:     { label: 'Command',         ico: 'export',  c: 'oklch(0.55 0.12 250)' },
   event:       { label: 'Domain event',    ico: 'metric',  c: 'oklch(0.60 0.14 40)'  },
   policy:      { label: 'Policy',          ico: 'policy',  c: 'oklch(0.55 0.12 295)' },
-  component:   { label: 'Event function',  ico: 'graph',   c: 'oklch(0.52 0.13 268)' },
+  component:   { label: 'Component',       ico: 'graph',   c: 'oklch(0.52 0.13 268)' },
   contract:    { label: 'Contract',        ico: 'link',    c: 'oklch(0.55 0.10 215)' },
 };
 
