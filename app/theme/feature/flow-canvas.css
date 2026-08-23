@@ -181,6 +181,14 @@
 }
 .cyn-tpill.tp-comp:hover { background: #c7d2fe; border-color: #818cf8; }
 .cyn-tpill.tp-comp.on { box-shadow: 0 0 0 1.5px #6366f1 inset; }
+/* registry open-button beside Specification / Schema values (D-147) */
+.cyn-regbtn {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600; line-height: 1;
+  color: #4338ca; background: #eef2ff; border: 1px solid #c7d2fe;
+  border-radius: 999px; padding: 3px 9px; cursor: pointer;
+}
+.cyn-regbtn:hover { background: #e0e7ff; border-color: #818cf8; }
 
 /* Context-map node kind label, shown under the box. */
 .cyn-ctxkind {

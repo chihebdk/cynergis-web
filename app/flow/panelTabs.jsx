@@ -354,6 +354,23 @@ function CallerModal({ caller, onClose }) {
     document.body
   );
 }
+/* registry jump: no dedicated API/schema registry pages exist yet — both land
+   on the wall's Contracts tab (the app's contract registry surface); retarget
+   here when real registry pages arrive. */
+function goRegistry() {
+  if (typeof window === "undefined") return;
+  const nav = window.__cynNav || {};
+  const scope = window.__cynGroundScope || {};
+  const t = { v: "prod", pf: nav.pf || scope.pf, prod: nav.prod || scope.prod, sub: "dashboard",
+    phase: "Design", entry: "contexts", ctx: nav.ctx || scope.ctx, tab: "contracts" };
+  window.cynPushUrl?.(t);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+const RegistryBtn = ({ label }) => (
+  <button type="button" className="cyn-regbtn" onClick={goRegistry}>
+    <Icon icon="tabler:external-link" width={11} height={11} aria-hidden /> {label}
+  </button>
+);
 function TriggerPanel({ node }) {
   const trigs = node.triggers || [];
   const params = node.params;
@@ -400,8 +417,18 @@ function TriggerPanel({ node }) {
               </span>
             </CmpField>
             <CmpField k="Type"><TrigIcon k={(TRIGGER_TYPES[it.t.type] || {}).entry || it.t.type} /> {it.t.type}</CmpField>
-            <CmpField k="Specification">{it.t.impl?.spec || "—"}</CmpField>
-            <CmpField k="Schema">{it.t.impl?.schema || (params && params.schema) || "—"}</CmpField>
+            <CmpField k="Specification">
+              <span className="inline-flex items-center flex-wrap gap-2">
+                {it.t.impl?.spec || "—"}
+                {it.t.impl?.spec && <RegistryBtn label="API registry" />}
+              </span>
+            </CmpField>
+            <CmpField k="Schema">
+              <span className="inline-flex items-center flex-wrap gap-2">
+                {it.t.impl?.schema || (params && params.schema) || "—"}
+                {(it.t.impl?.schema || (params && params.schema)) && <RegistryBtn label="Schema registry" />}
+              </span>
+            </CmpField>
           </div>
         );
       }}
