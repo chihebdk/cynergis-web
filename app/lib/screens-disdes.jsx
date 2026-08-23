@@ -1,6 +1,6 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { WORKFLOW_INVENTORY } from '../flow/workflows.js';
+import { WORKFLOW_INVENTORY, workflowUcCoverage } from '../flow/workflows.js';
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
 import './trace-core';
 import { componentArchetype } from '../flow/arch';
@@ -648,6 +648,34 @@ function DesignWorkflows({ prd }) {
           <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
             <FlowEmbed flowId={w.id} variant="contextmap" />
           </div>
+        </div>
+        <div className="asc-section">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title">Use cases → this workflow</div>
+            <div className="asc-sec-sub">Computed from the grounds the events carry — each use case is a segment: its main scenario and its extended scenarios (the branches). Use cases with no events are the gaps.</div>
+          </div>
+          {(() => {
+            const cov = workflowUcCoverage(w.id, w.product);
+            return (<>
+              {cov.rows.map((r) => (
+                <div className="mer-seam" key={r.uc}>
+                  <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{r.uc} — {r.label}</b></span>
+                  <span className="badge ok">{r.main.length + r.extended.length} events</span>
+                  <span className="mer-seam-what">
+                    {r.main.length > 0 && <>main: {r.main.join(' → ')}</>}
+                    {r.extended.length > 0 && <> · extended: {r.extended.join(' · ')}</>}
+                  </span>
+                </div>
+              ))}
+              {cov.gaps.map((g) => (
+                <div className="mer-seam" key={g.uc}>
+                  <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{g.uc} — {g.label}</b></span>
+                  <span className="badge err">not in the workflow</span>
+                  <span className="mer-seam-what">No event in this workflow grounds on it — either it belongs to another workflow, it is a standing reaction (a contract, not a step), or the workflow has a gap.</span>
+                </div>
+              ))}
+            </>);
+          })()}
         </div>
         <div className="asc-section">
           <div className="asc-sec-head">

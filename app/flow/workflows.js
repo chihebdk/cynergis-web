@@ -128,4 +128,45 @@ export const WORKFLOW_INVENTORY = [
   },
 ];
 
+export const WORKFLOW_MAPS = { "wf-claims": claimsWorkflow };
+
+/* ── UC ↔ workflow mapping, computed from the grounds the events already
+   carry (never hand-asserted). Each use case = a segment of the workflow:
+   main scenario = its unbranched events; extended scenarios = its branch
+   events (the storming alternates). UCs with NO events are returned as
+   gaps — the honest rows. */
+export function workflowUcCoverage(wfId, productPid) {
+  const map = WORKFLOW_MAPS[wfId];
+  if (!map) return { rows: [], gaps: [] };
+  const byUc = {};
+  for (const n of map.nodes) {
+    if (n.kind !== "event") continue;
+    for (const g of (n.grounds || [])) {
+      if (!/^UC\d+$/.test(g)) continue;
+      (byUc[g] = byUc[g] || []).push(n);
+    }
+  }
+  /* labels + the full UC set from the owning product's lifecycle graph
+     (build the pid index if nothing else has yet — same as arch.js) */
+  let idx = typeof window !== "undefined" && window.__kg4ProdByPid;
+  if (!idx && typeof window !== "undefined" && window.__KG4__ && window.__KG4__.products) {
+    idx = window.__kg4ProdByPid = {};
+    for (const g of Object.values(window.__KG4__.products)) {
+      const pn = g.nodes.find((n) => n.type === "Product");
+      if (pn && pn.props.orgRef) idx[pn.props.orgRef.split(":").pop()] = g;
+    }
+  }
+  const g4 = idx && idx[productPid];
+  const allUcs = g4 ? g4.nodes.filter((n) => n.type === "UseCase") : [];
+  const label = (uc) => { const n = allUcs.find((x) => x.localId === uc); return n ? n.label : uc; };
+  const rows = Object.entries(byUc).map(([uc, evs]) => ({
+    uc, label: label(uc),
+    main: evs.filter((e) => !e.branch).map((e) => e.summary),
+    extended: evs.filter((e) => e.branch).map((e) => `${e.summary} (${e.branch})`),
+  })).sort((x, y) => Number(x.uc.slice(2)) - Number(y.uc.slice(2)));
+  const covered = new Set(Object.keys(byUc));
+  const gaps = allUcs.filter((n) => !covered.has(n.localId)).map((n) => ({ uc: n.localId, label: n.label }));
+  return { rows, gaps };
+}
+
 if (typeof window !== "undefined") window.__CYN_WORKFLOWS__ = WORKFLOW_INVENTORY;
