@@ -48,6 +48,7 @@ export const fnolFlow = {
   summary: "The front door of the domain: one loss event, one report, however many channels touch it — and the triage that sets severity, lane and initial reserve.",
   nodes: [
     { id: "f-reported", type: "SimpleNode", parentId: "start", kind: "event", summary: "Loss reported", isPivotal: true, aggregate: "AGG-LOSSREPORT", grounds: ["UC1", "FR1"],
+      arch: { component: "C1", prod: "PROD-CLAIMSCORE" },
       description: "A loss enters the company — app, web, phone, broker or police feed. Whatever the channel, it lands on ONE loss report; a later channel touching the same loss merges, never duplicates.",
       trigger: { kind: "external", actor: "Claimant / broker / police feed", mechanism: "Any intake channel (digital FNOL, phone, broker, feed)",
         label: "The loss event arrives from outside — channels are ways INTO the same model, never separate models.", grounds: ["UC1", "FR1"] },
@@ -65,6 +66,7 @@ export const fnolFlow = {
       ] },
 
     { id: "f-triaged", type: "SimpleNode", parentId: "f-reported", kind: "event", summary: "Severity triaged", aggregate: "AGG-LOSSREPORT", grounds: ["UC2", "FR2"],
+      arch: { component: "C1", prod: "PROD-CLAIMSCORE" },
       description: "Model-assisted triage attaches a severity score, a lane and an initial reserve suggestion. The operator runs at Operate tier (promoted by APR-2) — adjusters audit a 10% sample.",
       trigger: { kind: "policy", actor: "Notice-of-loss Operator (model-assisted)", mechanism: "First-notice conversation completes", via: "message",
         label: "The severity model scores automatically as intake completes — promoted Assist → Operate by APR-2, with the audit condition in its guardrails.", grounds: ["UC2", "FR2"] },
@@ -81,6 +83,7 @@ export const fnolFlow = {
       ] },
 
     { id: "f-completed", type: "SimpleNode", parentId: "f-triaged", kind: "event", summary: "Report completed & routed", isPivotal: true, aggregate: "AGG-LOSSREPORT", isEndNode: true, grounds: ["UC2", "FR1"],
+      arch: { component: "C1", prod: "PROD-CLAIMSCORE" },
       description: "The intake adjuster completes the guided conversation and the report publishes — the event that opens the claim downstream and routes injury files to the AB lane.",
       trigger: { kind: "human", actor: "Intake adjuster", mechanism: "Completes the guided conversation",
         label: "A licensed person closes the intake — report completeness at handoff is the measure that matters.", grounds: ["UC2"] },
@@ -106,6 +109,7 @@ export const coverageFlow = {
   summary: "The centre of gravity: the claim opens against the immutable coverage snapshot, the desk adjuster decides, every reserve move is evented, and payment instructions publish to Billing.",
   nodes: [
     { id: "cv-opened", type: "SimpleNode", parentId: "start", kind: "event", summary: "Claim opened against the snapshot", isPivotal: true, aggregate: "AGG-CLAIM", grounds: ["UC3", "FR3"],
+      arch: { component: "C2", prod: "PROD-CLAIMSCORE" },
       description: "The completed loss report opens the claim against the coverage picture as at DATE OF LOSS — the canonical design-time seam. Later policy changes never alter an open claim.",
       trigger: { kind: "policy", actor: "Notice of loss (another context)", mechanism: "'completed loss report' event", via: "message",
         label: "An inbound domain event across the internal customer–supplier seam — the claim opens as a reaction, with the triage payload attached.", crosses: "CTX-FNOL", grounds: ["UC3", "FR3"] },
@@ -119,6 +123,7 @@ export const coverageFlow = {
       ] },
 
     { id: "cv-decided", type: "SimpleNode", parentId: "cv-opened", kind: "event", summary: "Coverage decided & reserves set", isPivotal: true, aggregate: "AGG-CLAIM", grounds: ["UC4", "FR4", "FR5"],
+      arch: { component: "C2", prod: "PROD-CLAIMSCORE" },
       description: "The desk adjuster decides whether the policy responds and for how much — irreducible human judgment with money and conduct on the line. The agent assists; the decision is hers.",
       trigger: { kind: "human", actor: "Desk adjuster", mechanism: "Records the coverage decision",
         label: "Facts landed on the open claim and a person makes the call — coverage response is never the agent's.", grounds: ["UC4"] },
@@ -137,6 +142,7 @@ export const coverageFlow = {
       ] },
 
     { id: "cv-paid", type: "SimpleNode", parentId: "cv-decided", kind: "event", summary: "Payment instructed", aggregate: "AGG-CLAIM", isEndNode: true, grounds: ["UC6", "FR6"],
+      arch: { component: "C2", prod: "PROD-CLAIMSCORE" },
       description: "An approved indemnity payment publishes as PaymentInstruction v2 across the domain seam to Billing — the claim ledger holds instructed-not-yet-settled until the outcome event returns.",
       trigger: { kind: "human", actor: "Desk adjuster (within her authority band)", mechanism: "Approves an indemnity payment",
         label: "The payment decision stays inside the band; the instruction itself is deterministic, contract-tested code.", grounds: ["UC6"] },
@@ -160,6 +166,7 @@ export const abFlow = {
   summary: "The statutory heart: OCF forms arrive through the HCAI ACL, decisions are human, clocks are code — and the clock guard runs at Operate because missing one IS the loss event.",
   nodes: [
     { id: "ab-received", type: "SimpleNode", parentId: "start", kind: "event", summary: "OCF-18 received", isPivotal: true, aggregate: "AGG-TREATPLAN", grounds: ["UC5", "FR7"],
+      arch: { component: "C3", prod: "PROD-CLAIMSCORE" },
       description: "A treatment plan arrives via HCAI — their schema, our translation layer. Intake is classified and the adjournment clock starts the moment the form lands.",
       trigger: { kind: "external", actor: "HCAI (industry gateway)", mechanism: "OCF forms + invoices through the ACL",
         label: "Conformist behind an ACL: HCAI's schema comes in, verified facts in our model come out — conformance drift converts to deemed-approval risk.", grounds: ["UC5", "FR7", "NFR3"] },
@@ -173,6 +180,7 @@ export const abFlow = {
       ] },
 
     { id: "ab-decided", type: "SimpleNode", parentId: "ab-received", branch: "decided inside the clock", kind: "event", summary: "Treatment plan decided", isPivotal: true, aggregate: "AGG-TREATPLAN", isEndNode: true, grounds: ["UC5", "FR7"],
+      arch: { component: "C3", prod: "PROD-CLAIMSCORE" },
       description: "The AB adjuster decides the plan inside the statutory window — SABS adjudication is never delegated to the agent. Payment authorizes only on an approved plan.",
       trigger: { kind: "human", actor: "AB adjuster", mechanism: "Records the plan decision",
         label: "A licensed human decides — the statute sets the shape, and delegation is off the table at any tier.", grounds: ["UC5"] },
@@ -185,6 +193,7 @@ export const abFlow = {
       ] },
 
     { id: "ab-clock", type: "SimpleNode", parentId: "ab-received", branch: "80% of the clock, no decision", kind: "event", summary: "Clock escalated at 80%", aggregate: "AGG-TREATPLAN", grounds: ["FR8", "POL1"],
+      arch: { component: "C3", prod: "PROD-CLAIMSCORE" },
       description: "The clock guard fires before the statute does: at 80% with no decision, the file escalates to the queue head and the first-line risk seat is notified — before any deemed approval can occur.",
       trigger: { kind: "policy", actor: "AB Clock Operator (Operate tier)", mechanism: "Adjournment clock reaches 80% with no decision", via: "timer",
         label: "The guard runs at Operate because missing a clock IS the loss event — and the escalation cannot be muted.", grounds: ["FR8", "POL1"] },
@@ -198,6 +207,7 @@ export const abFlow = {
       ] },
 
     { id: "ab-decided-esc", type: "SimpleNode", parentId: "ab-clock", kind: "event", summary: "Plan decided at the queue head", aggregate: "AGG-TREATPLAN", isEndNode: true, grounds: ["UC5", "FR8"],
+      arch: { component: "C3", prod: "PROD-CLAIMSCORE" },
       description: "The escalated file is decided ahead of the clock — the guard bought the time, the human made the call.",
       trigger: { kind: "human", actor: "AB adjuster (queue head)", mechanism: "Decides the escalated plan",
         label: "Same human decision, escalated priority — the statutory clock still governs the timestamp.", grounds: ["UC5"] },
@@ -215,6 +225,7 @@ export const totalLossFlow = {
   summary: "The write-off path: ACV from bought data behind an ACL, a human settlement, deterministic disposal — settlement to the owner and recovery from the asset on the same file, never two.",
   nodes: [
     { id: "tl-breach", type: "SimpleNode", parentId: "start", kind: "event", summary: "Threshold breached", isPivotal: true, aggregate: "AGG-SALVAGE", grounds: ["UC7", "FR9"],
+      arch: { component: "C4", prod: "PROD-CLAIMSCORE" },
       description: "Repair cost tipped past ACV — the repair file hands the vehicle to salvage disposition with the estimate of record attached, and the repair job closes.",
       trigger: { kind: "policy", actor: "Estimating & repair (another context)", mechanism: "'threshold breach' event with the estimate of record", via: "message",
         label: "An inbound event over the internal customer–supplier seam — the handoff carries the teardown facts (AT6).", grounds: ["UC7"] },
@@ -226,6 +237,7 @@ export const totalLossFlow = {
       ] },
 
     { id: "tl-valued", type: "SimpleNode", parentId: "tl-breach", kind: "event", summary: "ACV determined", aggregate: "AGG-SALVAGE", grounds: ["FR9"],
+      arch: { component: "C4", prod: "PROD-CLAIMSCORE" },
       description: "Market valuation of the vehicle at date of loss — the settlement anchor and the argument to get right. Bought data, consumed through an ACL the model survives vendor switches behind.",
       trigger: { kind: "policy", actor: "Valuation data vendors (behind the ACL)", mechanism: "Market valuation feed at date of loss", via: "message",
         label: "Conformist behind an ACL — two vendor switches in a decade is the norm, and the model must survive both.", grounds: ["FR9"] },
@@ -237,6 +249,7 @@ export const totalLossFlow = {
       ] },
 
     { id: "tl-settled", type: "SimpleNode", parentId: "tl-valued", kind: "event", summary: "Settlement offered & accepted", isPivotal: true, aggregate: "AGG-SALVAGE", grounds: ["UC7", "FR9"],
+      arch: { component: "C4", prod: "PROD-CLAIMSCORE" },
       description: "The owner settles on a defensible ACV — offers are prepared with comparables attached, and the settlement is the specialist's call within band.",
       trigger: { kind: "human", actor: "Total-loss specialist", mechanism: "Makes the settlement offer",
         label: "Settlement offers are human — the agent prepares, the person settles.", grounds: ["UC7"] },
@@ -248,6 +261,7 @@ export const totalLossFlow = {
       ] },
 
     { id: "tl-disposed", type: "SimpleNode", parentId: "tl-settled", kind: "event", summary: "Salvage disposed & recovery credited", aggregate: "AGG-SALVAGE", isEndNode: true, grounds: ["FR9"],
+      arch: { component: "C4", prod: "PROD-CLAIMSCORE" },
       description: "Title branded, vehicle auctioned, net proceeds credited against indemnity — the recovery closes the same file the settlement opened.",
       trigger: { kind: "policy", actor: "Salvage auction network", mechanism: "Disposal completes", via: "message",
         label: "Deterministic disposal on the auction network — brand filing and proceeds are code, not judgment.", grounds: ["FR9"] },

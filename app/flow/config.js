@@ -11,7 +11,7 @@ export const flowConfig = {
     SimpleNode: {
       toolbar: [],
       contextMenu: ["copyNode", "cutNode", "deleteNode", "pasteNode", "submapStart", "submapEnd", "markEndNode"],
-      decorators: ["Grounding", "TriggerBadge"],
+      decorators: ["Grounding", "TriggerBadge", "Handler"],
       showEndMarker: true,
     },
     ReferenceNode: { toolbar: [], contextMenu: ["deleteNode"], decorators: [], showEndMarker: true },

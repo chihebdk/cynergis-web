@@ -67,18 +67,26 @@ export function buildDerivedFlows() {
       .map(k => ({ k, cp: mw.byId.get((mw.out(k.id, 'with')[0] || {}).to) })) : [];
 
     let parent = 'start';
-    const nodes = items.map(({ uc, fset, P }, i) => {
+    const nodes = items.map(({ uc, fset, P, frComp: frComp2 }, i) => {
       const myAts = P.nodes('AcceptanceTest').filter(a => P.out(a.id, 'tests').some(e => e.to === uc.id));
       /* the graph records who performs the use case — a Persona is a human
          trigger, anything else (system, org ref) is external. No performer
          recorded → empty actor, and the canvas badge stays hidden (honest). */
       const actorN = P.byId.get((P.out(uc.id, 'performed_by')[0] || {}).to);
+      /* the handler: the component implementing most of this use case's FRs —
+         stamped as an arch block so the Handler chip and the card panel
+         resolve it from THIS product's graph (never fraud's registry). */
+      const compCounts = {};
+      for (const f of fset) { const c2 = frComp2(f); if (c2) compCounts[c2.localId] = (compCounts[c2.localId] || 0) + 1; }
+      const compBest = (Object.entries(compCounts).sort((x, y) => y[1] - x[1])[0] || [])[0];
+      const prodPid = ((P.nodes('Product')[0] || {}).props || {}).orgRef ? P.nodes('Product')[0].props.orgRef.split(':').pop() : null;
       const id = `dv-${ctx.toLowerCase()}-${i}`;
       const n = {
         id, type: 'SimpleNode', parentId: parent, kind: 'event',
         summary: uc.label, isPivotal: i === 0,
         aggregate: model ? model.label : wall.label,
         description: uc.props.note || '',
+        arch: (compBest && prodPid) ? { component: compBest, prod: prodPid } : undefined,
         trigger: actorN
           ? { kind: actorN.type === 'Persona' ? 'human' : 'external', actor: actorN.label, mechanism: '', label: uc.props.note || uc.label }
           : { kind: 'external', actor: '', mechanism: '', label: uc.props.note || uc.label },

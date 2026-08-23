@@ -3,7 +3,7 @@
 import { useNodeId } from "@xyflow/react";
 import { useNodeCache, useDecoratorsStore } from "@flowai/canvas";
 import { Icon } from "@iconify/react";
-import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE } from "./arch";
+import { componentById, componentArchetype, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE } from "./arch";
 
 function grounding(node) {
   if (!node) return { refs: 0, assumed: 0 };
@@ -109,6 +109,64 @@ export function registerTriggerBadgeDecorator() {
   store.register("TriggerBadge", TriggerBadge);
   store.setDecorator("TriggerBadge", true);
   tbRegistered = true;
+}
+
+// ── Handler chip (D-146) — the event's architectural home, typed ──
+// The opinionated node↔component reconciliation: every event declares its
+// handler (arch block, stamped from the graphs), and the chip names it WITH
+// its architectural style, derived from in-flow cardinality:
+//   1 event  → function   (the node IS the component — FaaS/EDA style)
+//   N events → microservice (one component handles a run of events)
+//   name says process manager / router / saga → process manager
+// Inline engines (invoked in-process, never own an event) ride along as
+// `+ <name> · engine`. Flow canvases only — bottom-centre, under the card.
+export function Handler() {
+  const id = useNodeId();
+  const { getItem, getItems } = useNodeCache();
+  const node = id ? getItem(id) : null;
+  if (!node || node.kind !== "event") return null;
+  const arch = node.arch || deriveArch(node);
+  const comp = arch && arch.component ? componentById(arch.component, arch.prod) : null;
+  if (!comp) return null;
+  const events = (getItems ? getItems() : []).filter((n) => n && n.kind === "event");
+  const same = events.filter((n) => {
+    const a2 = n.arch || {};
+    return a2.component === arch.component && (a2.prod || null) === (arch.prod || null);
+  }).length || 1;
+  const t = /process manager|router|saga/i.test(comp.name) ? "pm" : same === 1 ? "fn" : "svc";
+  const TYPE_LABEL = { pm: "process manager", fn: "function", svc: `microservice · ${same} events` };
+  /* inline engines (fraud registry only — v4 graphs don't model inline yet) */
+  const engines = [];
+  if (!arch.prod && typeof window !== "undefined" && window.__ARCH__) {
+    /* grounds live on the node AND its clusters (a rules override grounds FR8
+       on the businessRules cluster, not the node) — collect them all */
+    const g2 = new Set([
+      ...(node.grounds || []),
+      ...[node.trigger ? [node.trigger] : [], node.commands || [], node.businessRules || [], node.readModels || [], node.policies || []]
+        .flat().flatMap((c3) => c3.grounds || []),
+    ]);
+    for (const dm of (window.__ARCH__.domains || [])) for (const c2 of (dm.components || [])) {
+      if (c2.id !== comp.id && componentArchetype(c2).key === "inline" && (c2.mapsTo || []).some((fr) => g2.has(fr)))
+        engines.push(c2.name);
+    }
+  }
+  const tip = `${comp.name} — ${TYPE_LABEL[t]}${comp.note || comp.overview ? ` · ${comp.note || comp.overview}` : ""}`;
+  return (
+    <div style={{ position: "absolute", bottom: 0, left: "50%", width: 0, height: 0, zIndex: 10 }}>
+      <span style={{ position: "absolute", top: "24px", left: 0, transform: "translateX(-50%)", whiteSpace: "nowrap", display: "inline-flex", gap: "3px" }}>
+        <span className={`cyn-handler cyn-hd-${t}`} title={tip}>{comp.name} · {TYPE_LABEL[t]}</span>
+        {engines.map((e2) => <span className="cyn-handler cyn-hd-eng" key={e2} title={`${e2} — invoked in-process by ${comp.name}; owns no event`}>+ {e2} · engine</span>)}
+      </span>
+    </div>
+  );
+}
+let hdRegistered = false;
+export function registerHandlerDecorator() {
+  if (hdRegistered) return;
+  const store = useDecoratorsStore.getState();
+  store.register("Handler", Handler);
+  store.setDecorator("Handler", true);
+  hdRegistered = true;
 }
 
 // ── Context-map node kind, shown UNDER the box ──
