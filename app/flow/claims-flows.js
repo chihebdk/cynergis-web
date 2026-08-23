@@ -52,24 +52,27 @@ export const fnolFlow = {
       description: "Someone tells us about a loss for the first time — a customer in the app or on the phone, a broker, or a police feed. The Loss report module opens a single loss report and records what was reported: the circumstances, the people and vehicles involved, and any alleged injuries. If the same loss comes in again through another channel, the module adds the new information to the existing report instead of creating a duplicate. At this point it is a report of what happened — not yet a claim.",
       trigger: { kind: "external", actor: "Claimant / broker / police feed", mechanism: "Any intake channel (digital FNOL, phone, broker, feed)",
         label: "The loss event arrives from outside — channels are ways INTO the same model, never separate models.", grounds: ["UC1", "FR1"] },
-      /* D-147: triggers split by CONTRACT, never by caller — one entry per
-         distinct UI surface / topic / API spec; everyone who publishes into
-         that contract is a SOURCE inside the entry. The portal pane calls the
-         module's intake API directly from the frontend, so it classifies as
-         User (a BFF in between would make it an API entry instead). */
+      /* D-147 (final shape): every door triggers the SAME action with the SAME
+         parameter schema (see params below). Entries = call types; kind names
+         the boundary; humans/systems live in sources. Spec artifacts: OpenAPI
+         for API doors, AsyncAPI (consumer) for Message doors — both embed the
+         shared parameter schema from the registry. */
       triggers: [
-        { type: "User", kind: "human",
-          sources: ["Claimant (policyholder) — reports the loss digitally"],
-          impl: { surface: "Customer Portal · Claims status & digital FNOL pane", action: "Guided FNOL form — submit", authz: "Authenticated customer session" } },
-        { type: "User", kind: "human",
-          sources: ["Intake adjuster — claimant or third party by phone", "Broker, on behalf of the insured — via the desk"],
-          impl: { surface: "Loss report module · guided intake workspace", action: "Guided conversation — complete & submit", authz: "Licensed intake role" } },
-        { type: "Message", kind: "external system",
+        { kind: "external system call", type: "API",
+          sources: ["Claimant (policyholder) — via Customer Portal · digital FNOL pane"],
+          impl: { endpoint: "POST /claims/loss-reports", spec: "OpenAPI · claims-intake-api v1", gateway: "Public API gateway", authn: "Customer session (OIDC)" } },
+        { kind: "internal module call", type: "API",
+          sources: ["Intake adjuster — guided intake workspace", "Broker, on behalf of the insured — via the desk"],
+          impl: { endpoint: "POST /intake/loss-reports (internal)", spec: "OpenAPI · claims-intake-internal v1", authn: "Staff SSO · licensed intake role" } },
+        { kind: "external system call", type: "Message",
           sources: ["Provincial police-report feed"],
           impl: { topic: "claims.loss-reports.police.v1", schema: "PoliceReportNotice v1", broker: "Kafka · claims cluster",
             consumerGroup: "claimscore-fnol-intake", delivery: "at-least-once · partition key: police report #",
-            idempotency: "Merges into the existing loss report — never a duplicate (FR1)", dlq: "claims.loss-reports.police.dlq" } },
+            idempotency: "Merges into the existing loss report — never a duplicate (FR1)", dlq: "claims.loss-reports.police.dlq",
+            spec: "AsyncAPI · claims-loss-reports v1 (consumer)" } },
       ],
+      params: { schema: "LossReportIntake v1", registry: "schema registry · claims/loss-report-intake",
+        note: "One parameter schema for every door — same action, same payload. The OpenAPI and AsyncAPI contracts embed this schema from the registry; a parameter change is one change, everywhere." },
       commands: [
         { label: "Open loss report", on: "AGG-LOSSREPORT", desc: "Record circumstances, parties, vehicles and alleged injuries as reported — not yet a claim.", grounds: ["UC1", "FR1"] },
       ],

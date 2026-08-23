@@ -148,13 +148,15 @@ export function archLabel(id) {
 // complete = the type's required impl fields present. Started in Design,
 // completed in Architecture — the completion indicator is computed, never set.
 export const TRIGGER_TYPES = {
-  User:       { entry: "userTrigger",           required: ["surface", "action"], optional: ["authz"] },
-  Message:    { entry: "messageTrigger",        required: ["topic", "schema", "broker"], optional: ["consumerGroup", "delivery", "idempotency", "dlq"] },
-  Scheduler:  { entry: "scheduleTrigger",       required: ["schedule"], optional: ["owner", "misfire"] },
-  API:        { entry: "apiTrigger",            required: ["endpoint", "spec"], optional: ["gateway", "authn"] },
-  DB:         { entry: "dbTrigger",             required: ["store", "mechanism"], optional: ["operation", "stream"] },
-  Storage:    { entry: "objectStorageTrigger",  required: ["bucket", "event"], optional: ["pattern", "notification"] },
-  Sequential: { entry: "sequentialFlowTrigger", required: [], optional: [] },
+  User:       { entry: "userTrigger",           artifact: null,                        required: ["surface", "action"], optional: ["authz"] },
+  Message:    { entry: "messageTrigger",        artifact: "AsyncAPI (consumer)",       required: ["topic", "schema", "broker"], optional: ["consumerGroup", "delivery", "idempotency", "dlq", "spec"] },
+  Cron:       { entry: "scheduleTrigger",       artifact: "Schedule contract",         required: ["schedule"], optional: ["owner", "misfire"] },
+  Scheduler:  { entry: "scheduleTrigger",       artifact: "Schedule contract",         required: ["schedule"], optional: ["owner", "misfire"] },
+  API:        { entry: "apiTrigger",            artifact: "OpenAPI",                   required: ["endpoint", "spec"], optional: ["gateway", "authn"] },
+  DB:         { entry: "dbTrigger",             artifact: "Change stream contract",    required: ["store", "mechanism"], optional: ["operation", "stream"] },
+  Storage:    { entry: "objectStorageTrigger",  artifact: "Notification contract",     required: ["bucket", "event"], optional: ["pattern", "notification"] },
+  Document:   { entry: "objectStorageTrigger",  artifact: "Notification contract",     required: ["bucket", "event"], optional: ["pattern", "notification"] },
+  Sequential: { entry: "sequentialFlowTrigger", artifact: "Parameter schema",          required: [], optional: ["predecessor"] },
 };
 export function triggerCompletion(t) {
   const design = !!(t.kind && t.type && t.actor && t.source);

@@ -285,66 +285,113 @@ function SimpleCard({ node }) {
 }
 
 /* ── EventCards: the panel body for an event node (or a legacy component node) ── */
-/* ── D-147 (iterated): the trigger view — grouped by CONTRACT, three sections ──
-   Entries are split by what is offered (one UI surface, one topic, one API
-   spec), never by who calls it — the callers/publishers are the entry's
-   SOURCES list. Layout: [type list | selected entry's detail | description],
-   the shared node description narrow on the right. No completion display. */
+/* ── D-147 (final): the trigger view — two panels, clickable pills ──
+   Left (like Details): Kind · Source · Call type · Parameters, every value a
+   pill. Right: whatever pill is selected — a call type opens its full
+   implementation (producer, queue/topic/schema, its OpenAPI/AsyncAPI spec);
+   a source opens who they are and which door they use; Parameters opens the
+   ONE shared schema (same action behind every door — a parameter change is a
+   schema-registry change, reflected in every spec). */
 const IMPL_LABEL = {
   surface: "Surface", action: "Action", authz: "Authorization",
   topic: "Topic", schema: "Schema", broker: "Broker", consumerGroup: "Consumer group",
-  delivery: "Delivery", idempotency: "Idempotency", dlq: "Dead letter",
+  delivery: "Delivery", idempotency: "Idempotency", dlq: "Dead letter", spec: "Spec artifact",
   schedule: "Schedule", owner: "Owner", misfire: "Misfire policy",
-  endpoint: "Endpoint", spec: "API spec", gateway: "Gateway", authn: "Authentication",
+  endpoint: "Endpoint", gateway: "Gateway", authn: "Authentication",
   store: "Store", mechanism: "Mechanism", operation: "Operation", stream: "Stream",
   bucket: "Bucket", event: "On event", pattern: "Pattern", notification: "Notification",
   predecessor: "Predecessor",
 };
-const trigIdent = (t) => t.impl?.surface || t.impl?.topic || t.impl?.endpoint || t.impl?.schedule || t.impl?.store || t.impl?.bucket || (t.sources || [])[0] || "";
-function TriggerList({ node }) {
-  const [sel, setSel] = useState(0);
+const trigIdent = (t) => t.impl?.endpoint || t.impl?.topic || t.impl?.surface || t.impl?.schedule || t.impl?.store || t.impl?.bucket || "";
+const srcShort = (s2) => String(s2).split(" — ")[0];
+function TriggerPanel({ node }) {
   const trigs = node.triggers || [];
-  const cur = trigs[Math.min(sel, trigs.length - 1)];
-  const meta = TRIGGER_TYPES[cur.type] || { entry: null, required: [], optional: [] };
-  const impl = cur.impl || {};
-  const fields = [...meta.required, ...meta.optional].filter((f) => impl[f]);
+  const [sel, setSel] = useState({ what: "call", i: 0 });
+  const kinds = [...new Set(trigs.map((t) => t.kind).filter(Boolean))];
+  const sources = trigs.flatMap((t, ti) => (t.sources || []).map((s2) => ({ s2, ti })));
+  const params = node.params;
   const conv = (node.commands || []).map((c) => c.label).join(" · ");
+  const Pill = ({ on, cls, children, active }) => (
+    <button type="button" className={`cyn-tpill ${cls}${active ? " on" : ""}`} onClick={on}>{children}</button>
+  );
+  const detail = () => {
+    if (sel.what === "params" && params) return (
+      <div>
+        <CmpField k="Parameter schema">{params.schema}</CmpField>
+        <CmpField k="Registry">{params.registry}</CmpField>
+        <CmpField k="One schema, every door">{params.note}</CmpField>
+        <CmpField k="Embedded in">{trigs.map((t) => t.impl?.spec).filter(Boolean).join(" · ") || "—"}</CmpField>
+      </div>
+    );
+    if (sel.what === "kind") {
+      const k2 = kinds[sel.i];
+      const doors = trigs.filter((t) => t.kind === k2);
+      return (
+        <div>
+          <CmpField k="Kind">{k2}</CmpField>
+          <CmpField k={`Door${doors.length > 1 ? "s" : ""} of this kind`}>
+            <span className="flex flex-col gap-1">{doors.map((t, x) => <span key={x}><TrigIcon k={(TRIGGER_TYPES[t.type] || {}).entry || t.type} /> {t.type} · {trigIdent(t)}</span>)}</span>
+          </CmpField>
+        </div>
+      );
+    }
+    if (sel.what === "source") {
+      const it = sources[sel.i];
+      if (!it) return null;
+      const door = trigs[it.ti];
+      return (
+        <div>
+          <CmpField k="Source">{it.s2}</CmpField>
+          <CmpField k="Comes through"><TrigIcon k={(TRIGGER_TYPES[door.type] || {}).entry || door.type} /> {door.type} · {trigIdent(door)}</CmpField>
+          {door.impl?.authn && <CmpField k="Authentication">{door.impl.authn}</CmpField>}
+          {door.impl?.authz && <CmpField k="Authorization">{door.impl.authz}</CmpField>}
+        </div>
+      );
+    }
+    const t = trigs[Math.min(sel.i, trigs.length - 1)];
+    if (!t) return null;
+    const meta = TRIGGER_TYPES[t.type] || { entry: null, required: [], optional: [] };
+    const impl = t.impl || {};
+    const fields = [...meta.required, ...meta.optional].filter((f) => impl[f]);
+    return (
+      <div>
+        <CmpField k="Call type"><TrigIcon k={meta.entry || t.type} /> {t.type}{meta.artifact ? <span className="text-gray-500"> · contract: {meta.artifact}</span> : null}</CmpField>
+        <CmpField k="Kind">{t.kind || "—"}</CmpField>
+        <CmpField k={`Producer${(t.sources || []).length > 1 ? "s" : ""} / source`}>
+          <span className="flex flex-col gap-1">{(t.sources || []).map((s2) => <span key={s2}>{s2}</span>)}</span>
+        </CmpField>
+        {fields.map((f) => <CmpField k={IMPL_LABEL[f] || f} key={f}>{impl[f]}</CmpField>)}
+        {params && <CmpField k="Parameters">{params.schema} — shared by every door</CmpField>}
+      </div>
+    );
+  };
   return (
     <div className="flex h-full w-full flex-col min-h-0">
       {conv ? (
         <div className="px-4 pt-3 text-[11px] text-gray-600">
-          All doors converge on: <b>{conv}</b>{node.aggregate ? <> → <span className="font-mono text-[10px]">{node.aggregate}</span></> : null}
+          Every door triggers the same action: <b>{conv}</b>{node.aggregate ? <> → <span className="font-mono text-[10px]">{node.aggregate}</span></> : null}
         </div>
       ) : null}
       <div className="flex flex-1 w-full gap-5 p-4 min-h-0">
-        <div className="flex-none w-[230px] min-h-0 flex flex-col gap-2">
-          <span className="cyn-cmp-k">{trigs.length} trigger{trigs.length > 1 ? "s" : ""}</span>
-          <div className="cyn-cmp-list flex-1 min-h-0 overflow-y-auto">
-            {trigs.map((t, i2) => (
-              <div key={i2} className={`cyn-cmp-row${i2 === Math.min(sel, trigs.length - 1) ? " on" : ""}`} onClick={() => setSel(i2)}>
-                <div className="p-2 flex items-center gap-2 min-w-0">
-                  <TrigIcon k={(TRIGGER_TYPES[t.type] || {}).entry || t.type} />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[12px]">{t.type}</span>
-                    <span className="block truncate text-[10px] text-gray-500">{trigIdent(t)}</span>
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex-none w-[360px] min-h-0 overflow-y-auto">
-          <CmpField k="Type"><TrigIcon k={meta.entry || cur.type} /> {cur.type}{cur.kind ? <span className="text-gray-500"> · {cur.kind}</span> : null}</CmpField>
-          <CmpField k={`Source${(cur.sources || []).length > 1 ? "s" : ""} (publisher)`}>
-            <span className="flex flex-col gap-1">{(cur.sources || []).map((s2) => <span key={s2}>{s2}</span>)}</span>
+        <div className="flex-none w-[340px] flex flex-col gap-3 min-h-0 overflow-y-auto">
+          <CmpField k="Kind">
+            <span className="flex flex-wrap gap-1">{kinds.map((k2, x) => <Pill key={k2} cls="tp-kind" active={sel.what === "kind" && sel.i === x} on={() => setSel({ what: "kind", i: x })}>{k2}</Pill>)}</span>
           </CmpField>
-          <div className="cyn-cmp-k pt-3 pb-1">Implementation · {cur.type}</div>
-          {fields.map((f) => <CmpField k={IMPL_LABEL[f] || f} key={f}>{impl[f]}</CmpField>)}
-          {fields.length === 0 && <div className="text-[11px] text-gray-400">No implementation details recorded yet.</div>}
+          <CmpField k="Source">
+            <span className="flex flex-wrap gap-1">{sources.map((it, x) => <Pill key={x} cls="tp-src" active={sel.what === "source" && sel.i === x} on={() => setSel({ what: "source", i: x })}>{srcShort(it.s2)}</Pill>)}</span>
+          </CmpField>
+          <CmpField k="Call type">
+            <span className="flex flex-wrap gap-1">{trigs.map((t, x) => <Pill key={x} cls={`tp-${String(t.type).toLowerCase()}`} active={sel.what === "call" && sel.i === x} on={() => setSel({ what: "call", i: x })}><TrigIcon k={(TRIGGER_TYPES[t.type] || {}).entry || t.type} size={11} /> {t.type}</Pill>)}</span>
+          </CmpField>
+          {params && (
+            <CmpField k="Parameters">
+              <Pill cls="tp-schema" active={sel.what === "params"} on={() => setSel({ what: "params" })}>{params.schema}</Pill>
+            </CmpField>
+          )}
         </div>
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
-          <span className="cyn-cmp-k pb-2">Description</span>
-          <div className="cyn-cmp-detail flex-1 min-h-0 overflow-y-auto p-3 text-[12px]">{node.description || "—"}</div>
+          <span className="cyn-cmp-k pb-2">{sel.what === "params" ? "Parameter schema" : sel.what === "source" ? "Source" : sel.what === "kind" ? "Kind" : "Call implementation"}</span>
+          <div className="cyn-cmp-detail flex-1 min-h-0 overflow-y-auto p-4">{detail()}</div>
         </div>
       </div>
     </div>
@@ -458,7 +505,7 @@ function EventCardsBody({ node }) {
     ),
     // this event's trigger: the spec side (who/why) + the entry point (how, on the wire)
     trigger: () => (isEvent && (((node.record || node).triggers) || []).length ? (
-      <TriggerList node={node.record || node} />
+      <TriggerPanel node={node.record || node} />
     ) : isEvent && node.trigger ? (
       <div className="flex h-full w-full gap-5 p-4 min-h-0">
         <div className="flex-none w-[320px] flex flex-col gap-3 min-h-0 overflow-y-auto">

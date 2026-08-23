@@ -155,6 +155,25 @@
 }
 .cyn-trigbadge i { font-style: normal; font-size: 9px; color: var(--ink-3, #6b7280); }
 .cyn-trigbadge svg { color: var(--ink-2, #4b5563); display: block; }
+/* D-147: trigger pills — clickable, color-coded, .on = selected. */
+.cyn-tpill {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10.5px; font-weight: 600; line-height: 1;
+  border-radius: 999px; padding: 3px 8px; cursor: pointer;
+  border: 1px solid var(--line, #e5e7eb); background: var(--panel, #fff); color: var(--ink-2, #4b5563);
+}
+.cyn-tpill:hover { border-color: var(--accent, #4f46e5); }
+.cyn-tpill.on { border-color: var(--accent, #4f46e5); box-shadow: 0 0 0 1px var(--accent, #4f46e5) inset; }
+.cyn-tpill.tp-kind { background: #f8fafc; }
+.cyn-tpill.tp-src { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+.cyn-tpill.tp-api { color: #0e7490; background: #ecfeff; border-color: #a5f3fc; }
+.cyn-tpill.tp-message { color: #a21caf; background: #fdf4ff; border-color: #f5d0fe; }
+.cyn-tpill.tp-cron, .cyn-tpill.tp-scheduler { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+.cyn-tpill.tp-sequential { color: #374151; background: #f9fafb; }
+.cyn-tpill.tp-db { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+.cyn-tpill.tp-storage, .cyn-tpill.tp-document { color: #be185d; background: #fdf2f8; border-color: #fbcfe8; }
+.cyn-tpill.tp-schema { color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe; }
+
 /* Context-map node kind label, shown under the box. */
 .cyn-ctxkind {
   font-size: 9px;
