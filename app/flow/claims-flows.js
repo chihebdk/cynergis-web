@@ -58,7 +58,7 @@ export const fnolFlow = {
          for API doors, AsyncAPI (consumer) for Message doors — both embed the
          shared parameter schema from the registry. */
       triggers: [
-        { kind: "external system call", type: "API",
+        { kind: "domain call", type: "API",
           sources: ["Claimant (policyholder) — via Customer Portal · digital FNOL pane"],
           callers: [{ component: "C5", prod: "PROD-CUSTOMER-PORTAL" }],
           impl: { endpoint: "POST /claims/loss-reports", spec: "OpenAPI · claims-intake-api v1", gateway: "Public API gateway", authn: "Customer session (OIDC)" } },
