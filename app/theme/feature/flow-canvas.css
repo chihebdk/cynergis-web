@@ -154,6 +154,7 @@
   cursor: default;
 }
 .cyn-trigbadge i { font-style: normal; font-size: 9px; color: var(--ink-3, #6b7280); }
+.cyn-trigbadge svg { color: var(--ink-2, #4b5563); display: block; }
 /* Trigger legend, bottom-right of the canvas shell. */
 .cyn-triglegend {
   position: absolute; bottom: 8px; right: 10px; z-index: 20;
@@ -162,7 +163,10 @@
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 6px; padding: 3px 8px;
   pointer-events: none; white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
 }
+.cyn-triglegend b { font-weight: 600; color: var(--ink-2, #4b5563); }
+.cyn-triglegend span { display: inline-flex; align-items: center; gap: 3px; }
 
 /* Context-map node kind label, shown under the box. */
 .cyn-ctxkind {

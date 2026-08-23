@@ -5,6 +5,7 @@ import { Icon } from "@iconify/react";
 import { useNodeCache } from "@flowai/canvas";
 import { useGlobalStore } from "@flowai/state";
 import { resolveGround } from "./data";
+import { TrigIcon } from "./GroundingDecorator.jsx";
 import { archLabel, deriveArch, ENTRY_META, componentById, componentForNode, componentArchetype } from "./arch";
 
 /* ── reference → "where it's defined" navigation ──
@@ -296,7 +297,8 @@ function EventCardsBody({ node }) {
   const domain = comp ? (A.domains || []).find((dm) => (dm.components || []).some((c) => c.id === comp.id)) : null;
   const resourceRec = (id) => (A.resources || []).find((r) => r.id === id);
   const bc = node.bc || (typeof window !== "undefined" && window.__cynNav?.ctx) || null;
-  const emFor = (t) => ENTRY_META[({ Event: "messageTrigger", User: "userTrigger", API: "apiTrigger", Schedule: "scheduleTrigger" })[t.type]] || ENTRY_META.sequentialFlowTrigger;
+  const emKeyFor = (t) => (({ Event: "messageTrigger", User: "userTrigger", API: "apiTrigger", Schedule: "scheduleTrigger" })[t.type]) || "sequentialFlowTrigger";
+  const emFor = (t) => ENTRY_META[emKeyFor(t)];
   const risk = riskBadge(node);
 
   /* ── event-scoped slices (fallback: component-wide data) ── */
@@ -386,7 +388,7 @@ function EventCardsBody({ node }) {
           <span className="cyn-cmp-k pb-2">Entry point</span>
           <div className="cyn-cmp-detail flex-1 min-h-0 overflow-y-auto p-4">
             <CmpField k="Why">{node.trigger.label}</CmpField>
-            {em && <CmpField k="Wire">{em.icon} {em.label}</CmpField>}
+            {em && <CmpField k="Wire"><TrigIcon k={arch.entry.type} /> {em.label}</CmpField>}
             {arch?.entry?.topic && <CmpField k="Topic"><TopicChip topic={arch.entry.topic} /></CmpField>}
             {arch?.entry && (
               <CmpField k="Contract">
@@ -402,9 +404,9 @@ function EventCardsBody({ node }) {
       </div>
     ) : (
       <CmpListDetail items={comp?.trigger || []} title="Triggers" emptyLabel="No trigger — this component is invoked inline by another component."
-        nameOf={(t) => `${emFor(t).icon} ${t.name || t.actor || t.type}`}
+        nameOf={(t) => t.name || t.actor || t.type}
         renderDetail={(t) => (<div>
-          <CmpField k="Type">{emFor(t).icon} {emFor(t).label}</CmpField>
+          <CmpField k="Type"><TrigIcon k={emKeyFor(t)} /> {emFor(t).label}</CmpField>
           <CmpField k="Topic / name">{t.name}</CmpField>
           <CmpField k="Source">{t.source}</CmpField>
           <CmpField k="Actor">{t.actor}</CmpField>
