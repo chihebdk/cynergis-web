@@ -90,7 +90,7 @@ export function TriggerBadge() {
   // zero-footprint anchor (same pattern as Grounding) — never shifts the handle.
   return (
     <div style={{ position: "absolute", top: 0, left: 4, width: 0, height: 0, zIndex: 10 }}>
-      <span className="cyn-trigbadge" title={tip} style={{ position: "absolute", bottom: "3px", left: 0, whiteSpace: "nowrap" }}>
+      <span className="cyn-trigbadge" title={tip} style={{ position: "absolute", bottom: "-2px", left: 0, whiteSpace: "nowrap" }}>
         <TrigIcon k={key} />{extra > 0 ? <i>+{extra}</i> : null}
       </span>
     </div>
