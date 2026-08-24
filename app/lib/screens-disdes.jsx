@@ -672,23 +672,13 @@ function DesignJourneys() {
       </div>
       {sel.storm && sel.storm.startsWith('bj-') && (() => {
         const rep = reconReport().perJourney[sel.storm];
-        if (!rep) return null;
+        if (!rep || !rep.gaps.length) return null;   // D-170: tripwire — silent when healthy
         return (
           <div className="asc-section">
             <div className="asc-sec-head">
-              <div className="asc-sec-title">Reconciliation with the design storms</div>
-              <div className="asc-sec-sub">Every card mapped: realized by a wall's card · actor-lens (the actor's own moment, no wall should model it) · or a gap — a moment no wall has designed yet</div>
+              <div className="asc-sec-title">Design gaps</div>
+              <div className="asc-sec-sub">Moments this process walks that no wall has designed yet — each is an open design decision. ({rep.realized} moments realized{rep.journeyOnly.length ? `, ${rep.journeyOnly.length} actor-lens` : ''}; this section disappears when the gaps close.)</div>
             </div>
-            <div className="mer-seam">
-              <span className="badge ok">{rep.realized} realized</span>
-              <span className="mer-seam-what">cards carried by the design storms</span>
-            </div>
-            {rep.journeyOnly.map(n => (
-              <div className="mer-seam" key={'jo' + n}>
-                <span className="badge">actor-lens</span>
-                <span className="mer-seam-what">{n} — the actor's own moment; no wall should model it</span>
-              </div>
-            ))}
             {rep.gaps.map(n => (
               <div className="mer-seam" key={'g' + n}>
                 <span className="badge err">gap</span>
