@@ -7,7 +7,7 @@ import { useGlobalCache } from "@flowai/state";
 import { flowConfig, contextMapConfig } from "./config";
 import { panelTabComponents, SystemMapModal } from "./panelTabs.jsx";
 import { registerGroundingDecorator, registerContextKindDecorator, registerTriggerBadgeDecorator, registerHomeContextDecorator } from "./GroundingDecorator.jsx";
-import { CM_SUBMAP_CTX, HOME_NAMES } from "./journeys";
+import { CM_SUBMAP_CTX } from "./journeys";
 
 // FlowMapSelfWired handles node/edge building, layout, submaps, toolbars and editing.
 const FlowMapSelfWired = dynamic(
@@ -74,30 +74,22 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
 
   useEffect(() => { registerGroundingDecorator(); registerContextKindDecorator(); registerTriggerBadgeDecorator(); registerHomeContextDecorator(); }, []);
 
-  // ── D-174: click a COLLAPSED wall → popup above it → its bounded context page ──
+  // ── D-174/D-175: double-click a COLLAPSED wall → its bounded context page ──
   // The collapsed box is the vendored canvas's own submap node (not a SimpleNode),
-  // so decorators can't reach it; the embed listens instead. Capture phase so the
-  // canvas's selection handlers can't swallow the click; coords are read from the
-  // node's rect AT CLICK TIME, so the popup lands right even after a pan or drag.
-  const [bcPop, setBcPop] = useState(null); // { ctx, name, x, y } — wrap-relative
-  useEffect(() => { setBcPop(null); }, [flowId, remountKey, expanded]);
-  const onMapClick = (e) => {
+  // so decorators can't reach it; the embed listens instead. Capture phase, and the
+  // event is swallowed so the canvas's own double-click-to-zoom never fires. Single
+  // click keeps its canvas meaning (select → the Expand affordance appears).
+  const onMapDblClick = (e) => {
     if (variant !== "contextmap") return;
-    if (e.target.closest(".cyn-bc-pop")) return;           // clicks inside the popup are its own
-    if (e.target.closest("button")) { setBcPop(null); return; } // Expand / layout toggles etc.
+    if (e.target.closest("button")) return;                 // Expand / layout toggles etc.
     const nodeEl = e.target.closest(".react-flow__node");
     const raw = nodeEl ? nodeEl.getAttribute("data-id") || "" : "";
     const subId = Object.keys(CM_SUBMAP_CTX).find((s) => raw === `submap-${s}-${s}`);
     const collapsed = nodeEl && !!nodeEl.querySelector('button[title="Expand Submap"]');
-    if (!subId || !collapsed || !paneWrapRef.current) { setBcPop(null); return; }
-    const r = nodeEl.getBoundingClientRect(), w = paneWrapRef.current.getBoundingClientRect();
-    const ctx = CM_SUBMAP_CTX[subId];
-    setBcPop({ ctx, name: HOME_NAMES[ctx] || ctx, x: r.left - w.left + r.width / 2, y: r.top - w.top });
-  };
-  const goBc = () => {
-    if (!bcPop || typeof window === "undefined") return;
+    if (!subId || !collapsed || typeof window === "undefined") return;
+    e.stopPropagation(); e.preventDefault();
     const nav = window.__cynNav || {};
-    window.cynPushUrl?.({ v: "prod", pf: nav.pf, prod: nav.prod, sub: "dashboard", phase: "Design", entry: "contexts", ctx: bcPop.ctx, tab: "flow" });
+    window.cynPushUrl?.({ v: "prod", pf: nav.pf, prod: nav.prod, sub: "dashboard", phase: "Design", entry: "contexts", ctx: CM_SUBMAP_CTX[subId], tab: "flow" });
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
@@ -191,16 +183,8 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
           title={expanded ? "Collapse (Esc)" : "Expand to full page"} aria-label={expanded ? "Collapse" : "Expand"}>
           {expanded ? <IconCollapse /> : <IconExpand />}
         </button>
-        <div ref={paneWrapRef} className="w-full h-full min-h-[500px]" style={{ position: "relative" }}
-          onClickCapture={onMapClick} onWheelCapture={() => setBcPop(null)}>
+        <div ref={paneWrapRef} className="w-full h-full min-h-[500px]" onDoubleClickCapture={onMapDblClick}>
           <GatedCanvas flowId={flowId} config={config} remountKey={remountKey} />
-          {bcPop && (
-            <div className="cyn-bc-pop" style={{ position: "absolute", left: bcPop.x, top: bcPop.y, transform: "translate(-50%, -100%)", paddingBottom: "8px", zIndex: 9999 }}>
-              <button type="button" onClick={goBc} title={`Open ${bcPop.name}`}>
-                Go to bounded context →
-              </button>
-            </div>
-          )}
         </div>
         {variant === "systemmap" && <SystemMapModal mapId={flowId} />}
       </div>

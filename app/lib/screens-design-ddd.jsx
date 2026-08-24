@@ -970,9 +970,9 @@ function DesignContextMap({ product, prd }) {
         <div className="ddd-eyebrow"><DDPico d={DDI.flow} w={12} /> DESIGN · CONTEXT MAP</div>
         <p className="ddd-lead">
           How the bounded contexts relate — <b>one map per product</b>. Each coloured box is a bounded context:
-          <b> select it and hit the expand arrow</b> to see its event flow in place. The small nodes between
-          boxes are the <b>published events crossing each seam</b>; externals are reached through an
-          anti-corruption layer (ACL).
+          <b> select it and hit the expand arrow</b> to see its event flow in place, or <b>double-click it</b> to
+          go to the bounded context&apos;s page. The small nodes between boxes are the <b>published events crossing
+          each seam</b>; externals are reached through an anti-corruption layer (ACL).
         </p>
       </div>
       <div className="asc-section ddd-sec">

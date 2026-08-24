@@ -474,17 +474,3 @@
    contexts — dissolving one would falsify the decomposition), so the button
    is suppressed everywhere. */
 .cyn-flow-embed button[title="Ungroup Submap"] { display: none !important; }
-
-/* D-174: the click-through popup on a collapsed wall in the context map —
-   "Go to bounded context →". A small caret ties it to the box below. */
-.cyn-bc-pop button {
-  font: 600 12px/1 var(--font-sans, ui-sans-serif); letter-spacing: 0.01em;
-  color: #3730a3; background: #fff; border: 1px solid #c7d2fe; border-radius: 8px;
-  padding: 7px 11px; cursor: pointer; white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(30, 27, 75, 0.16);
-}
-.cyn-bc-pop button:hover { background: #eef2ff; border-color: #818cf8; }
-.cyn-bc-pop::after {
-  content: ""; position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%) rotate(45deg);
-  width: 8px; height: 8px; background: #fff; border-right: 1px solid #c7d2fe; border-bottom: 1px solid #c7d2fe;
-}
