@@ -133,6 +133,10 @@ const _v2Pay = takeStorm(_ds["CTX-PAYMENTS"], "sub-wf2-pay", "wf2-s-payinstr", "
 const _v2TL = takeStorm(_ds["CTX-TOTALLOSS"], "sub-wf2-tl", "wf2-s-threshold", "u2-");
 const _v2Rec = takeStorm(_ds["CTX-RECOVERY"], "sub-wf2-rec", "wf2-s-recovery", "u2-");
 
+/* D-164: on the stitched multi-context diagram the periphery is real —
+   the members that hand over to a seam are the pivots */
+const _V2_PIVOTS = ["u2-di-registered", "u2-adj-closed", "u2-dr-verified", "u2-dp-settled", "u2-dt-disposed", "u2-dv-received"];
+
 export const claimsWorkflowV2 = {
   id: "wf-claims-v2",
   name: "Claims workflow — the accepted cut, end to end",
@@ -167,6 +171,8 @@ export const claimsWorkflowV2 = {
       description: "Published events — holds gate settlement; findings return as facts." },
   ],
 };
+for (const n of claimsWorkflowV2.nodes) if (_V2_PIVOTS.includes(n.id)) n.isPivotal = true;
+
 export const claimsWorkflowV2Submaps = [
   { id: "sub-wf2-intake", name: "Intake & registration", startNodeId: "u2-di-reported", endNodeId: "u2-di-registered", colorIndex: 0, mapIds: ["wf-claims-v2"] },
   { id: "sub-wf2-adjud", name: "Claim adjudication", startNodeId: "u2-adj-opened", endNodeId: "u2-adj-closed", colorIndex: 1, mapIds: ["wf-claims-v2"] },

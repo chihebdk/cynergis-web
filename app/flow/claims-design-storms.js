@@ -519,14 +519,11 @@ export const dsRecovery = {
 
 export const CLAIMS_DESIGN_STORMS = [dsIntake, dsAdjud, dsRepair, dsPayments, dsTotalLoss, dsRecovery];
 
-/* ── D-163: PIVOTAL derived, never authored — inside a design storm every
-   card shares one home, so the crossing definition reads: pivotal iff the
-   card consumes a seam (a domain-call or external trigger) or publishes
-   one (a policy that crosses). Hand flags stripped first. */
+/* ── D-163/D-164: NO pivotal inside a design-level storm — a one-context
+   diagram cannot show a context change (the sponsor's definition), so the
+   pill would always sit "inside" the wall. The crossings are carried by
+   the seams themselves: domain-call/external triggers in, `crosses`
+   policies out. Hand flags stripped; none derived. */
 for (const m of CLAIMS_DESIGN_STORMS) for (const n of m.nodes) {
-  if (n.kind !== "event") continue;
-  delete n.isPivotal;
-  const consumes = (n.triggers || []).some((t) => t.kind === "domain call" || t.kind === "external system call");
-  const publishes = (n.policies || []).some((pp) => pp.crosses);
-  if (consumes || publishes) n.isPivotal = true;
+  if (n.kind === "event") delete n.isPivotal;
 }

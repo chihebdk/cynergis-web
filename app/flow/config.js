@@ -51,7 +51,7 @@ export const contextMapConfig = {
   nodeTypes: {
     // ContextKind decorator renders the node's classifying label (component / seam /
     // external) under the box — the context map has no property panel.
-    SimpleNode: { toolbar: [], contextMenu: [], decorators: ["ContextKind", "TriggerBadge"], showEndMarker: true },
+    SimpleNode: { toolbar: [], contextMenu: [], decorators: ["ContextKind", "TriggerBadge", "Grounding"], showEndMarker: true },   // D-164: pivotal pills + anchors on expanded boxes too
     SubmapNode: { toolbar: [], contextMenu: ["submapExpand"], decorators: [], showEndMarker: true },
     SubmapEndNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: false },
     ReferenceNode: { toolbar: [], contextMenu: [], decorators: [], showEndMarker: true },
