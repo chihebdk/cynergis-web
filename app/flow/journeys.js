@@ -88,65 +88,65 @@ export const BJ_STORMS = [
     id: "bj-storm-1", name: "BJ-1 · Have my claim handled — big-picture storm (from scratch)", contextId: null,
     summary: "The claim from request to close, one moment per card, nothing combined. Actions and policies live in each card's properties; the cards read as the story. Clusters carry no grounds yet — every ⚠ is an unmined industry assertion, on purpose.",
     nodes: [
-      ev("b1-registered", "start", "Claim registered", "The request becomes a claim: numbered, dated, checked against duplicates.", {
+      ev("b1-registered", "start", "Claim registered", "The claim request is registered — numbered, dated, and checked against existing claims.", {
         isPivotal: true,
         commands: [{ label: "Validate the submission", on: "CLAIM" }, { label: "Check for an existing claim on this loss", on: "CLAIM" }, { label: "Assign the claim number & notice date", on: "CLAIM" }],
         businessRules: [{ label: "One loss, one claim — merge, never duplicate" }, { label: "Statutory notice-date rules" }] }),
-      ev("b1-denied-force", "b1-registered", "Claim denied — policy not in force", "The policy was not alive at the date of loss; the claimant is told why.", { branch: "policy not in force", isEndNode: true,
+      ev("b1-denied-force", "b1-registered", "Claim denied — policy not in force", "The claim is denied — the policy was not in force at the date of loss.", { branch: "policy not in force", isEndNode: true,
         businessRules: [{ label: "Cancellation & non-payment grace periods" }] }),
-      ev("b1-policy", "b1-registered", "Policy verified", "The policy as at the date of loss is found, and it holds.", {
+      ev("b1-policy", "b1-registered", "Policy verified", "The policy is verified in force as at the date of loss.", {
         commands: [{ label: "Retrieve the policy as at date of loss", on: "CLAIM" }, { label: "Confirm vehicle & driver on the policy", on: "CLAIM" }],
         businessRules: [{ label: "In-force rules; newly-acquired-vehicle rules" }],
         hotspots: [{ label: "Snapshot from the mainframe", desc: "The policy of record IS the mainframe until policy admin modernizes — the snapshot ACL is the strangler seam." }] }),
-      ev("b1-denied-cover", "b1-policy", "Claim denied — no coverage", "The loss does not match a coverage; the file closes with the reasons on record.", { branch: "coverage declined", isEndNode: true,
+      ev("b1-denied-cover", "b1-policy", "Claim denied — no coverage", "The claim is denied — no coverage responds — with the reasons on record.", { branch: "coverage declined", isEndNode: true,
         businessRules: [{ label: "Exclusion doctrine (commercial use, impairment, racing)" }] }),
-      ev("b1-coverage", "b1-policy", "Coverage confirmed", "The loss matches a coverage; the deductible is known.", { isPivotal: true,
+      ev("b1-coverage", "b1-policy", "Coverage confirmed", "Coverage is confirmed and the deductible identified.", { isPivotal: true,
         commands: [{ label: "Map loss cause to coverages & endorsements", on: "CLAIM" }, { label: "Identify the deductible", on: "CLAIM" }],
         businessRules: [{ label: "Coverage matching per the policy wording" }, { label: "Endorsement precedence" }],
         hotspots: [{ label: "Deductible & endorsement edge rules", desc: "Waivers and glass endorsements interact in COBOL — transcribe, do not reinvent." }] }),
-      ev("b1-assigned", "b1-coverage", "Claim assigned", "The claim gets a lane and a handler.", {
+      ev("b1-assigned", "b1-coverage", "Claim assigned", "The claim is assigned to a handling lane and an adjuster.", {
         commands: [{ label: "Assess severity & score fraud signals", on: "CLAIM" }, { label: "Route to a lane (glass fast-track / desk / field)", on: "CLAIM" }],
         businessRules: [{ label: "Segmentation & straight-through eligibility" }] }),
-      ev("b1-fraud-hold", "b1-assigned", "Fraud hold applied", "The rail that can stop money at any later step — while it stands, nothing pays.", { branch: "signals say look closer",
+      ev("b1-fraud-hold", "b1-assigned", "Fraud hold applied", "A fraud hold is applied; settlement is gated while it stands.", { branch: "signals say look closer",
         businessRules: [{ label: "Holds gate settlement; findings return as facts (BJ-6)" }] }),
-      ev("b1-reserve", "b1-assigned", "Reserve established", "Money is set aside for what this will likely cost.", {
+      ev("b1-reserve", "b1-assigned", "Reserve established", "An initial reserve is established for the expected cost.", {
         commands: [{ label: "Set the initial reserve per coverage line", on: "CLAIM" }],
         businessRules: [{ label: "Reserving guidelines & authority limits" }, { label: "Every reserve move is evented" }] }),
-      ev("b1-fault", "b1-reserve", "Fault determined", "Who caused it is decided — or noted as not applicable.", {
+      ev("b1-fault", "b1-reserve", "Fault determined", "Fault is determined under the applicable rules — or recorded as not applicable.", {
         commands: [{ label: "Apply the fault determination rules", on: "CLAIM" }, { label: "Record the fault split", on: "CLAIM" }],
         businessRules: [{ label: "The fault chart is regulation, not judgment" }] }),
-      ev("b1-appraisal", "b1-fault", "Appraisal requested", "Someone is chosen to look at the damage.", {
+      ev("b1-appraisal", "b1-fault", "Appraisal requested", "An appraisal channel is selected and the assignment dispatched.", {
         commands: [{ label: "Select the appraisal channel (shop / staff / photo)", on: "CLAIM" }],
         businessRules: [{ label: "Shop choice vs steering — provincially regulated" }] }),
-      ev("b1-estimate", "b1-appraisal", "Estimate submitted", "The damage is priced.", {
+      ev("b1-estimate", "b1-appraisal", "Estimate submitted", "The repair estimate is submitted.", {
         commands: [{ label: "Inspect & prepare the estimate", on: "ESTIMATE" }],
         businessRules: [{ label: "Rate agreements; OEM vs aftermarket parts" }] }),
-      ev("b1-totalloss", "b1-estimate", "Total loss declared", "The car is not worth fixing — the write-off path takes it from here.", { branch: "over the threshold", isEndNode: true,
+      ev("b1-totalloss", "b1-estimate", "Total loss declared", "The estimate breaches the total-loss threshold; the vehicle exits to the write-off path.", { branch: "over the threshold", isEndNode: true,
         businessRules: [{ label: "Threshold: estimate vs actual cash value" }] }),
-      ev("b1-approved", "b1-estimate", "Estimate approved", "The price holds up.", { isPivotal: true,
+      ev("b1-approved", "b1-estimate", "Estimate approved", "The estimate is approved.", { isPivotal: true,
         commands: [{ label: "Audit the estimate", on: "ESTIMATE" }, { label: "Check the total-loss threshold", on: "ESTIMATE" }] }),
-      ev("b1-authorized", "b1-approved", "Repair authorized", "The shop may begin.", {
+      ev("b1-authorized", "b1-approved", "Repair authorized", "The repair is authorized against the reserve.", {
         commands: [{ label: "Authorize & commit the amount against the reserve", on: "CLAIM" }],
         businessRules: [{ label: "Authorization authority bands" }] }),
-      ev("b1-supplement", "b1-authorized", "Supplement approved", "More damage, more money, approved mid-repair — then the work continues.", { branch: "hidden damage found",
+      ev("b1-supplement", "b1-authorized", "Supplement approved", "A supplement is approved for damage found mid-repair.", { branch: "hidden damage found",
         businessRules: [{ label: "Supplement authority — the straight-through boundary" }] }),
-      ev("b1-completed", "b1-authorized", "Repair completed", "The car is fixed.", {}),
-      ev("b1-verified", "b1-completed", "Repair verified", "The work checks out and the car goes home.", {
+      ev("b1-completed", "b1-authorized", "Repair completed", "The repair is completed.", {}),
+      ev("b1-verified", "b1-completed", "Repair verified", "The repair is verified and the vehicle returned.", {
         commands: [{ label: "Verify the work (photos, QA sample, claimant sign-off)", on: "CLAIM" }] }),
-      ev("b1-calculated", "b1-verified", "Settlement calculated", "What we owe, and to whom, is computed.", { isPivotal: true,
+      ev("b1-calculated", "b1-verified", "Settlement calculated", "The settlement is calculated — the payable amount and its payees.", { isPivotal: true,
         commands: [{ label: "Compute payable: approved + supplements − deductible − betterment", on: "SETTLEMENT" }, { label: "Determine payees (direct-pay vs reimburse)", on: "SETTLEMENT" }],
         businessRules: [{ label: "Deductible application & waivers" }, { label: "Betterment schedule; direct-pay agreements" }] }),
-      ev("b1-payauth", "b1-calculated", "Payment authorized", "The payment clears its checks.", {
+      ev("b1-payauth", "b1-calculated", "Payment authorized", "The payment is authorized after authority, hold, and payee checks.", {
         commands: [{ label: "Check authority band, standing holds, payee screening", on: "SETTLEMENT" }],
         businessRules: [{ label: "A standing hold stops everything here" }] }),
-      ev("b1-instructed", "b1-payauth", "Payment instructed", "Claims says pay.", { isPivotal: true,
+      ev("b1-instructed", "b1-payauth", "Payment instructed", "The payment instruction is issued.", { isPivotal: true,
         businessRules: [{ label: "Claims instructs; it never moves money" }, { label: "Recorded as instructed-not-yet-settled" }] }),
-      ev("b1-settled", "b1-instructed", "Payment settled", "The money moved and came back confirmed.", {
+      ev("b1-settled", "b1-instructed", "Payment settled", "The payment settles and confirmation is recorded.", {
         businessRules: [{ label: "Reconciliation; failed-payment void & reissue" }] }),
-      ev("b1-recovery-ref", "b1-settled", "Recovery referred", "Something can be gotten back — its own journey takes it from here.", { branch: "something to recover", isEndNode: true }),
-      ev("b1-recovery", "b1-settled", "Recovery assessed", "Nothing left to chase.", {
+      ev("b1-recovery-ref", "b1-settled", "Recovery referred", "A recovery is referred; pursuit continues on its own timeline.", { branch: "something to recover", isEndNode: true }),
+      ev("b1-recovery", "b1-settled", "Recovery assessed", "Recovery potential is assessed with none identified.", {
         commands: [{ label: "Assess subrogation, deductible recovery, salvage", on: "CLAIM" }] }),
-      ev("b1-closed", "b1-recovery", "Claim closed", "The file is complete, and it closes.", { isPivotal: true, isEndNode: true,
+      ev("b1-closed", "b1-recovery", "Claim closed", "The claim is closed with all obligations settled.", { isPivotal: true, isEndNode: true,
         businessRules: [{ label: "Closure checklist: all settled, no holds, no open tasks" }, { label: "Closed still accepts post-close credits and reopening (BJ-4 · BJ-5)" }] }),
     ],
   },
@@ -154,63 +154,63 @@ export const BJ_STORMS = [
     id: "bj-storm-2", name: "BJ-2 · Get the vehicle repaired — big-picture storm", contextId: null,
     summary: "The shop's journey from assignment to getting paid. Flat storm — boundaries come later.",
     nodes: [
-      actor("b2-shop", "start", "Repair shop / glass vendor", "The partner doing the work."),
-      ev("b2-assigned", "b2-shop", "Assignment received", "The engine offers the job; the shop accepts it.", { isPivotal: true, hotspots: [{ label: "Steering rules by province", desc: "Claimant choice vs network steering — regulated, undocumented, mine the legacy." }] }),
-      ev("b2-inspected", "b2-assigned", "Vehicle received & inspected", "The car arrives and the damage is checked against what was reported."),
-      ev("b2-estimate", "b2-inspected", "Estimate submitted", "The shop prices the repair."),
-      ev("b2-approved", "b2-estimate", "Estimate approved", "The price is approved — unless the car proves too damaged to be worth fixing.", { isPivotal: true, hotspots: [{ label: "Threshold breach exits the journey", desc: "Estimate over the total-loss line hands the vehicle to salvage — the mid-life exit every strangler gets wrong." }] }),
-      ev("b2-started", "b2-approved", "Repair started", "Parts ordered, work begins."),
-      ev("b2-supplement", "b2-started", "Supplement requested & approved", "The car is open, more damage shows; the extra work is priced and approved.", { branch: "hidden damage found", hotspots: [{ label: "Supplement authority", desc: "Who approves what amount without an adjuster touch — the straight-through boundary." }] }),
-      ev("b2-completed", "b2-supplement", "Repair completed", "The car goes back to the claimant."),
-      ev("b2-invoiced", "b2-completed", "Invoice submitted", "The shop bills for the agreed work."),
-      ev("b2-paid", "b2-invoiced", "Vendor payment received", "The shop gets its money — where this journey meets Pay and get paid.", { isPivotal: true, isEndNode: true }),
+      actor("b2-shop", "start", "Repair shop / glass vendor", "The repair partner performing the work."),
+      ev("b2-assigned", "b2-shop", "Assignment received", "The assignment is offered and accepted by a network shop.", { isPivotal: true, hotspots: [{ label: "Steering rules by province", desc: "Claimant choice vs network steering — regulated, undocumented, mine the legacy." }] }),
+      ev("b2-inspected", "b2-assigned", "Vehicle received & inspected", "The vehicle is received and the damage verified against the loss report."),
+      ev("b2-estimate", "b2-inspected", "Estimate submitted", "The repair estimate is submitted."),
+      ev("b2-approved", "b2-estimate", "Estimate approved", "The estimate is approved — or breaches the total-loss threshold and exits.", { isPivotal: true, hotspots: [{ label: "Threshold breach exits the journey", desc: "Estimate over the total-loss line hands the vehicle to salvage — the mid-life exit every strangler gets wrong." }] }),
+      ev("b2-started", "b2-approved", "Repair started", "Parts are ordered and the repair begins."),
+      ev("b2-supplement", "b2-started", "Supplement requested & approved", "A supplement is approved for damage found once the vehicle is open.", { branch: "hidden damage found", hotspots: [{ label: "Supplement authority", desc: "Who approves what amount without an adjuster touch — the straight-through boundary." }] }),
+      ev("b2-completed", "b2-supplement", "Repair completed", "The repair is completed and the vehicle returned to the claimant."),
+      ev("b2-invoiced", "b2-completed", "Invoice submitted", "The invoice is submitted for the agreed work."),
+      ev("b2-paid", "b2-invoiced", "Vendor payment received", "The vendor payment is received — the point where this journey meets Pay and get paid.", { isPivotal: true, isEndNode: true }),
     ],
   },
   {
     id: "bj-storm-3", name: "BJ-3 · Pay and get paid — big-picture storm", contextId: null,
     summary: "Every dollar out and in, from first payable event to money settled. Flat storm — the payment seam is frozen only after this wall.",
     nodes: [
-      ev("b3-instructed", "start", "Payment instructed", "Claims says pay, and records the money as owed.", { isPivotal: true }),
+      ev("b3-instructed", "start", "Payment instructed", "A payment instruction is issued and recorded as owed.", { isPivotal: true }),
       ext("b3-legacy", "b3-instructed", "Legacy payment execution", "The disbursement engine, behind the contract."),
-      ev("b3-executed", "b3-legacy", "Payment executed", "The money moves."),
-      ev("b3-confirmed", "b3-executed", "Settlement confirmed", "Confirmation comes back; owed becomes settled.", { isPivotal: true, hotspots: [{ label: "Reconciliation ownership", desc: "The instructed-not-yet-settled ledger needs one owner; today it is a mainframe batch job three people understand." }] }),
-      ev("b3-claimant", "b3-confirmed", "Claimant indemnity settled", "The claimant's money lands, deductible already applied.", { branch: "money out · claimant", isEndNode: true, hotspots: [{ label: "Deductible edge rules", desc: "Waiver and endorsement interactions — transcribe from legacy, do not reinvent." }] }),
-      ev("b3-vendor", "b3-confirmed", "Vendor invoice settled", "The shop is paid — the repair journey ends here too.", { branch: "money out · vendor", isEndNode: true }),
-      ev("b3-salvage", "b3-confirmed", "Salvage proceeds received", "The wreck's proceeds come back in.", { branch: "money in" }),
-      ev("b3-recovery", "b3-salvage", "Recovery credited", "Recovered money credits the claim — even after it has closed.", { isPivotal: true, isEndNode: true, hotspots: [{ label: "Credits against a closed claim", desc: "The claim lifecycle must accept post-close credits — design the states for it now." }] }),
+      ev("b3-executed", "b3-legacy", "Payment executed", "The payment is executed."),
+      ev("b3-confirmed", "b3-executed", "Settlement confirmed", "Settlement is confirmed; owed becomes settled.", { isPivotal: true, hotspots: [{ label: "Reconciliation ownership", desc: "The instructed-not-yet-settled ledger needs one owner; today it is a mainframe batch job three people understand." }] }),
+      ev("b3-claimant", "b3-confirmed", "Claimant indemnity settled", "The claimant's indemnity settles, net of deductible.", { branch: "money out · claimant", isEndNode: true, hotspots: [{ label: "Deductible edge rules", desc: "Waiver and endorsement interactions — transcribe from legacy, do not reinvent." }] }),
+      ev("b3-vendor", "b3-confirmed", "Vendor invoice settled", "The vendor invoice settles — the repair journey's final event.", { branch: "money out · vendor", isEndNode: true }),
+      ev("b3-salvage", "b3-confirmed", "Salvage proceeds received", "Salvage proceeds are received as an inbound credit.", { branch: "money in" }),
+      ev("b3-recovery", "b3-salvage", "Recovery credited", "A recovery is credited to the claim — even after close.", { isPivotal: true, isEndNode: true, hotspots: [{ label: "Credits against a closed claim", desc: "The claim lifecycle must accept post-close credits — design the states for it now." }] }),
     ],
   },
   {
     id: "bj-sketch-4", name: "BJ-4 · Recover what others owe — sketch", contextId: null,
     summary: "Low-resolution on purpose: this sketch exists to force one fact — recovery credits land against a CLOSED claim.",
     nodes: [
-      ev("b4-closed", "start", "Claim closed & paid", "The file is closed and the money is out."),
+      ev("b4-closed", "start", "Claim closed & paid", "The claim is closed and indemnity paid — the recovery baseline."),
       ev("b4-fault", "b4-closed", "Fault position established", "The recoverable share is established."),
-      ev("b4-demand", "b4-fault", "Demand issued", "The other carrier is asked to pay."),
-      ev("b4-received", "b4-demand", "Recovery received", "Months later, the money arrives."),
-      ev("b4-credited", "b4-received", "Recovery credited to the CLOSED claim", "It credits a claim that is already closed.", { isPivotal: true, isEndNode: true, hotspots: [{ label: "Post-close credit semantics", desc: "Closed is not terminal for money — the lifecycle needs a state for this." }] }),
+      ev("b4-demand", "b4-fault", "Demand issued", "A demand is issued to the responsible carrier."),
+      ev("b4-received", "b4-demand", "Recovery received", "The recovery is received, often months later."),
+      ev("b4-credited", "b4-received", "Recovery credited to the CLOSED claim", "The recovery is credited to the already-closed claim.", { isPivotal: true, isEndNode: true, hotspots: [{ label: "Post-close credit semantics", desc: "Closed is not terminal for money — the lifecycle needs a state for this." }] }),
     ],
   },
   {
     id: "bj-sketch-5", name: "BJ-5 · Challenge the decision — sketch", contextId: null,
     summary: "Low-resolution on purpose: this sketch exists to force the reopen semantics the claim aggregate must carry.",
     nodes: [
-      ev("b5-communicated", "start", "Decision communicated", "The claimant hears the decision."),
-      ev("b5-disputed", "b5-communicated", "Dispute raised", "They challenge it."),
-      ev("b5-reopened", "b5-disputed", "Claim REOPENED", "The file opens again — with its history intact.", { isPivotal: true, hotspots: [{ label: "Reopen semantics", desc: "Reopen must preserve the decision history immutably — design the lifecycle states now, not at the first ombudsman letter." }] }),
-      ev("b5-upheld", "b5-reopened", "Decision upheld", "The decision stands.", { branch: "upheld", isEndNode: true }),
-      ev("b5-adjusted", "b5-reopened", "Settlement adjusted & re-closed", "The decision changes and the file re-closes — both decisions on record.", { branch: "overturned", isEndNode: true }),
+      ev("b5-communicated", "start", "Decision communicated", "The decision is communicated to the claimant."),
+      ev("b5-disputed", "b5-communicated", "Dispute raised", "The claimant disputes the decision."),
+      ev("b5-reopened", "b5-disputed", "Claim REOPENED", "The claim is reopened with its decision history intact.", { isPivotal: true, hotspots: [{ label: "Reopen semantics", desc: "Reopen must preserve the decision history immutably — design the lifecycle states now, not at the first ombudsman letter." }] }),
+      ev("b5-upheld", "b5-reopened", "Decision upheld", "The original decision is upheld.", { branch: "upheld", isEndNode: true }),
+      ev("b5-adjusted", "b5-reopened", "Settlement adjusted & re-closed", "The decision is revised and the claim re-closed, both decisions on record.", { branch: "overturned", isEndNode: true }),
     ],
   },
   {
     id: "bj-sketch-6", name: "BJ-6 · Investigate suspected fraud — sketch", contextId: null,
     summary: "Low-resolution on purpose: holds gate settlement; findings land as facts — SIU never edits the claim model.",
     nodes: [
-      ev("b6-flagged", "start", "Fraud flag raised", "Something looks wrong."),
-      ev("b6-hold", "b6-flagged", "Settlement hold applied", "No money moves while the hold stands.", { isPivotal: true }),
-      ev("b6-concluded", "b6-hold", "Investigation concluded", "SIU works the case, on its own clock."),
-      ev("b6-facts", "b6-concluded", "Findings recorded as facts", "What they found lands on the file, as facts.", { hotspots: [{ label: "Facts, never edits", desc: "The SIU boundary: their output is evidence on the claim, not mutations of it." }] }),
-      ev("b6-released", "b6-facts", "Hold released", "Money can move again — or the claim routes to denial.", { isEndNode: true }),
+      ev("b6-flagged", "start", "Fraud flag raised", "A fraud indicator is raised against the file."),
+      ev("b6-hold", "b6-flagged", "Settlement hold applied", "A settlement hold is applied while the investigation stands.", { isPivotal: true }),
+      ev("b6-concluded", "b6-hold", "Investigation concluded", "The investigation concludes on SIU's timeline."),
+      ev("b6-facts", "b6-concluded", "Findings recorded as facts", "The findings are recorded on the file as facts.", { hotspots: [{ label: "Facts, never edits", desc: "The SIU boundary: their output is evidence on the claim, not mutations of it." }] }),
+      ev("b6-released", "b6-facts", "Hold released", "The hold is released — settlement resumes or the claim routes to denial.", { isEndNode: true }),
     ],
   },
 ];

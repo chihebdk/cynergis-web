@@ -59,7 +59,7 @@ export const claimsWorkflow = {
     /* ── the doors into the workflow (outside every submap) ── */
     { id: "wf-initiators", type: "SimpleNode", parentId: "start", kind: "actor",
       summary: "Loss initiators",
-      description: "Whoever first tells us about the loss: the claimant in the portal's digital FNOL pane, the claimant or a third party by phone (a licensed intake adjuster drives the conversation), a broker via the desk, or the provincial police-report feed arriving as messages. Four doors, one loss report — a later channel merges, never duplicates." },
+      description: "The parties who first report a loss: the claimant through the portal or by phone, a broker on the insured's behalf, or the provincial police feed. Four doors, one loss report." },
 
     /* ── Notice of loss ── */
     ...fnol,
@@ -145,7 +145,7 @@ export const claimsWorkflowV2 = {
   nodes: [
     { id: "wf2-initiators", type: "SimpleNode", parentId: "start", kind: "actor",
       summary: "Loss initiators",
-      description: "Claimant in the portal pane, claimant or third party by phone, broker via the desk, police feed as messages — four doors, one loss report." },
+      description: "The parties who first report a loss — claimant, broker, or police feed. Four doors, one loss report." },
     ...(_v2Intake),
     _seam("wf2-s-opened", "u2-di-registered", "claim opened",
       "Customer–supplier: the registered claim with the triage payload crosses to adjudication."),
