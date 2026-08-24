@@ -169,4 +169,36 @@ export function workflowUcCoverage(wfId, productPid) {
   return { rows, gaps };
 }
 
+/* ── D-149: one event flow PER USE CASE, generated from the grounds the
+   events carry. The flow is the use case: step by step until it completes
+   (success ends) or exits on a branch (the extensions / error paths). No
+   bounded-context framing at this altitude — decomposition comes later. */
+export const UC_FLOWS = (() => {
+  const maps = [];
+  for (const w of WORKFLOW_INVENTORY) {
+    const map = WORKFLOW_MAPS[w.id];
+    if (!map) continue;
+    const evs = map.nodes.filter((n) => n.kind === "event");
+    const ucs = [...new Set(evs.flatMap((n) => (n.grounds || []).filter((g) => /^UC\d+$/.test(g))))];
+    for (const uc of ucs) {
+      const mine = evs.filter((n) => (n.grounds || []).includes(uc));
+      const ids = new Set(mine.map((n) => n.id));
+      let prev = "start";
+      const nodes = mine.map((n) => {
+        const m = structuredClone(n);
+        delete m.submapId;
+        m.id = `u-${n.id}`;
+        m.parentId = ids.has(n.parentId) ? `u-${n.parentId}` : prev;
+        prev = m.id;
+        return m;
+      });
+      const parents = new Set(nodes.map((n) => n.parentId));
+      for (const n of nodes) if (!parents.has(n.id)) n.isEndNode = true;   // every leaf is a terminal
+      maps.push({ id: `ucf-${w.product.toLowerCase()}-${uc.toLowerCase()}`, name: `${uc} — event flow`,
+        contextId: null, product: w.product, uc, summary: "", nodes });
+    }
+  }
+  return maps;
+})();
+
 if (typeof window !== "undefined") window.__CYN_WORKFLOWS__ = WORKFLOW_INVENTORY;

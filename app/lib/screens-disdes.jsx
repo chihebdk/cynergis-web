@@ -342,7 +342,7 @@ function DesignUseCases({ prd }) {
         <span onClick={e => e.stopPropagation()}><TRef id={sel.primaryActor} /> <TRef id={sel.journeyId} /></span>
       </div>
       <div className="ddd-tabs agb-tabs">
-        {[['scenario', 'Scenario'], ['flow', 'Main flow'], ['workflow', 'Workflow'], ['acceptance', `Acceptance · ${(sel.acceptance || []).length}`]].map(([k, lbl]) => (
+        {[['scenario', 'Scenario'], ['flow', 'Main flow'], ['acceptance', `Acceptance · ${(sel.acceptance || []).length}`]].map(([k, lbl]) => (
           <button key={k} type="button" className={'ddd-tab' + (dtab === k ? ' on' : '')} onClick={() => setDtab(k)}>{lbl}</button>
         ))}
       </div>
@@ -379,14 +379,6 @@ function DesignUseCases({ prd }) {
         </DSec>
       )}
 
-      {dtab === 'workflow' && (
-        <DSec icon="board" title="Workflow" sub="The use case as a flow — the shape the event storm implements">
-          {sel.workflow
-            ? <div className="asc-panel dd-ucmm"><TMermaid code={sel.workflow} /></div>
-            : <div className="ddd-empty-inline">No workflow diagram recorded for this use case.</div>}
-        </DSec>
-      )}
-
       {dtab === 'acceptance' && (
         <DSec icon="check" title="Acceptance criteria" sub="The Gherkin contract — run as tests in Build › Tests">
           <div className="asc-panel agb-panel">
@@ -409,7 +401,7 @@ function DesignUseCases({ prd }) {
 
   return (
     <>
-      <p className="dd-lead">The solution as use cases — each realizing a journey. Open a card for the full detail: scenario, branches, terminal states, workflow and acceptance.</p>
+      <p className="dd-lead">The solution as use cases — each realizing a journey. Open a card for the full detail: scenario, branches, terminal states and acceptance.</p>
       <div className="dd-ucgrid">
         {ucs.map(u => (
           <div className="dd-ucc dd-clickable" key={u.id} onClick={() => pick(u.id)}
@@ -625,74 +617,91 @@ const SD_TABS = [
   { key: 'contracts',    label: 'Contracts' },
   { key: 'security',     label: 'Security' },
 ];
-/* ── D-148: the product's Workflows page — the method's first Design step ──
-   The workflow is a PRODUCT artifact: built from this product's use cases
-   and requirements, drawn end-to-end before decomposition. The domain's
-   Workflows page re-mounts these as the cross-product roll-up. */
+/* ── D-149: Design starts at the USE CASES — each one IS an event flow ──
+   The list first; click a use case and its event flow opens: step by step
+   until the use case completes (success ends) or exits on a branch — the
+   extensions and error paths, honestly shown where recorded. No bounded
+   contexts at this altitude; decomposition comes next in the rail. The
+   end-to-end workflow (the stitched journey) lives on the domain's
+   Workflows page as the roll-up. */
 function DesignWorkflows({ prd }) {
   const nav = (typeof window !== 'undefined' && window.__cynNav) || {};
-  const WF = WORKFLOW_INVENTORY.filter(w => w.product === nav.prod);
-  if (!WF.length) return (
+  const [selUc, setSelUc] = React.useState(null);
+  const wfs = WORKFLOW_INVENTORY.filter(w => w.product === nav.prod);
+  if (!wfs.length) return (
     <div className="ddd-empty-inline">
-      No workflow authored for this product yet. The method: draw the business workflow end-to-end from the use cases (Discover), watch the bounded contexts emerge as submaps, then decompose — Bounded contexts and System design follow from it.
+      No use-case flows authored for this product yet. The method: every use case gets its event flow — step by step to success or error — and the bounded contexts emerge from them afterwards.
     </div>
   );
-  return (<>
-    {WF.map(w => (
-      <div key={w.id}>
-        <div className="asc-section">
-          <div className="asc-sec-head">
-            <div className="asc-sec-title">{w.name}</div>
-            <div className="asc-sec-sub">Journey {w.journey} · crosses {w.walls.length} walls: {w.walls.join(' · ')} · collapse = context map, expand = storming</div>
-          </div>
-          <div style={{ height: '620px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
-            <FlowEmbed flowId={w.id} variant="contextmap" />
-          </div>
+  const w = wfs[0];
+  const cov = workflowUcCoverage(w.id, w.product);
+  const prdUc = (id) => ((prd && prd.usecases) || []).find(u => u.id === id);
+
+  if (selUc) {
+    const row = cov.rows.find(r => r.uc === selUc);
+    const u = prdUc(selUc);
+    const flowId = `ucf-${w.product.toLowerCase()}-${selUc.toLowerCase()}`;
+    return (<>
+      <button type="button" className="dd-iback" onClick={() => setSelUc(null)}>← Use cases</button>
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">{selUc} — {row ? row.label : ''}</div>
+          <div className="asc-sec-sub">The use case as an event flow — every leaf is a terminal; branches are the extensions</div>
         </div>
-        <div className="asc-section">
-          <div className="asc-sec-head">
-            <div className="asc-sec-title">Use cases → this workflow</div>
-            <div className="asc-sec-sub">Computed from the grounds the events carry — each use case is a segment: its main scenario and its extended scenarios (the branches). Use cases with no events are the gaps.</div>
+        {row ? (
+          <div style={{ height: '480px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+            <FlowEmbed flowId={flowId} variant="flow" />
           </div>
-          {(() => {
-            const cov = workflowUcCoverage(w.id, w.product);
-            return (<>
-              {cov.rows.map((r) => (
-                <div className="mer-seam" key={r.uc}>
-                  <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{r.uc} — {r.label}</b></span>
-                  <span className="badge ok">{r.main.length + r.extended.length} events</span>
-                  <span className="mer-seam-what">
-                    {r.main.length > 0 && <>main: {r.main.join(' → ')}</>}
-                    {r.extended.length > 0 && <> · extended: {r.extended.join(' · ')}</>}
-                  </span>
-                </div>
-              ))}
-              {cov.gaps.map((g) => (
-                <div className="mer-seam" key={g.uc}>
-                  <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{g.uc} — {g.label}</b></span>
-                  <span className="badge err">not in the workflow</span>
-                  <span className="mer-seam-what">No event in this workflow grounds on it — either it belongs to another workflow, it is a standing reaction (a contract, not a step), or the workflow has a gap.</span>
-                </div>
-              ))}
-            </>);
-          })()}
-        </div>
+        ) : (
+          <div className="ddd-empty-inline">No events ground on this use case yet — the flow has not been stormed.</div>
+        )}
+      </div>
+      {u && (u.terminalStates || []).length > 0 && (
         <div className="asc-section">
-          <div className="asc-sec-head">
-            <div className="asc-sec-title">Boundary check</div>
-            <div className="asc-sec-sub">Every workflow edge that crosses a submap boundary, verified against the recorded seams</div>
-          </div>
-          {w.boundaryCheck.map((r, i) => (
-            <div className="mer-seam" key={i}>
-              <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{r.crossing}</b></span>
-              <span className={'badge ' + (r.ok ? 'ok' : 'err')}>{r.ok ? 'recorded seam' : 'NOT RECORDED'}</span>
-              <span className="mer-seam-what">{r.contract}{r.note ? <> — <i>{r.note}</i></> : null}</span>
+          <div className="asc-sec-head"><div className="asc-sec-title">How every run can end</div>
+            <div className="asc-sec-sub">Success and error terminals from the use case — errors include how we report and recover where recorded</div></div>
+          {(u.terminalStates || []).map((t, i2) => (
+            <div className="mer-seam" key={i2}>
+              <span className={'badge ' + (t.type === 'Success' ? 'ok' : 'err')}>{t.type}</span>
+              <span className="mer-seam-what">{t.text}</span>
+            </div>
+          ))}
+          {(u.extensions || []).map((x, i2) => (
+            <div className="mer-seam" key={'x' + i2}>
+              <span className="badge">extension</span>
+              <span className="mer-seam-what"><b>{x.at}</b> — {x.text}</span>
             </div>
           ))}
         </div>
+      )}
+      {u && !(u.terminalStates || []).length && (
+        <div className="ddd-empty-inline">No terminal states recorded for this use case yet — the error/recovery paths are still to be captured.</div>
+      )}
+    </>);
+  }
+
+  return (
+    <div className="asc-section">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title">Use cases — each one is an event flow</div>
+        <div className="asc-sec-sub">Click a use case to walk its flow step by step, to success or error. The stitched end-to-end workflow lives on the domain's Workflows page.</div>
       </div>
-    ))}
-  </>);
+      {cov.rows.map(r => (
+        <div className="mer-seam" key={r.uc} style={{ cursor: 'pointer' }} onClick={() => setSelUc(r.uc)}>
+          <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{r.uc} — {r.label}</b></span>
+          <span className="badge ok">{r.main.length + r.extended.length} events</span>
+          <span className="mer-seam-what">{r.main.join(' → ')}{r.extended.length ? <> · extensions: {r.extended.length}</> : null}</span>
+        </div>
+      ))}
+      {cov.gaps.map(g => (
+        <div className="mer-seam" key={g.uc}>
+          <span className="mer-seam-ends" style={{ minWidth: 300 }}><b>{g.uc} — {g.label}</b></span>
+          <span className="badge err">no flow yet</span>
+          <span className="mer-seam-what">No event grounds on it — storm it, or record it as a standing reaction.</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function DesignArchitecture({ prd }) {
