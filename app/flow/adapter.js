@@ -7,7 +7,7 @@ import { claimsFlows, ccContextMap, ccContextSubmaps, ccSystemMap, ccSystemSubma
 import { domainMaps, domainSubmaps } from "./domain-maps";
 import { buildDerivedFlows } from "./derived-flows";
 import { claimsWorkflow, claimsWorkflowSubmaps, UC_FLOWS } from "./workflows";
-import { BJ_STORMS } from "./journeys";
+import { BJ_STORMS, claimsCutMap } from "./journeys";
 
 // In-memory store (mapper starter pattern), seeded with our flows as `map` docs.
 const collections = new Map();
@@ -31,6 +31,7 @@ for (const flow of buildDerivedFlows()) getCollection("map").set(flow.id, struct
 getCollection("map").set(claimsWorkflow.id, structuredClone(claimsWorkflow));   // D-148: the end-to-end workflow
 for (const m of UC_FLOWS) getCollection("map").set(m.id, structuredClone(m));    // D-149: one flow per use case
 for (const m of BJ_STORMS) getCollection("map").set(m.id, structuredClone(m));   // D-151: big-picture storms per journey
+getCollection("map").set(claimsCutMap.id, structuredClone(claimsCutMap));        // D-153: the accepted cut's context map
 for (const sm of claimsWorkflowSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 for (const m of domainMaps) getCollection("map").set(m.id, structuredClone(m));
 for (const sm of domainSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));

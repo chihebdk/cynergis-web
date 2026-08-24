@@ -214,3 +214,40 @@ export const BJ_STORMS = [
     ],
   },
 ];
+
+/* ── D-153: the context map of the ACCEPTED CUT (step 3 of the arc) ──
+   Six contexts + deferred AB, a relationship pattern on every seam. Flat
+   tree; ContextKind chips classify the nodes. Supersedes cc-contextmap as
+   ClaimsCore's map (the old map stays registered — rehome, never remove). */
+const cx = (id, parentId, summary, description, extra = {}) =>
+  ({ id, type: "SimpleNode", parentId, kind: "context", summary, description, ...extra });
+const seam = (id, parentId, summary, description, extra = {}) =>
+  ({ id, type: "SimpleNode", parentId, kind: "seam", summary, description, ...extra });
+
+export const claimsCutMap = {
+  id: "cm-claims-v2", name: "Context map — the accepted cut (D-152)", contextId: null,
+  summary: "Six contexts and the deferred AB lane, cut against the union of BJ-1/2/3 and the sketch-facts. Every seam names its relationship pattern; the one bend from the old walls is Claim payments, extracted from adjudication.",
+  nodes: [
+    actor("cm2-claimant", "start", "Claimant & channels", "Everyone who can start or follow a claim — portal, phone, broker, police feed."),
+    cx("cm2-intake", "cm2-claimant", "Intake & registration · CORE", "The doors, and the moment a request becomes a numbered claim."),
+    seam("cm2-s-opened", "cm2-intake", "claim opened", "Customer–supplier: intake supplies the registered claim; adjudication negotiates what the payload must carry."),
+    cx("cm2-adjud", "cm2-s-opened", "Claim adjudication · CORE", "Does the policy respond, for how much, on whose authority. Owns the claim lifecycle: holds, reopen with history intact, post-close credits."),
+    ext("cm2-x-mainframe", "cm2-adjud", "Mainframe policy system", "ACL — the coverage snapshot as at date of loss, consumed as an event. The strangler seam: policy admin modernizes later without adjudication noticing.", { isEndNode: true }),
+    ext("cm2-x-siu", "cm2-adjud", "Fraud & SIU", "Published events — holds gate settlement; findings return as facts, never edits.", { isEndNode: true }),
+    ext("cm2-x-portals", "cm2-adjud", "Customer & broker portals", "Open host — the status stream reports every milestone; portals conform to the published language.", { isEndNode: true }),
+    cx("cm2-ab", "cm2-adjud", "Accident benefits · CORE — deferred", "The injury lane: statutory clocks, HCAI. Deliberately last.", { branch: "injury lane", isEndNode: true }),
+    seam("cm2-s-appraisal", "cm2-adjud", "appraisal request", "Customer–supplier: adjudication asks for the damage to be priced; the estimate of record returns."),
+    cx("cm2-repair", "cm2-s-appraisal", "Repair & estimate coordination · SUPPORTING", "The claims-side authority over an externally executed repair: assignment, approval, supplements, verification."),
+    ext("cm2-x-shops", "cm2-repair", "Repair shops & glass network", "Partner surface — the repair portal; the shops execute, coordination approves.", { isEndNode: true }),
+    seam("cm2-s-threshold", "cm2-repair", "threshold breach", "Customer–supplier: an estimate over the total-loss line hands the vehicle over with the estimate of record."),
+    cx("cm2-total", "cm2-s-threshold", "Total loss & salvage · SUPPORTING", "Valuation, owner settlement, title branding, disposal — one vehicle, one disposition."),
+    seam("cm2-s-salvage", "cm2-total", "salvage proceeds", "Published events: disposal proceeds credit the claim through Claim payments.", { isEndNode: true }),
+    seam("cm2-s-payinstr", "cm2-adjud", "payment instruction", "Customer–supplier — THE NEW SEAM: adjudication instructs, payments executes the ledger. Two storms drew it independently (BJ-2 ends on the event BJ-3 settles)."),
+    cx("cm2-pay", "cm2-s-payinstr", "Claim payments · SUPPORTING", "The owed/settled ledger: instructed-not-yet-settled, reconciliation, void & reissue. Extracted from adjudication — its own language."),
+    ext("cm2-x-disburse", "cm2-pay", "Legacy payment execution", "Conformist behind the payment-instruction contract — execution modernizes later without this map changing.", { isEndNode: true }),
+    seam("cm2-s-credits", "cm2-pay", "money in — salvage & recovery credits", "Published events: credits land against the claim, even after it has closed.", { isEndNode: true }),
+    seam("cm2-s-recovery", "cm2-adjud", "recovery referred", "Customer–supplier, post-close: the closed file's facts open the recovery case.", { branch: "after close" }),
+    cx("cm2-recovery", "cm2-s-recovery", "Recovery & subrogation · SUPPORTING", "Recovers what others owe, against a closed claim, on its own clock."),
+    ext("cm2-x-carriers", "cm2-recovery", "Other carriers", "Inter-company demands and arbitration — their process, our position.", { isEndNode: true }),
+  ],
+};
