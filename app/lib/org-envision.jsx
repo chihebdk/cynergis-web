@@ -96,7 +96,10 @@ const PHASE_ENTRIES = {
     // D-045: renamed from Architecture — Design designs, Build architects. Key stays
     // 'arch' for deep links; the System map lives as this page's first tab.
     { key: 'arch',        label: 'System design',              ico: 'tree' },
-    { key: 'workflows',   label: 'Use cases',                  ico: 'flow' },   // D-149 per-UC flows (projections)
+    // D-168: the Use cases entry retired from the rail — the per-UC flows and
+    // coverage remain computed (UC_FLOWS / workflowUcCoverage) and the
+    // 'workflows' deep link still lands softly; the UC↔wall traceability
+    // lives on the journeys' reconciliation and the walls' capabilities.
   ],
   Build: [
     { key: 'infra',    label: 'Resources', ico: 'tree' },   // as-built cloud resources & environments (D-035/D-039); key stays 'infra' for deep links
