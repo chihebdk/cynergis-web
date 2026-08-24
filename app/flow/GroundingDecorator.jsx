@@ -152,7 +152,7 @@ export function HomeContext() {
     <div style={{ position: "absolute", top: 0, left: "50%", width: 0, height: 0, zIndex: 10 }}>
       <span className={"cyn-ctxkind cyn-ck-home" + (isCtx ? " clickable" : "")}
         style={{ position: "absolute", bottom: "6px", left: 0, transform: "translateX(-50%)", whiteSpace: "nowrap",
-          color: c.ink, background: c.bg, borderColor: c.line }}
+          color: c.ink, background: c.bg, borderColor: c.line, cursor: isCtx ? "pointer" : "default" }}
         title={isCtx ? "Home context — click to open the wall" : "Owned outside the accepted cut"}
         onClick={go}>
         {name}
