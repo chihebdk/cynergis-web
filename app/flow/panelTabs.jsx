@@ -501,7 +501,7 @@ function EventCardsBody({ node }) {
   const arche = comp ? componentArchetype(comp) : { label: "Event", tabs: ["details"] };
   const populated = {
     details: true,
-    trigger: !!node.trigger || (comp?.trigger || []).length > 0,
+    trigger: !!node.trigger || (((node.record || node).triggers) || []).length > 0 || (comp?.trigger || []).length > 0,
     rules: rules.length > 0,
     commands: commands.length > 0,
     read: reads.length > 0,

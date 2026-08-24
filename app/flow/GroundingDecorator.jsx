@@ -82,7 +82,9 @@ export function TriggerBadge() {
     const pr = list[0];
     key = TRIGGER_TYPES[pr.type].entry;
     extra = list.length - 1;
-    tip = `${pr.type} — ${pr.actor} · ${pr.source}` + (extra ? ` (+${extra} more door${extra > 1 ? "s" : ""})` : "");
+    const who = (pr.sources || [])[0] || pr.kind || "";
+    const ident = pr.impl?.endpoint || pr.impl?.topic || pr.impl?.surface || pr.impl?.schedule || "";
+    tip = `${pr.type}${who ? " — " + who : ""}${ident ? " · " + ident : ""}` + (extra ? ` (+${extra} more door${extra > 1 ? "s" : ""})` : "");
   }
   const t = node.trigger;
   if (!key && t && t.kind && (t.actor || t.mechanism)) {

@@ -209,6 +209,22 @@ window.__DDD__ = {
       contextMapId: 'cm-claims-v2',
       systemMapId: 'cc-systemmap',
       contexts: [
+        /* ── D-154: the ACCEPTED CUT arrives wall by wall; the D-090 walls
+           below remain during the migration (rehome, never remove) ── */
+        { id: 'CTX-INTAKE', name: 'Intake & registration', classification: 'core',
+          language: [
+            { term: 'loss report', def: 'The record of the event as reported — circumstances, parties, vehicles. Not yet a claim.' },
+            { term: 'door', def: 'A contract into the same action: the portal pane, the workbench intake, the police topic. Split by spec, never by caller.' },
+            { term: 'merge', def: 'A later channel touching the same loss is absorbed — never a duplicate, nothing lost, provenance kept.' },
+            { term: 'notice date', def: 'The official date the loss reached us. Legal weight; recorded, not inferred.' },
+            { term: 'registration', def: 'The moment the completed report becomes a numbered claim — the seam to adjudication.' },
+          ],
+          note: 'The accepted cut\u2019s front door: the doors and the moment a request becomes a numbered claim (D-152/D-153).',
+          summary: 'One aggregate from the first word of a loss to a numbered claim. Every door triggers the same action with the same parameter schema; a licensed person closes intake; registration publishes the claim-opened seam that adjudication consumes. Design-level storm authored — every \u26a0 on its cards is an unmined industry assertion, which is the legacy-mining backlog.',
+          needs: [
+            { from: 'Mainframe policy system (ACL)', data: 'the coverage snapshot request keyed to date of loss — the strangler seam' },
+            { from: 'Claims Workbench (product to be recorded)', data: 'the licensed intake surface for phone and broker doors' },
+          ] },
         { id: 'CTX-FNOL', name: 'Notice of loss', classification: 'core',
           language: [
             { term: 'loss report', def: 'The record of the event as reported: circumstances, parties, vehicles, injuries alleged. Not yet a claim.' },
