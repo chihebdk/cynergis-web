@@ -3,7 +3,7 @@
 import { useNodeId } from "@xyflow/react";
 import { useNodeCache, useDecoratorsStore } from "@flowai/canvas";
 import { Icon } from "@iconify/react";
-import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE, TRIGGER_TYPES } from "./arch";
+import { componentById, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE, TRIGGER_TYPES } from "./arch";
 import { HOME_NAMES, HOME_COLORS } from "./journeys";
 
 function grounding(node) {
@@ -185,11 +185,10 @@ export function ContextKind() {
   const { getItem } = useNodeCache();
   const node = id ? getItem(id) : null;
   if (!node) return null;
-  let label = CM_KIND_LABEL[node.kind];
-  if (!label && node.kind === "event") {
-    const comp = componentById((node.arch || deriveArch(node) || {}).component);
-    label = comp ? `Domain event · ${comp.name}` : "Domain event";
-  }
+  // event cards get NO kind pill: on a map canvas they only appear inside an
+  // expanded wall, and the wall's own title already says what they all are —
+  // the pill would just crowd the aggregate chip and trigger badge (D-173).
+  const label = CM_KIND_LABEL[node.kind];
   if (!label) return null;
   // zero-footprint anchor at the card's bottom-centre so the chip never adds to the
   // node's measured height (which would shift the handle / edge). Colour-coded by
