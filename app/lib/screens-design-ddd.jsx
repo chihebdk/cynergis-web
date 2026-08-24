@@ -17,6 +17,8 @@ const FLOW_BY_CONTEXT = {
   'CTX-FNOL': 'cc-fnol', 'CTX-COVERAGE': 'cc-coverage', 'CTX-AB': 'cc-ab', 'CTX-TOTAL-LOSS': 'cc-totalloss',
   'CTX-INTAKE': 'ds-intake',   // D-154: the accepted cut's first design-level storm
   'CTX-ADJUD': 'ds-adjud',     // D-155: the cut's centre of gravity
+  'CTX-REPAIR': 'ds-repair', 'CTX-PAYMENTS': 'ds-payments',   // D-156
+  'CTX-TOTALLOSS': 'ds-totalloss', 'CTX-RECOVERY': 'ds-recovery',
 };
 
 /* ============================================================
@@ -443,8 +445,8 @@ function ContextCard({ c, onSelect }) {
           (traceability). The whole card is clickable — no explicit drill affordance. */}
       <div className="ddd-ctx-note">{c.note}</div>
       <div className="ddd-ctx-caps">
-        {c.capabilities.length
-          ? c.capabilities.map(id => <span key={id} onClick={e => e.stopPropagation()}><DDRef id={id} /></span>)
+        {(c.capabilities || []).length
+          ? (c.capabilities || []).map(id => <span key={id} onClick={e => e.stopPropagation()}><DDRef id={id} /></span>)
           : <span className="ddd-nocap">no bespoke capability — reuse</span>}
       </div>
     </div>

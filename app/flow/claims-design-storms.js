@@ -261,4 +261,260 @@ export const dsAdjud = {
   ],
 };
 
-export const CLAIMS_DESIGN_STORMS = [dsIntake, dsAdjud];
+/* ── Context 3: Repair & estimate coordination · SUPPORTING ──
+   The claims-side authority over an externally executed repair.
+   ONE aggregate: the REPAIR CASE. */
+export const dsRepair = {
+  id: "ds-repair",
+  name: "Repair & estimate coordination — design-level storm",
+  contextId: "CTX-REPAIR",
+  summary: "From the appraisal request to a verified repair: assignment, pricing, approval, supplements — the shops execute, coordination approves.",
+  nodes: [
+    { id: "dr-requested", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+      summary: "Appraisal requested", aggregate: "AGG-REPAIRCASE",
+      description: "Adjudication asks for the damage to be priced.",
+      triggers: [
+        { kind: "domain call", type: "Message",
+          sources: ["Claim adjudication — the appraisal-request seam"],
+          impl: { topic: "claims.appraisal-requested.v1", schema: "AppraisalRequest v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-repair", delivery: "at-least-once · partition key: claim #",
+            spec: "AsyncAPI · claims-appraisal-requested v1 (consumer)" } },
+      ],
+      commands: [
+        { label: "Open the repair case", on: "AGG-REPAIRCASE" },
+        { label: "Select the appraisal channel", on: "AGG-REPAIRCASE", desc: "Network shop, staff appraiser, or photo-based." },
+      ],
+      businessRules: [{ label: "Shop choice vs steering — provincially regulated" }] },
+
+    { id: "dr-accepted", type: "SimpleNode", parentId: "dr-requested", kind: "event",
+      summary: "Assignment accepted", aggregate: "AGG-REPAIRCASE",
+      description: "A shop takes the job.",
+      triggers: [
+        { kind: "external system call", type: "API",
+          sources: ["Repair shop — via the Repair Network Portal"],
+          callers: [{ component: "C1", prod: "PROD-REPAIR-PORTAL" }],
+          impl: { endpoint: "POST /repair-cases/{id}/accept", spec: "OpenAPI · repair-partner-api v1", schema: "AssignmentAccept v1", authn: "Partner account · shop credentials" } },
+      ],
+      commands: [{ label: "Record the acceptance & schedule", on: "AGG-REPAIRCASE" }],
+      businessRules: [{ label: "Network SLAs start at acceptance" }] },
+
+    { id: "dr-estimate", type: "SimpleNode", parentId: "dr-accepted", kind: "event",
+      summary: "Estimate received", aggregate: "AGG-REPAIRCASE",
+      description: "The shop prices the repair.",
+      triggers: [
+        { kind: "external system call", type: "API",
+          sources: ["Repair shop — estimate upload via the portal"],
+          callers: [{ component: "C1", prod: "PROD-REPAIR-PORTAL" }],
+          impl: { endpoint: "POST /repair-cases/{id}/estimates", spec: "OpenAPI · repair-partner-api v1", schema: "RepairEstimate v1", authn: "Partner account · shop credentials" } },
+      ],
+      commands: [{ label: "Validate the estimate", on: "AGG-REPAIRCASE", desc: "Lines, hours, parts against the agreements." }],
+      businessRules: [{ label: "Rate agreements; OEM vs aftermarket parts" }] },
+
+    { id: "dr-breach", type: "SimpleNode", parentId: "dr-estimate", kind: "event", branch: "over the threshold", isEndNode: true,
+      summary: "Threshold breach declared", aggregate: "AGG-REPAIRCASE",
+      description: "The car is not worth fixing — the write-off path takes it.",
+      businessRules: [{ label: "Threshold: estimate vs actual cash value" }],
+      policies: [{ label: "When breached → hand over with the estimate of record", desc: "Customer–supplier seam to Total loss & salvage.", crosses: "Total loss & salvage" }] },
+
+    { id: "dr-approved", type: "SimpleNode", parentId: "dr-estimate", kind: "event", isPivotal: true,
+      summary: "Estimate approved", aggregate: "AGG-REPAIRCASE",
+      description: "The price holds up.",
+      commands: [{ label: "Audit & approve the estimate", on: "AGG-REPAIRCASE" }],
+      businessRules: [{ label: "Approval authority bands" }] },
+
+    { id: "dr-supplement", type: "SimpleNode", parentId: "dr-approved", kind: "event", branch: "hidden damage found",
+      summary: "Supplement approved", aggregate: "AGG-REPAIRCASE",
+      description: "The car is open, more damage shows; the extra work is priced and approved.",
+      businessRules: [{ label: "Supplement authority — the straight-through boundary" }] },
+
+    { id: "dr-completed", type: "SimpleNode", parentId: "dr-approved", kind: "event",
+      summary: "Repair completed", aggregate: "AGG-REPAIRCASE",
+      description: "The car is fixed and goes back to the claimant.",
+      triggers: [
+        { kind: "external system call", type: "API",
+          sources: ["Repair shop — completion via the portal"],
+          callers: [{ component: "C1", prod: "PROD-REPAIR-PORTAL" }],
+          impl: { endpoint: "POST /repair-cases/{id}/complete", spec: "OpenAPI · repair-partner-api v1", schema: "RepairComplete v1", authn: "Partner account · shop credentials" } },
+      ],
+      commands: [{ label: "Record completion", on: "AGG-REPAIRCASE" }] },
+
+    { id: "dr-verified", type: "SimpleNode", parentId: "dr-completed", kind: "event", isPivotal: true, isEndNode: true,
+      summary: "Repair verified", aggregate: "AGG-REPAIRCASE",
+      description: "The work checks out — and adjudication can settle.",
+      commands: [{ label: "Verify the work", on: "AGG-REPAIRCASE", desc: "Photos, QA sample, claimant sign-off." }],
+      businessRules: [{ label: "QA sampling rules" }],
+      policies: [{ label: "When verified → publish repair verified", desc: "The seam back to Claim adjudication, with the estimate of record and approved supplements.", crosses: "Claim adjudication" }] },
+  ],
+};
+
+/* ── Context 4: Claim payments · SUPPORTING (the extracted context) ──
+   The owed/settled ledger. ONE aggregate: the PAYMENT LEDGER. */
+export const dsPayments = {
+  id: "ds-payments",
+  name: "Claim payments — design-level storm",
+  contextId: "CTX-PAYMENTS",
+  summary: "Instructed, dispatched, settled — and the money that comes back in. Adjudication decides; this ledger keeps the truth about the money.",
+  nodes: [
+    { id: "dp-received", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+      summary: "Payment instruction received", aggregate: "AGG-PAYLEDGER",
+      description: "Adjudication says pay; the ledger records it as owed.",
+      triggers: [
+        { kind: "domain call", type: "Message",
+          sources: ["Claim adjudication — the payment-instruction seam"],
+          impl: { topic: "claims.payment-instruction.v1", schema: "PaymentInstruction v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-payments", delivery: "at-least-once · partition key: claim #",
+            idempotency: "One instruction, one ledger entry — replays are no-ops", dlq: "claims.payment-instruction.dlq",
+            spec: "AsyncAPI · claims-payment-instruction v1 (consumer)" } },
+      ],
+      params: { schema: "PaymentInstruction v1", registry: "schema registry · claims/payment-instruction",
+        note: "THE new seam (D-152): the contract adjudication and payments agreed across two storms." },
+      commands: [{ label: "Record instructed-not-yet-settled", on: "AGG-PAYLEDGER" }],
+      businessRules: [{ label: "Claims instructs; it never moves money" }] },
+
+    { id: "dp-dispatched", type: "SimpleNode", parentId: "dp-received", kind: "event",
+      summary: "Instruction dispatched", aggregate: "AGG-PAYLEDGER",
+      description: "The instruction goes to the engine that moves money.",
+      commands: [{ label: "Dispatch over the execution contract", on: "AGG-PAYLEDGER" }],
+      businessRules: [{ label: "Conformist behind the contract", desc: "Legacy execution today, modernized later — this ledger never notices." }] },
+
+    { id: "dp-failed", type: "SimpleNode", parentId: "dp-dispatched", kind: "event", branch: "the payment bounces",
+      summary: "Payment failed", aggregate: "AGG-PAYLEDGER",
+      description: "The money did not land; the ledger says so, loudly.",
+      commands: [{ label: "Void & reissue", on: "AGG-PAYLEDGER" }],
+      businessRules: [{ label: "A failed payment is never silent", desc: "Owed stays owed until settled — no orphaned instructions." }] },
+
+    { id: "dp-settled", type: "SimpleNode", parentId: "dp-dispatched", kind: "event", isPivotal: true, isEndNode: true,
+      summary: "Settlement confirmed", aggregate: "AGG-PAYLEDGER",
+      description: "Confirmation comes back; owed becomes settled.",
+      triggers: [
+        { kind: "external system call", type: "Message",
+          sources: ["Legacy payment execution — settlement confirmations"],
+          impl: { topic: "payments.settlement-confirmed.v1", schema: "SettlementConfirmation v1", broker: "Kafka · payments cluster",
+            consumerGroup: "claims-payments", delivery: "at-least-once",
+            spec: "AsyncAPI · payments-settlement v1 (consumer)" } },
+      ],
+      commands: [{ label: "Flip owed → settled", on: "AGG-PAYLEDGER" }],
+      businessRules: [{ label: "Reconciliation has one owner: this ledger" }],
+      policies: [{ label: "When settled → publish payment settled", desc: "Adjudication closes on it; the portals report it.", crosses: "Claim adjudication" }] },
+
+    { id: "dp-credit", type: "SimpleNode", parentId: "dp-received", kind: "event", branch: "money comes back in", isEndNode: true,
+      summary: "Credit received", aggregate: "AGG-PAYLEDGER",
+      description: "Salvage or recovery money arrives and is booked against the claim.",
+      triggers: [
+        { kind: "domain call", type: "Message",
+          sources: ["Total loss & salvage — proceeds", "Recovery & subrogation — recovered amounts"],
+          impl: { topic: "claims.credits-in.v1", schema: "ClaimCreditIn v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-payments", delivery: "at-least-once",
+            spec: "AsyncAPI · claims-credits-in v1 (consumer)" } },
+      ],
+      commands: [{ label: "Book the credit", on: "AGG-PAYLEDGER" }],
+      policies: [{ label: "When booked → publish the credit", desc: "Adjudication applies it to the file — even after close.", crosses: "Claim adjudication" }] },
+  ],
+};
+
+/* ── Context 5: Total loss & salvage · SUPPORTING ── ONE aggregate: the SALVAGE CASE. */
+export const dsTotalLoss = {
+  id: "ds-totalloss",
+  name: "Total loss & salvage — design-level storm",
+  contextId: "CTX-TOTALLOSS",
+  summary: "One vehicle, one disposition: valuation, settlement, title, disposal — and the proceeds back to the ledger.",
+  nodes: [
+    { id: "dt-received", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+      summary: "Threshold breach received", aggregate: "AGG-SALVAGECASE",
+      description: "The car arrives with the estimate of record: not worth fixing.",
+      triggers: [
+        { kind: "domain call", type: "Message",
+          sources: ["Repair & estimate coordination — the threshold-breach seam"],
+          impl: { topic: "claims.threshold-breach.v1", schema: "ThresholdBreach v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-totalloss", delivery: "at-least-once",
+            spec: "AsyncAPI · claims-threshold-breach v1 (consumer)" } },
+      ],
+      commands: [{ label: "Open the salvage case", on: "AGG-SALVAGECASE" }] },
+
+    { id: "dt-valued", type: "SimpleNode", parentId: "dt-received", kind: "event",
+      summary: "Vehicle valued", aggregate: "AGG-SALVAGECASE",
+      description: "The market says what the car was worth the day of the loss.",
+      triggers: [
+        { kind: "external system call", type: "Message",
+          sources: ["Valuation data vendors — behind the ACL"],
+          impl: { topic: "vendors.valuations.v1", schema: "MarketValuation v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-totalloss", delivery: "at-least-once",
+            spec: "AsyncAPI · vendor-valuations v1 (consumer)" } },
+      ],
+      commands: [{ label: "Determine the actual cash value", on: "AGG-SALVAGECASE" }],
+      businessRules: [{ label: "Valuation as at date of loss", desc: "Vendor-conformist behind an ACL — vendors change, the model survives." }] },
+
+    { id: "dt-settled", type: "SimpleNode", parentId: "dt-valued", kind: "event", isPivotal: true,
+      summary: "Settlement offered & accepted", aggregate: "AGG-SALVAGECASE",
+      description: "The owner takes the number; the car becomes ours.",
+      commands: [{ label: "Offer ACV less deductible", on: "AGG-SALVAGECASE" }],
+      businessRules: [{ label: "ACV doctrine — taxes, fees, comparable sales" }],
+      policies: [{ label: "When accepted → hand the settlement to adjudication", desc: "The indemnity travels the normal settlement path.", crosses: "Claim adjudication" }] },
+
+    { id: "dt-branded", type: "SimpleNode", parentId: "dt-settled", kind: "event",
+      summary: "Title branded & transferred", aggregate: "AGG-SALVAGECASE",
+      description: "The paperwork says what the car now is.",
+      businessRules: [{ label: "Branding is regulation — salvage, rebuilt, irreparable" }] },
+
+    { id: "dt-disposed", type: "SimpleNode", parentId: "dt-branded", kind: "event", isPivotal: true, isEndNode: true,
+      summary: "Salvage disposed", aggregate: "AGG-SALVAGECASE",
+      description: "The auction sells the wreck; the money heads back to the ledger.",
+      triggers: [
+        { kind: "external system call", type: "Message",
+          sources: ["Salvage auction network — disposal results"],
+          impl: { topic: "vendors.salvage-disposals.v1", schema: "SalvageDisposal v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-totalloss", delivery: "at-least-once",
+            spec: "AsyncAPI · vendor-salvage v1 (consumer)" } },
+      ],
+      commands: [{ label: "Record proceeds & close the case", on: "AGG-SALVAGECASE" }],
+      policies: [{ label: "When disposed → publish the proceeds", desc: "A credit into Claim payments.", crosses: "Claim payments" }] },
+  ],
+};
+
+/* ── Context 6: Recovery & subrogation · SUPPORTING ── ONE aggregate: the RECOVERY CASE. */
+export const dsRecovery = {
+  id: "ds-recovery",
+  name: "Recovery & subrogation — design-level storm",
+  contextId: "CTX-RECOVERY",
+  summary: "Recovers what others owe, against a closed claim, on its own clock.",
+  nodes: [
+    { id: "dv-referred", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+      summary: "Recovery referred", aggregate: "AGG-RECOVERYCASE",
+      description: "A closed file's facts say someone else should pay.",
+      triggers: [
+        { kind: "domain call", type: "Message",
+          sources: ["Claim adjudication — the recovery-referred seam (post-close)"],
+          impl: { topic: "claims.recovery-referred.v1", schema: "RecoveryReferral v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-recovery", delivery: "at-least-once",
+            spec: "AsyncAPI · claims-recovery-referred v1 (consumer)" } },
+      ],
+      commands: [{ label: "Open the recovery case from the closed-file facts", on: "AGG-RECOVERYCASE" }],
+      businessRules: [{ label: "Operates on closed claims — it reads, it never reopens" }] },
+
+    { id: "dv-demand", type: "SimpleNode", parentId: "dv-referred", kind: "event",
+      summary: "Demand issued", aggregate: "AGG-RECOVERYCASE",
+      description: "The other carrier is asked to pay their share.",
+      commands: [{ label: "Issue the inter-company demand", on: "AGG-RECOVERYCASE" }],
+      businessRules: [{ label: "Fault-split recoverability; inter-company arbitration process" }] },
+
+    { id: "dv-received", type: "SimpleNode", parentId: "dv-demand", kind: "event", isPivotal: true,
+      summary: "Recovery received", aggregate: "AGG-RECOVERYCASE",
+      description: "Months later, the money arrives.",
+      triggers: [
+        { kind: "external system call", type: "Message",
+          sources: ["Other carriers — inter-company settlements"],
+          impl: { topic: "intercompany.settlements.v1", schema: "IntercompanySettlement v1", broker: "Kafka · claims cluster",
+            consumerGroup: "claims-recovery", delivery: "at-least-once",
+            spec: "AsyncAPI · intercompany-settlements v1 (consumer)" } },
+      ],
+      commands: [{ label: "Record the recovery", on: "AGG-RECOVERYCASE" }],
+      policies: [{ label: "When received → publish the credit", desc: "Into Claim payments; the claimant's deductible share returns first.", crosses: "Claim payments" }] },
+
+    { id: "dv-closed", type: "SimpleNode", parentId: "dv-received", kind: "event", isEndNode: true,
+      summary: "Recovery closed", aggregate: "AGG-RECOVERYCASE",
+      description: "Nothing left to chase; the case closes.",
+      commands: [{ label: "Close the recovery case", on: "AGG-RECOVERYCASE" }] },
+  ],
+};
+
+export const CLAIMS_DESIGN_STORMS = [dsIntake, dsAdjud, dsRepair, dsPayments, dsTotalLoss, dsRecovery];
