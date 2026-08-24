@@ -387,3 +387,12 @@
 
 /* Agents tab switch (D-065): one card at a time */
 .coa-switch{ margin-bottom:12px; display:inline-flex; }
+
+/* D-158 · Phase A of the old-wall retirement: supersession made legible */
+.ddd-class.superseded { color: #b45309; background: #fffbeb; border: 1px solid #fde68a; }
+.ddd-class.deferredfwd { color: #4b5563; background: #f9fafb; border: 1px solid #e5e7eb; }
+.ddd-superseded-banner {
+  margin: 10px 0 4px; padding: 10px 14px; font-size: 12.5px;
+  border: 1px solid #fde68a; background: #fffbeb; color: #78350f;
+  border-radius: 8px;
+}

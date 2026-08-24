@@ -300,6 +300,7 @@ window.__DDD__ = {
             { from: 'Other carriers', data: 'inter-company settlements' },
           ] },
         { id: 'CTX-FNOL', name: 'Notice of loss', classification: 'core',
+          superseded: 'Intake & registration',
           language: [
             { term: 'loss report', def: 'The record of the event as reported: circumstances, parties, vehicles, injuries alleged. Not yet a claim.' },
             { term: 'first notice', def: 'The judgement-heavy intake conversation that shapes the entire claim — not a call-centre transaction.' },
@@ -339,6 +340,7 @@ window.__DDD__ = {
             permissions: ['Role-scoped production MCP — acts + observes only', 'No repository or code access', 'Governance acts stay human (D-056)'],
           } },
         { id: 'CTX-COVERAGE', name: 'Coverage & adjudication', classification: 'core',
+          superseded: 'Claim adjudication + Claim payments',
           language: [
             { term: 'claim', def: 'The adjudication file: coverages engaged, reserves, liability position, payments, status. Distinct from the loss report that opened it.' },
             { term: 'snapshot', def: 'The immutable coverage picture as at date of loss — the Claims meaning of \u201cpolicy\u201d. Later policy changes never alter an open claim.' },
@@ -379,6 +381,7 @@ window.__DDD__ = {
             permissions: ['Role-scoped production MCP — acts + observes only', 'Prepares payment instructions, never issues them', 'Governance acts stay human (D-056)'],
           } },
         { id: 'CTX-AB', name: 'Accident benefits', classification: 'core',
+          deferredForward: true,
           language: [
             { term: 'benefit', def: 'A statutory entitlement stream (IRB, med/rehab, attendant care) with its own limits, waiting periods and offsets.' },
             { term: 'election', def: 'The insured\u2019s optional-benefit choices recorded via OPCF 47R at bind; consumed here as coverage facts.' },
@@ -417,6 +420,7 @@ window.__DDD__ = {
             permissions: ['Role-scoped production MCP — acts + observes only', 'Clock escalations cannot be muted', 'Governance acts stay human (D-056)'],
           } },
         { id: 'CTX-TOTAL-LOSS', name: 'Total loss & salvage', classification: 'supporting',
+          superseded: 'Total loss & salvage (D-152 cut)',
           language: [
             { term: 'actual cash value', def: 'Market valuation of the vehicle at date of loss; the settlement anchor and the argument to get right.' },
             { term: 'brand', def: 'Provincial title branding (irreparable, salvage, rebuilt) that follows the VIN.' },

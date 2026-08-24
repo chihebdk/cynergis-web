@@ -439,6 +439,8 @@ function ContextCard({ c, onSelect }) {
       <div className="ddd-ctx-h">
         <span className="ddd-ctx-nm">{c.name}</span>
         <span className={'ddd-class ' + c.classification}>{c.classification}</span>
+        {c.superseded && <span className="ddd-class superseded" title={'Superseded by the D-152 cut — successor: ' + c.superseded}>superseded → {c.superseded}</span>}
+        {c.deferredForward && <span className="ddd-class deferredfwd" title="Deliberately last; carries forward into the new cut unchanged">deferred — carries forward</span>}
       </div>
       {/* Kept lean (D-041): the ubiquitous-language terms live in the drill-in's
           Language tab; the card carries only identity, note, and the UC chips
@@ -616,6 +618,16 @@ function ContextDetail({ c, D, M, prd, onBack }) {
         </h2>
         <span className={'ddd-class ' + c.classification}>{c.classification} subdomain</span>
       </div>
+      {c.superseded && (
+        <div className="ddd-superseded-banner">
+          Superseded by the D-152 cut — its successor is <b>{c.superseded}</b>. This wall stays readable while the migration (agents, capabilities, grounded evidence) completes; it retires only once the successor carries everything — rehome, never remove.
+        </div>
+      )}
+      {c.deferredForward && (
+        <div className="ddd-superseded-banner" style={{ borderColor: 'var(--line)', background: 'var(--panel-2)' }}>
+          Deliberately deferred — this wall carries forward into the new cut unchanged. The AB module is last, by plan.
+        </div>
+      )}
       <p className="ddd-detail-note">{c.summary || c.note}</p>
       <BcTabs c={c} D={D} M={M} prd={prd} tab={tab} navTab={navTab} />
     </div>
