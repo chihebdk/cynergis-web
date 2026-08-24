@@ -271,13 +271,15 @@ export const claimsCutMap = {
   ],
 };
 export const claimsCutSubmaps = [
-  { id: "sub-cm2-intake", name: "Intake & registration · CORE", startNodeId: "cm2u-di-reported", endNodeId: "cm2u-di-registered", colorIndex: 0, mapIds: ["cm-claims-v2"] },
-  { id: "sub-cm2-adjud", name: "Claim adjudication · CORE", startNodeId: "cm2u-adj-opened", endNodeId: "cm2u-adj-closed", colorIndex: 1, mapIds: ["cm-claims-v2"] },
-  { id: "sub-cm2-repair", name: "Repair & estimate coordination · SUPPORTING", startNodeId: "cm2u-dr-requested", endNodeId: "cm2u-dr-verified", colorIndex: 2, mapIds: ["cm-claims-v2"] },
-  { id: "sub-cm2-tl", name: "Total loss & salvage · SUPPORTING", startNodeId: "cm2u-dt-received", endNodeId: "cm2u-dt-disposed", colorIndex: 4, mapIds: ["cm-claims-v2"] },
-  { id: "sub-cm2-pay", name: "Claim payments · SUPPORTING", startNodeId: "cm2u-dp-received", endNodeId: "cm2u-dp-settled", colorIndex: 3, mapIds: ["cm-claims-v2"] },
-  { id: "sub-cm2-rec", name: "Recovery & subrogation · SUPPORTING", startNodeId: "cm2u-dv-referred", endNodeId: "cm2u-dv-closed", colorIndex: 5, mapIds: ["cm-claims-v2"] },
+  { id: "sub-cm2-intake", ctx: "CTX-INTAKE", name: "Intake & registration · CORE", startNodeId: "cm2u-di-reported", endNodeId: "cm2u-di-registered", colorIndex: 0, mapIds: ["cm-claims-v2"] },
+  { id: "sub-cm2-adjud", ctx: "CTX-ADJUD", name: "Claim adjudication · CORE", startNodeId: "cm2u-adj-opened", endNodeId: "cm2u-adj-closed", colorIndex: 1, mapIds: ["cm-claims-v2"] },
+  { id: "sub-cm2-repair", ctx: "CTX-REPAIR", name: "Repair & estimate coordination · SUPPORTING", startNodeId: "cm2u-dr-requested", endNodeId: "cm2u-dr-verified", colorIndex: 2, mapIds: ["cm-claims-v2"] },
+  { id: "sub-cm2-tl", ctx: "CTX-TOTALLOSS", name: "Total loss & salvage · SUPPORTING", startNodeId: "cm2u-dt-received", endNodeId: "cm2u-dt-disposed", colorIndex: 4, mapIds: ["cm-claims-v2"] },
+  { id: "sub-cm2-pay", ctx: "CTX-PAYMENTS", name: "Claim payments · SUPPORTING", startNodeId: "cm2u-dp-received", endNodeId: "cm2u-dp-settled", colorIndex: 3, mapIds: ["cm-claims-v2"] },
+  { id: "sub-cm2-rec", ctx: "CTX-RECOVERY", name: "Recovery & subrogation · SUPPORTING", startNodeId: "cm2u-dv-referred", endNodeId: "cm2u-dv-closed", colorIndex: 5, mapIds: ["cm-claims-v2"] },
 ];
+/* D-174: a collapsed wall clicks through to its bounded context page */
+export const CM_SUBMAP_CTX = Object.fromEntries(claimsCutSubmaps.map((sm) => [sm.id, sm.ctx]));
 
 /* ── D-157: THE DECOMPOSITION, made explicit ──
    Every storm EVENT gets exactly one home context (one-home-per-card).
