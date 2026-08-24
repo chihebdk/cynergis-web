@@ -16,6 +16,10 @@
    ============================================================ */
 
 import { fnolFlow, coverageFlow, abFlow, totalLossFlow } from "./claims-flows";
+import { CLAIMS_DESIGN_STORMS } from "./claims-design-storms";
+
+/* D-160 · Phase B.2: the design-level storms are the projection source now */
+export const DESIGN_STORMS_BY_PRODUCT = { "PROD-CLAIMSCORE": CLAIMS_DESIGN_STORMS };
 
 /* clone a wall flow's event nodes into the workflow: wf- ids, submap
    membership, parent re-chained where the wall's own chain starts */
@@ -102,33 +106,103 @@ export const claimsWorkflowSubmaps = [
   { id: "sub-wf-tl", name: "Total loss & salvage", startNodeId: "wf-tl-breach", endNodeId: "wf-tl-disposed", colorIndex: 3, mapIds: ["wf-claims"] },
 ];
 
+/* ── D-160 · the stitched end-to-end projection v2 — the SIX NEW WALLS as
+   submaps, chained on the accepted cut's seams. A projection of the design
+   storms (cloned members, isEndNode stripped; junction rules per D-148):
+   the truth lives in the context storms. Repair/payments/recovery fan out
+   from adjudication's end member — a tree approximation, same class as v1. */
+function takeStorm(storm, submapId, entryParent, prefix) {
+  const ids = new Set(storm.nodes.filter((n) => n.kind === "event").map((n) => n.id));
+  return storm.nodes.filter((n) => n.kind === "event").map((n) => {
+    const m = structuredClone(n);
+    m.id = `${prefix}${n.id}`;
+    m.parentId = ids.has(n.parentId) ? `${prefix}${n.parentId}` : entryParent;
+    m.submapId = submapId;
+    m.bc = storm.contextId;
+    delete m.isEndNode;
+    return m;
+  });
+}
+const _ds = Object.fromEntries(CLAIMS_DESIGN_STORMS.map((m) => [m.contextId, m]));
+const _seam = (id, parentId, summary, description, extra = {}) =>
+  ({ id, type: "SimpleNode", parentId, kind: "seam", summary, description, ...extra });
+const _v2Intake = takeStorm(_ds["CTX-INTAKE"], "sub-wf2-intake", "wf2-initiators", "u2-");
+const _v2Adjud = takeStorm(_ds["CTX-ADJUD"], "sub-wf2-adjud", "wf2-s-opened", "u2-");
+const _v2Repair = takeStorm(_ds["CTX-REPAIR"], "sub-wf2-repair", "wf2-s-appraisal", "u2-");
+const _v2Pay = takeStorm(_ds["CTX-PAYMENTS"], "sub-wf2-pay", "wf2-s-payinstr", "u2-");
+const _v2TL = takeStorm(_ds["CTX-TOTALLOSS"], "sub-wf2-tl", "wf2-s-threshold", "u2-");
+const _v2Rec = takeStorm(_ds["CTX-RECOVERY"], "sub-wf2-rec", "wf2-s-recovery", "u2-");
+
+export const claimsWorkflowV2 = {
+  id: "wf-claims-v2",
+  name: "Claims workflow — the accepted cut, end to end",
+  contextId: null,
+  summary: "The stitched projection of the six design-level storms (D-154–D-156), chained on the typed seams of cm-claims-v2. Collapse the boxes to read the context map; expand them for the storming detail. The authored truth lives in each context's storm.",
+  nodes: [
+    { id: "wf2-initiators", type: "SimpleNode", parentId: "start", kind: "actor",
+      summary: "Loss initiators",
+      description: "Claimant in the portal pane, claimant or third party by phone, broker via the desk, police feed as messages — four doors, one loss report." },
+    ...(_v2Intake),
+    _seam("wf2-s-opened", "u2-di-registered", "claim opened",
+      "Customer–supplier: the registered claim with the triage payload crosses to adjudication."),
+    ...(_v2Adjud),
+    _seam("wf2-s-appraisal", "u2-adj-closed", "appraisal request",
+      "Customer–supplier: adjudication asks for the damage to be priced; the estimate of record returns."),
+    ...(_v2Repair),
+    _seam("wf2-s-threshold", "u2-dr-verified", "threshold breach",
+      "Customer–supplier: over the total-loss line, the vehicle hands over with the estimate of record."),
+    ...(_v2TL),
+    _seam("wf2-s-payinstr", "u2-adj-closed", "payment instruction",
+      "THE new seam: adjudication instructs, Claim payments executes the ledger."),
+    ...(_v2Pay),
+    _seam("wf2-s-settled", "u2-dp-settled", "payment settled", "Confirmation back to adjudication; the portals report it.", { isEndNode: true }),
+    _seam("wf2-s-recovery", "u2-adj-closed", "recovery referred",
+      "Customer–supplier, post-close: the closed file's facts open the recovery case."),
+    ...(_v2Rec),
+    { id: "wf2-x-mainframe", type: "SimpleNode", parentId: "u2-adj-closed", kind: "external", isEndNode: true,
+      summary: "Mainframe policy system",
+      description: "ACL — the coverage snapshot as at date of loss; the strangler seam." },
+    { id: "wf2-x-siu", type: "SimpleNode", parentId: "u2-adj-closed", kind: "external", isEndNode: true,
+      summary: "Fraud & SIU",
+      description: "Published events — holds gate settlement; findings return as facts." },
+  ],
+};
+export const claimsWorkflowV2Submaps = [
+  { id: "sub-wf2-intake", name: "Intake & registration", startNodeId: "u2-di-reported", endNodeId: "u2-di-registered", colorIndex: 0, mapIds: ["wf-claims-v2"] },
+  { id: "sub-wf2-adjud", name: "Claim adjudication", startNodeId: "u2-adj-opened", endNodeId: "u2-adj-closed", colorIndex: 1, mapIds: ["wf-claims-v2"] },
+  { id: "sub-wf2-repair", name: "Repair & estimate coordination", startNodeId: "u2-dr-requested", endNodeId: "u2-dr-verified", colorIndex: 2, mapIds: ["wf-claims-v2"] },
+  { id: "sub-wf2-pay", name: "Claim payments", startNodeId: "u2-dp-received", endNodeId: "u2-dp-settled", colorIndex: 3, mapIds: ["wf-claims-v2"] },
+  { id: "sub-wf2-tl", name: "Total loss & salvage", startNodeId: "u2-dt-received", endNodeId: "u2-dt-disposed", colorIndex: 4, mapIds: ["wf-claims-v2"] },
+  { id: "sub-wf2-rec", name: "Recovery & subrogation", startNodeId: "u2-dv-referred", endNodeId: "u2-dv-closed", colorIndex: 5, mapIds: ["wf-claims-v2"] },
+];
+
 /* ── Pass 1: the workflow inventory, per domain ──
    One entry per authored workflow; journeys without an authored workflow
    surface as candidates on the Workflows page (honest empty state). */
 export const WORKFLOW_INVENTORY = [
   {
-    id: "wf-claims",
+    id: "wf-claims-v2",   /* D-160: the stitched projection of the accepted cut (wf-claims v1 stays registered) */
     domain: "DOM-CLAIMS",
     product: "PROD-CLAIMSCORE",   /* owner: the product whose use cases form the spine (UC1–UC8); other products contribute surfaces */
     journey: "JR-CLAIM",
     name: "A loss is reported → the claim is settled",
-    walls: ["CTX-FNOL", "CTX-COVERAGE", "CTX-AB", "CTX-TOTAL-LOSS"],
+    walls: ["CTX-INTAKE", "CTX-ADJUD", "CTX-REPAIR", "CTX-PAYMENTS", "CTX-TOTALLOSS", "CTX-RECOVERY"],
     status: "authored",
     /* Pass 3 — the boundary check: every workflow edge that crosses a submap
        boundary, verified against the RECORDED seams (member-graph contracts) */
     boundaryCheck: [
-      { crossing: "Notice of loss → Coverage & reserves", contract: "'completed loss report' event — internal Customer–supplier seam", ok: true },
-      { crossing: "Coverage & reserves → Billing", contract: "Payment instruction events (instructed-not-yet-settled)", ok: true },
-      { crossing: "Underwriting & Policy → Coverage & reserves", contract: "Immutable coverage snapshot as at date of loss, consumed as an event", ok: true },
-      { crossing: "HCAI → Accident benefits", contract: "OCF forms + invoices through the ACL (external, Conformist)", ok: true },
-      { crossing: "Estimating & repair → Total loss & salvage", contract: "'threshold breach' event with the estimate of record", ok: true },
-      { crossing: "Loss initiators → Notice of loss", contract: "Four doors, one report: portal pane + intake workspace (own surfaces) · police feed (external message)", ok: true,
-        note: "Settles D-147: the pane and workspace sit INSIDE the FNOL submap — internal module calls; only the police feed crosses in from outside." },
+      { crossing: "Intake & registration → Claim adjudication", contract: "claim opened — customer–supplier (ClaimOpen v1)", ok: true },
+      { crossing: "Claim adjudication → Repair & estimate coordination", contract: "appraisal request — customer–supplier; repair-verified returns", ok: true },
+      { crossing: "Repair coordination → Total loss & salvage", contract: "threshold breach with the estimate of record — customer–supplier", ok: true },
+      { crossing: "Claim adjudication → Claim payments", contract: "payment instruction — THE new seam (PaymentInstruction v1); payment-settled returns", ok: true },
+      { crossing: "Claim adjudication → Recovery & subrogation", contract: "recovery referred — customer–supplier, post-close; credits return via payments", ok: true },
+      { crossing: "Mainframe policy → Claim adjudication", contract: "coverage snapshot ACL — the strangler seam", ok: true },
+      { crossing: "Fraud & SIU → Claim adjudication", contract: "typed holds in; findings back as facts", ok: true },
     ],
   },
 ];
 
-export const WORKFLOW_MAPS = { "wf-claims": claimsWorkflow };
+export const WORKFLOW_MAPS = { "wf-claims": claimsWorkflow, "wf-claims-v2": claimsWorkflowV2 };
 
 /* ── UC ↔ workflow mapping, computed from the grounds the events already
    carry (never hand-asserted). Each use case = a segment of the workflow:
@@ -136,10 +210,16 @@ export const WORKFLOW_MAPS = { "wf-claims": claimsWorkflow };
    events (the storming alternates). UCs with NO events are returned as
    gaps — the honest rows. */
 export function workflowUcCoverage(wfId, productPid) {
+  /* D-160: project from the design-level storms when the product has them
+     (the one-home cards); fall back to the stitched map otherwise */
+  const storms = DESIGN_STORMS_BY_PRODUCT[productPid];
   const map = WORKFLOW_MAPS[wfId];
-  if (!map) return { rows: [], gaps: [] };
+  const evSource = storms
+    ? storms.flatMap((m) => m.nodes.map((n) => ({ ...n, _ctx: m.contextId })))
+    : (map ? map.nodes : []);
+  if (!evSource.length) return { rows: [], gaps: [] };
   const byUc = {};
-  for (const n of map.nodes) {
+  for (const n of evSource) {
     if (n.kind !== "event") continue;
     for (const g of (n.grounds || [])) {
       if (!/^UC\d+$/.test(g)) continue;
@@ -176,9 +256,14 @@ export function workflowUcCoverage(wfId, productPid) {
 export const UC_FLOWS = (() => {
   const maps = [];
   for (const w of WORKFLOW_INVENTORY) {
+    /* D-160: the UC flow walks the design-storm cards (one home each),
+       in storm order — intake first, then adjudication, and so on */
+    const storms = DESIGN_STORMS_BY_PRODUCT[w.product];
     const map = WORKFLOW_MAPS[w.id];
-    if (!map) continue;
-    const evs = map.nodes.filter((n) => n.kind === "event");
+    const evs = storms
+      ? storms.flatMap((m) => m.nodes.filter((n) => n.kind === "event"))
+      : (map ? map.nodes.filter((n) => n.kind === "event") : []);
+    if (!evs.length) continue;
     const ucs = [...new Set(evs.flatMap((n) => (n.grounds || []).filter((g) => /^UC\d+$/.test(g))))];
     for (const uc of ucs) {
       const mine = evs.filter((n) => (n.grounds || []).includes(uc));

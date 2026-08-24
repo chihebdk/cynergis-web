@@ -6,7 +6,7 @@ import { systemMap, systemSubmaps } from "./systemmap-data";
 import { claimsFlows, ccContextMap, ccContextSubmaps, ccSystemMap, ccSystemSubmaps } from "./claims-flows";
 import { domainMaps, domainSubmaps } from "./domain-maps";
 import { buildDerivedFlows } from "./derived-flows";
-import { claimsWorkflow, claimsWorkflowSubmaps, UC_FLOWS } from "./workflows";
+import { claimsWorkflow, claimsWorkflowSubmaps, claimsWorkflowV2, claimsWorkflowV2Submaps, UC_FLOWS } from "./workflows";
 import { BJ_STORMS, claimsCutMap } from "./journeys";
 import { CLAIMS_DESIGN_STORMS } from "./claims-design-storms";
 
@@ -31,6 +31,8 @@ for (const sm of ccSystemSubmaps) getCollection("submap").set(sm.id, structuredC
 for (const flow of buildDerivedFlows()) getCollection("map").set(flow.id, structuredClone(flow));   // D-131: every other wall
 getCollection("map").set(claimsWorkflow.id, structuredClone(claimsWorkflow));   // D-148: the end-to-end workflow
 for (const m of UC_FLOWS) getCollection("map").set(m.id, structuredClone(m));    // D-149: one flow per use case
+getCollection("map").set(claimsWorkflowV2.id, structuredClone(claimsWorkflowV2));   // D-160: the stitched projection of the accepted cut
+for (const sm of claimsWorkflowV2Submaps) getCollection("submap").set(sm.id, structuredClone(sm));
 for (const m of BJ_STORMS) getCollection("map").set(m.id, structuredClone(m));   // D-151: big-picture storms per journey
 getCollection("map").set(claimsCutMap.id, structuredClone(claimsCutMap));        // D-153: the accepted cut's context map
 for (const m of CLAIMS_DESIGN_STORMS) getCollection("map").set(m.id, structuredClone(m));   // D-154: design-level storms per context
