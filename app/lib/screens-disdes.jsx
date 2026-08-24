@@ -727,17 +727,19 @@ function DesignJourneys() {
         <div className="asc-sec-sub">Every storm event has exactly one home context; a journey is a walk across them. Computed from the home tags — the overlaps are where the seams came from.</div>
       </div>
       {(() => {
-        const unreached = reconReport().unreached;
-        if (!unreached.length) return null;
+        /* D-166: a tripwire — only UNTRIAGED unreached cards surface; the
+           section is absent while the ledger is healthy */
+        const open = reconReport().open;
+        if (!open.length) return null;
         return (
           <div style={{ marginBottom: 14 }}>
             <div className="asc-sec-head">
-              <div className="asc-sec-title">Design cards no journey reaches</div>
-              <div className="asc-sec-sub">The reverse check — designed moments that no business journey walks: intake's early moments (BJ-1 starts at registration), the write-off's own steps, and the failure paths. Each is either fine (design-discovered) or a journey worth storming.</div>
+              <div className="asc-sec-title">Design cards no journey reaches — needs triage</div>
+              <div className="asc-sec-sub">New designed moments that no business journey walks and no verdict covers yet: accept as design-discovered, trim, or storm the missing journey.</div>
             </div>
-            {unreached.map(d => (
+            {open.map(d => (
               <div className="mer-seam" key={d.id}>
-                <span className="badge">unreached</span>
+                <span className="badge err">untriaged</span>
                 <span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{d.name}</b></span>
                 <span className="mer-seam-what">{d.ctx}</span>
               </div>

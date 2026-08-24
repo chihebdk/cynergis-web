@@ -389,6 +389,30 @@ for (const m of BJ_STORMS) for (const n of m.nodes) {
   if (n.kind === "event" && n.id in EVENT_REALIZES) n.realizes = EVENT_REALIZES[n.id];
 }
 
+/* ── D-166: the reverse-check TRIAGE — every unreached design card carries a
+   recorded verdict, and the page section renders only UNTRIAGED cards (so
+   it disappears when healthy and reappears the moment a new wall grows
+   cards no journey demands — a tripwire, not a scoreboard). */
+export const RECON_TRIAGE = {
+  /* BJ-1's storm starts at registration; the journey itself starts at the
+     loss — extending the storm back is an optional, parked action */
+  "di-reported": "BJ-1 storm starts at registration (extension parked)",
+  "di-merged": "BJ-1 storm starts at registration (extension parked)",
+  "di-triaged": "BJ-1 storm starts at registration (extension parked)",
+  "di-completed": "BJ-1 storm starts at registration (extension parked)",
+  /* design-discovered moments below the journeys' resolution — accepted */
+  "adj-opened": "design-discovered: the seam-entry moment BJ-1 compresses into registration",
+  "dp-failed": "design-discovered: the failure path — journeys storm happy paths",
+  "dv-closed": "design-discovered: case-close bookkeeping after BJ-4's last moment",
+  /* the write-off path was designed but never told as a journey — the
+     BJ-9 decision is parked with the sponsor */
+  "dt-received": "write-off journey candidate (BJ-9 decision parked)",
+  "dt-valued": "write-off journey candidate (BJ-9 decision parked)",
+  "dt-settled": "write-off journey candidate (BJ-9 decision parked)",
+  "dt-branded": "write-off journey candidate (BJ-9 decision parked)",
+  "dt-disposed": "write-off journey candidate (BJ-9 decision parked)",
+};
+
 /* the two-way report: per-journey statuses + design cards no journey reaches */
 export function reconReport() {
   const designById = {};
@@ -407,5 +431,6 @@ export function reconReport() {
     perJourney[m.id] = r;
   }
   const unreached = Object.values(designById).filter((d) => !reached.has(d.id));
-  return { perJourney, unreached };
+  const open = unreached.filter((d) => !RECON_TRIAGE[d.id]);   // only untriaged cards surface
+  return { perJourney, unreached, open };
 }
