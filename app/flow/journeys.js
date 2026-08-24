@@ -115,7 +115,7 @@ export const BJ_STORMS = [
       ev("b1-fault", "b1-reserve", "Fault determined", "Who caused it is decided — or noted as not applicable.", {
         commands: [{ label: "Apply the fault determination rules", on: "CLAIM" }, { label: "Record the fault split", on: "CLAIM" }],
         businessRules: [{ label: "The fault chart is regulation, not judgment" }] }),
-      ev("b1-appraisal", "b1-fault", "Appraisal assigned", "Someone is chosen to look at the damage.", {
+      ev("b1-appraisal", "b1-fault", "Appraisal requested", "Someone is chosen to look at the damage.", {
         commands: [{ label: "Select the appraisal channel (shop / staff / photo)", on: "CLAIM" }],
         businessRules: [{ label: "Shop choice vs steering — provincially regulated" }] }),
       ev("b1-estimate", "b1-appraisal", "Estimate submitted", "The damage is priced.", {
@@ -332,4 +332,80 @@ for (const m of BJ_STORMS) {
     const kids = evs.filter((k) => k.parentId === n.id);
     if (kids.some((k) => k.home && k.home !== n.home)) n.isPivotal = true;
   }
+}
+
+/* ── D-165: THE RECONCILIATION — every journey card mapped to the design
+   card(s) that realize it. Three honest values:
+     [ids]           → realized by those design-storm cards
+     "journey-only"  → an actor-lens moment no wall should model
+     null            → A GAP: a moment no wall has designed yet (a finding)
+   The reverse check (design cards no journey reaches) is computed. */
+import { CLAIMS_DESIGN_STORMS as _DS } from "./claims-design-storms";
+
+export const EVENT_REALIZES = {
+  /* BJ-1 */
+  "b1-registered": ["di-registered"], "b1-denied-force": ["adj-denied-force"], "b1-policy": ["adj-policy"],
+  "b1-denied-cover": ["adj-denied-cover"], "b1-coverage": ["adj-coverage"],
+  "b1-assigned": null,                       /* GAP: lane/handler assignment — work management, not yet designed */
+  "b1-fraud-hold": ["adj-hold"], "b1-reserve": ["adj-reserve"], "b1-fault": ["adj-fault"],
+  "b1-appraisal": ["dr-requested", "dr-accepted"], "b1-estimate": ["dr-estimate"], "b1-totalloss": ["dr-breach"],
+  "b1-approved": ["dr-approved"], "b1-authorized": ["dr-approved"],   /* authorization folded into approval (authority bands live there) */
+  "b1-supplement": ["dr-supplement"], "b1-completed": ["dr-completed"], "b1-verified": ["dr-verified"],
+  "b1-calculated": ["adj-calculated"], "b1-payauth": ["adj-payauth"],
+  "b1-instructed": ["dp-received"], "b1-settled": ["dp-settled"],
+  "b1-recovery-ref": ["dv-referred"],
+  "b1-recovery": null,                       /* GAP: the recovery ASSESSMENT at closure is not a designed moment */
+  "b1-closed": ["adj-closed"],
+  /* BJ-2 */
+  "b2-assigned": ["dr-accepted"],
+  "b2-inspected": "journey-only",            /* shop-internal */
+  "b2-estimate": ["dr-estimate"], "b2-approved": ["dr-approved"],
+  "b2-started": "journey-only",              /* shop-internal */
+  "b2-supplement": ["dr-supplement"], "b2-completed": ["dr-completed"],
+  "b2-invoiced": null,                       /* GAP: the vendor invoice moment is modeled nowhere */
+  "b2-paid": ["dp-settled"],
+  /* BJ-3 */
+  "b3-instructed": ["dp-received"], "b3-executed": ["dp-dispatched"], "b3-confirmed": ["dp-settled"],
+  "b3-claimant": ["dp-settled"], "b3-vendor": ["dp-settled"],
+  "b3-salvage": ["dp-credit"], "b3-recovery": ["dp-credit"],
+  /* BJ-4 */
+  "b4-closed": ["adj-closed"],
+  "b4-fault": null,                          /* GAP: recovery-side fault positioning is not designed */
+  "b4-demand": ["dv-demand"], "b4-received": ["dv-received"], "b4-credited": ["adj-credit"],
+  /* BJ-5 */
+  "b5-communicated": null,                   /* GAP: decision communication is a policy, never an event — design question */
+  "b5-disputed": "journey-only",             /* the claimant's act; our response is the reopen */
+  "b5-reopened": ["adj-reopened"],
+  "b5-upheld": null,                         /* GAP: the review outcome (upheld) is not designed */
+  "b5-adjusted": null,                       /* GAP: the re-decision + re-close path is not designed */
+  /* BJ-6 */
+  "b6-flagged": "journey-only",              /* SIU's own moment, outside the cut */
+  "b6-hold": ["adj-hold"],
+  "b6-concluded": "journey-only",            /* SIU's own moment */
+  "b6-facts": null,                          /* GAP: findings-recorded-as-facts has no design card */
+  "b6-released": null,                       /* GAP: hold release has no design card */
+};
+for (const m of BJ_STORMS) for (const n of m.nodes) {
+  if (n.kind === "event" && n.id in EVENT_REALIZES) n.realizes = EVENT_REALIZES[n.id];
+}
+
+/* the two-way report: per-journey statuses + design cards no journey reaches */
+export function reconReport() {
+  const designById = {};
+  for (const m of _DS) for (const n of m.nodes) if (n.kind === "event") designById[n.id] = { id: n.id, name: n.summary, ctx: m.contextId };
+  const reached = new Set();
+  const perJourney = {};
+  for (const m of BJ_STORMS) {
+    const r = { realized: 0, journeyOnly: [], gaps: [] };
+    for (const n of m.nodes) {
+      if (n.kind !== "event") continue;
+      const v = EVENT_REALIZES[n.id];
+      if (Array.isArray(v)) { r.realized += 1; v.forEach((d) => reached.add(d)); }
+      else if (v === "journey-only") r.journeyOnly.push(n.summary);
+      else r.gaps.push(n.summary);
+    }
+    perJourney[m.id] = r;
+  }
+  const unreached = Object.values(designById).filter((d) => !reached.has(d.id));
+  return { perJourney, unreached };
 }

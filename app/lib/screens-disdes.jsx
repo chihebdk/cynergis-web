@@ -1,7 +1,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { WORKFLOW_INVENTORY, workflowUcCoverage } from '../flow/workflows.js';
-import { BUSINESS_JOURNEYS, BJ_STORMS } from '../flow/journeys.js';
+import { BUSINESS_JOURNEYS, BJ_STORMS, reconReport } from '../flow/journeys.js';
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
 import './trace-core';
 import { componentArchetype } from '../flow/arch';
@@ -670,6 +670,34 @@ function DesignJourneys() {
           <div className="ddd-empty-inline">Deferred — no storm authored yet, by decision. {sel.note}</div>
         )}
       </div>
+      {sel.storm && sel.storm.startsWith('bj-') && (() => {
+        const rep = reconReport().perJourney[sel.storm];
+        if (!rep) return null;
+        return (
+          <div className="asc-section">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">Reconciliation with the design storms</div>
+              <div className="asc-sec-sub">Every card mapped: realized by a wall's card · journey-only (actor lens, no wall should model it) · or a gap — a moment no wall has designed yet</div>
+            </div>
+            <div className="mer-seam">
+              <span className="badge ok">{rep.realized} realized</span>
+              <span className="mer-seam-what">cards carried by the design storms</span>
+            </div>
+            {rep.journeyOnly.map(n => (
+              <div className="mer-seam" key={'jo' + n}>
+                <span className="badge">journey-only</span>
+                <span className="mer-seam-what">{n} — an actor-lens moment; no wall should model it</span>
+              </div>
+            ))}
+            {rep.gaps.map(n => (
+              <div className="mer-seam" key={'g' + n}>
+                <span className="badge err">gap</span>
+                <span className="mer-seam-what"><b>{n}</b> — no wall has designed this moment yet</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </>);
   }
 
@@ -698,6 +726,25 @@ function DesignJourneys() {
         <div className="asc-sec-title">The decomposition — journeys × contexts</div>
         <div className="asc-sec-sub">Every storm event has exactly one home context; a journey is a walk across them. Computed from the home tags — the overlaps are where the seams came from.</div>
       </div>
+      {(() => {
+        const unreached = reconReport().unreached;
+        if (!unreached.length) return null;
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">Design cards no journey reaches</div>
+              <div className="asc-sec-sub">The reverse check — designed moments that no business journey walks: intake's early moments (BJ-1 starts at registration), the write-off's own steps, and the failure paths. Each is either fine (design-discovered) or a journey worth storming.</div>
+            </div>
+            {unreached.map(d => (
+              <div className="mer-seam" key={d.id}>
+                <span className="badge">unreached</span>
+                <span className="mer-seam-ends" style={{ minWidth: 240 }}><b>{d.name}</b></span>
+                <span className="mer-seam-what">{d.ctx}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       {(() => {
         const COLS = [['CTX-INTAKE', 'Intake'], ['CTX-ADJUD', 'Adjudication'], ['CTX-REPAIR', 'Repair'], ['CTX-PAYMENTS', 'Payments'], ['CTX-TOTALLOSS', 'Total loss'], ['CTX-RECOVERY', 'Recovery'], ['EXT', 'Outside the cut']];
         const rows = js.filter(j => j.storm && j.storm !== 'wf-claims').map(j => {
