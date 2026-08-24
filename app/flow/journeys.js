@@ -251,3 +251,48 @@ export const claimsCutMap = {
     ext("cm2-x-carriers", "cm2-recovery", "Other carriers", "Inter-company demands and arbitration — their process, our position.", { isEndNode: true }),
   ],
 };
+
+/* ── D-157: THE DECOMPOSITION, made explicit ──
+   Every storm EVENT gets exactly one home context (one-home-per-card).
+   Grouping is by language affinity, not by journey — which is why homes
+   cross journey lines. Actors/externals have no home; SIU-owned moments
+   sit outside the cut (EXT). The journey × context matrix and the
+   per-journey map views compute from these tags. Judgment calls recorded:
+   assignment/lane is adjudication work-management; the invoice belongs to
+   the repair case, the vendor payment to the ledger; the total-loss
+   DECLARATION is repair's exit, the write-off path starts at receipt. */
+export const EVENT_HOMES = {
+  /* BJ-1 · have my claim handled */
+  "wf-b1-registered": null, /* (unused guard) */
+  "b1-registered": "CTX-INTAKE",
+  "b1-denied-force": "CTX-ADJUD", "b1-policy": "CTX-ADJUD", "b1-denied-cover": "CTX-ADJUD",
+  "b1-coverage": "CTX-ADJUD", "b1-assigned": "CTX-ADJUD", "b1-fraud-hold": "CTX-ADJUD",
+  "b1-reserve": "CTX-ADJUD", "b1-fault": "CTX-ADJUD",
+  "b1-appraisal": "CTX-REPAIR", "b1-estimate": "CTX-REPAIR", "b1-totalloss": "CTX-REPAIR",
+  "b1-approved": "CTX-REPAIR", "b1-authorized": "CTX-REPAIR", "b1-supplement": "CTX-REPAIR",
+  "b1-completed": "CTX-REPAIR", "b1-verified": "CTX-REPAIR",
+  "b1-calculated": "CTX-ADJUD", "b1-payauth": "CTX-ADJUD",
+  "b1-instructed": "CTX-PAYMENTS", "b1-settled": "CTX-PAYMENTS",
+  "b1-recovery-ref": "CTX-RECOVERY", "b1-recovery": "CTX-ADJUD", "b1-closed": "CTX-ADJUD",
+  /* BJ-2 · get the vehicle repaired */
+  "b2-assigned": "CTX-REPAIR", "b2-inspected": "CTX-REPAIR", "b2-estimate": "CTX-REPAIR",
+  "b2-approved": "CTX-REPAIR", "b2-started": "CTX-REPAIR", "b2-supplement": "CTX-REPAIR",
+  "b2-completed": "CTX-REPAIR", "b2-invoiced": "CTX-REPAIR",
+  "b2-paid": "CTX-PAYMENTS",
+  /* BJ-3 · pay and get paid */
+  "b3-instructed": "CTX-PAYMENTS", "b3-executed": "CTX-PAYMENTS", "b3-confirmed": "CTX-PAYMENTS",
+  "b3-claimant": "CTX-PAYMENTS", "b3-vendor": "CTX-PAYMENTS",
+  "b3-salvage": "CTX-PAYMENTS", "b3-recovery": "CTX-PAYMENTS",
+  /* BJ-4 · recover what others owe */
+  "b4-closed": "CTX-ADJUD", "b4-fault": "CTX-RECOVERY", "b4-demand": "CTX-RECOVERY",
+  "b4-received": "CTX-RECOVERY", "b4-credited": "CTX-ADJUD",
+  /* BJ-5 · challenge the decision */
+  "b5-communicated": "CTX-ADJUD", "b5-disputed": "CTX-ADJUD", "b5-reopened": "CTX-ADJUD",
+  "b5-upheld": "CTX-ADJUD", "b5-adjusted": "CTX-ADJUD",
+  /* BJ-6 · investigate suspected fraud — SIU's own moments sit OUTSIDE the cut */
+  "b6-flagged": "EXT-SIU", "b6-hold": "CTX-ADJUD", "b6-concluded": "EXT-SIU",
+  "b6-facts": "CTX-ADJUD", "b6-released": "CTX-ADJUD",
+};
+for (const m of BJ_STORMS) for (const n of m.nodes) {
+  if (n.kind === "event" && EVENT_HOMES[n.id]) n.home = EVENT_HOMES[n.id];
+}

@@ -1,7 +1,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { WORKFLOW_INVENTORY, workflowUcCoverage } from '../flow/workflows.js';
-import { BUSINESS_JOURNEYS } from '../flow/journeys.js';
+import { BUSINESS_JOURNEYS, BJ_STORMS } from '../flow/journeys.js';
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
 import './trace-core';
 import { componentArchetype } from '../flow/arch';
@@ -692,6 +692,48 @@ function DesignJourneys() {
             : ` — the current decomposition is provisional until ${must.filter(j => j.status === 'not-stormed').map(j => j.id).join(' · ')} are stormed.`}
         </div>
       </div>
+    </div>
+    <div className="asc-section">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title">The decomposition — journeys × contexts</div>
+        <div className="asc-sec-sub">Every storm event has exactly one home context; a journey is a walk across them. Computed from the home tags — the overlaps are where the seams came from.</div>
+      </div>
+      {(() => {
+        const COLS = [['CTX-INTAKE', 'Intake'], ['CTX-ADJUD', 'Adjudication'], ['CTX-REPAIR', 'Repair'], ['CTX-PAYMENTS', 'Payments'], ['CTX-TOTALLOSS', 'Total loss'], ['CTX-RECOVERY', 'Recovery'], ['EXT', 'Outside the cut']];
+        const rows = js.filter(j => j.storm && j.storm !== 'wf-claims').map(j => {
+          const m = BJ_STORMS.find(x => x.id === j.storm);
+          const counts = {};
+          if (m) for (const n of m.nodes) {
+            if (n.kind !== 'event') continue;
+            const h = n.home ? (n.home.startsWith('EXT') ? 'EXT' : n.home) : null;
+            if (h) counts[h] = (counts[h] || 0) + 1;
+          }
+          return { j, counts };
+        });
+        const cell = { padding: '6px 10px', textAlign: 'center', borderBottom: '1px solid var(--line)', fontSize: 12 };
+        return (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', minWidth: 640 }}>
+              <thead><tr>
+                <th style={{ ...cell, textAlign: 'left' }}></th>
+                {COLS.map(([k, l]) => <th key={k} style={{ ...cell, fontWeight: 600 }}>{l}</th>)}
+              </tr></thead>
+              <tbody>
+                {rows.map(({ j, counts }) => (
+                  <tr key={j.id}>
+                    <td style={{ ...cell, textAlign: 'left', whiteSpace: 'nowrap' }}><b>{j.id}</b> {j.name}</td>
+                    {COLS.map(([k]) => (
+                      <td key={k} style={{ ...cell, background: counts[k] ? 'var(--accent-soft, #eef2ff)' : undefined, color: counts[k] ? 'var(--accent-ink, #3730a3)' : 'var(--ink-3, #9ca3af)' }}>
+                        {counts[k] || '·'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
     </div>
     <div className="asc-section">
       <div className="mer-subgrid">
