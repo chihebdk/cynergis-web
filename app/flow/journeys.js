@@ -16,8 +16,8 @@ export const BUSINESS_JOURNEYS = [
     id: "BJ-1", product: "PROD-CLAIMSCORE", name: "Have my claim handled",
     actor: "Claimant", span: "Loss occurs → claim closed",
     needs: "Everything — the spine: intake and triage, coverage and reserves, the status stream at every milestone.",
-    treatment: "storm", status: "decomposed", storm: "wf-claims", stormVariant: "contextmap",
-    note: "Starts at the LOSS, not at claim-created — first notice is part of the journey; the portal is one door in, not the starting line. Stormed and decomposed: its events live in the context storms, and the stitched projection is the end-to-end workflow on the domain's Workflows page.",
+    treatment: "storm", status: "stormed", storm: "bj-storm-1",
+    note: "Starts at the LOSS, not at claim-created — first notice is part of the journey; the portal is one door in, not the starting line. Re-stormed from scratch at full granularity (18 steps, no combined moments); the earlier decomposition is provisional until the fresh cut lands.",
   },
   {
     id: "BJ-2", product: "PROD-CLAIMSCORE", name: "Get the vehicle repaired",
@@ -84,6 +84,72 @@ const ext = (id, parentId, summary, description, extra = {}) =>
   ({ id, type: "SimpleNode", parentId, kind: "external", summary, description, ...extra });
 
 export const BJ_STORMS = [
+  {
+    id: "bj-storm-1", name: "BJ-1 · Have my claim handled — big-picture storm (from scratch)", contextId: null,
+    summary: "The claim from request to close, one moment per card, nothing combined. Actions and policies live in each card's properties; the cards read as the story. Clusters carry no grounds yet — every ⚠ is an unmined industry assertion, on purpose.",
+    nodes: [
+      ev("b1-registered", "start", "Claim registered", "The request becomes a claim: numbered, dated, checked against duplicates.", {
+        isPivotal: true,
+        commands: [{ label: "Validate the submission", on: "CLAIM" }, { label: "Check for an existing claim on this loss", on: "CLAIM" }, { label: "Assign the claim number & notice date", on: "CLAIM" }],
+        businessRules: [{ label: "One loss, one claim — merge, never duplicate" }, { label: "Statutory notice-date rules" }] }),
+      ev("b1-denied-force", "b1-registered", "Claim denied — policy not in force", "The policy was not alive at the date of loss; the claimant is told why.", { branch: "policy not in force", isEndNode: true,
+        businessRules: [{ label: "Cancellation & non-payment grace periods" }] }),
+      ev("b1-policy", "b1-registered", "Policy verified", "The policy as at the date of loss is found, and it holds.", {
+        commands: [{ label: "Retrieve the policy as at date of loss", on: "CLAIM" }, { label: "Confirm vehicle & driver on the policy", on: "CLAIM" }],
+        businessRules: [{ label: "In-force rules; newly-acquired-vehicle rules" }],
+        hotspots: [{ label: "Snapshot from the mainframe", desc: "The policy of record IS the mainframe until policy admin modernizes — the snapshot ACL is the strangler seam." }] }),
+      ev("b1-denied-cover", "b1-policy", "Claim denied — no coverage", "The loss does not match a coverage; the file closes with the reasons on record.", { branch: "coverage declined", isEndNode: true,
+        businessRules: [{ label: "Exclusion doctrine (commercial use, impairment, racing)" }] }),
+      ev("b1-coverage", "b1-policy", "Coverage confirmed", "The loss matches a coverage; the deductible is known.", { isPivotal: true,
+        commands: [{ label: "Map loss cause to coverages & endorsements", on: "CLAIM" }, { label: "Identify the deductible", on: "CLAIM" }],
+        businessRules: [{ label: "Coverage matching per the policy wording" }, { label: "Endorsement precedence" }],
+        hotspots: [{ label: "Deductible & endorsement edge rules", desc: "Waivers and glass endorsements interact in COBOL — transcribe, do not reinvent." }] }),
+      ev("b1-assigned", "b1-coverage", "Claim assigned", "The claim gets a lane and a handler.", {
+        commands: [{ label: "Assess severity & score fraud signals", on: "CLAIM" }, { label: "Route to a lane (glass fast-track / desk / field)", on: "CLAIM" }],
+        businessRules: [{ label: "Segmentation & straight-through eligibility" }] }),
+      ev("b1-fraud-hold", "b1-assigned", "Fraud hold applied", "The rail that can stop money at any later step — while it stands, nothing pays.", { branch: "signals say look closer",
+        businessRules: [{ label: "Holds gate settlement; findings return as facts (BJ-6)" }] }),
+      ev("b1-reserve", "b1-assigned", "Reserve established", "Money is set aside for what this will likely cost.", {
+        commands: [{ label: "Set the initial reserve per coverage line", on: "CLAIM" }],
+        businessRules: [{ label: "Reserving guidelines & authority limits" }, { label: "Every reserve move is evented" }] }),
+      ev("b1-fault", "b1-reserve", "Fault determined", "Who caused it is decided — or noted as not applicable.", {
+        commands: [{ label: "Apply the fault determination rules", on: "CLAIM" }, { label: "Record the fault split", on: "CLAIM" }],
+        businessRules: [{ label: "The fault chart is regulation, not judgment" }] }),
+      ev("b1-appraisal", "b1-fault", "Appraisal assigned", "Someone is chosen to look at the damage.", {
+        commands: [{ label: "Select the appraisal channel (shop / staff / photo)", on: "CLAIM" }],
+        businessRules: [{ label: "Shop choice vs steering — provincially regulated" }] }),
+      ev("b1-estimate", "b1-appraisal", "Estimate submitted", "The damage is priced.", {
+        commands: [{ label: "Inspect & prepare the estimate", on: "ESTIMATE" }],
+        businessRules: [{ label: "Rate agreements; OEM vs aftermarket parts" }] }),
+      ev("b1-totalloss", "b1-estimate", "Total loss declared", "The car is not worth fixing — the write-off path takes it from here.", { branch: "over the threshold", isEndNode: true,
+        businessRules: [{ label: "Threshold: estimate vs actual cash value" }] }),
+      ev("b1-approved", "b1-estimate", "Estimate approved", "The price holds up.", { isPivotal: true,
+        commands: [{ label: "Audit the estimate", on: "ESTIMATE" }, { label: "Check the total-loss threshold", on: "ESTIMATE" }] }),
+      ev("b1-authorized", "b1-approved", "Repair authorized", "The shop may begin.", {
+        commands: [{ label: "Authorize & commit the amount against the reserve", on: "CLAIM" }],
+        businessRules: [{ label: "Authorization authority bands" }] }),
+      ev("b1-supplement", "b1-authorized", "Supplement approved", "More damage, more money, approved mid-repair — then the work continues.", { branch: "hidden damage found",
+        businessRules: [{ label: "Supplement authority — the straight-through boundary" }] }),
+      ev("b1-completed", "b1-authorized", "Repair completed", "The car is fixed.", {}),
+      ev("b1-verified", "b1-completed", "Repair verified", "The work checks out and the car goes home.", {
+        commands: [{ label: "Verify the work (photos, QA sample, claimant sign-off)", on: "CLAIM" }] }),
+      ev("b1-calculated", "b1-verified", "Settlement calculated", "What we owe, and to whom, is computed.", { isPivotal: true,
+        commands: [{ label: "Compute payable: approved + supplements − deductible − betterment", on: "SETTLEMENT" }, { label: "Determine payees (direct-pay vs reimburse)", on: "SETTLEMENT" }],
+        businessRules: [{ label: "Deductible application & waivers" }, { label: "Betterment schedule; direct-pay agreements" }] }),
+      ev("b1-payauth", "b1-calculated", "Payment authorized", "The payment clears its checks.", {
+        commands: [{ label: "Check authority band, standing holds, payee screening", on: "SETTLEMENT" }],
+        businessRules: [{ label: "A standing hold stops everything here" }] }),
+      ev("b1-instructed", "b1-payauth", "Payment instructed", "Claims says pay.", { isPivotal: true,
+        businessRules: [{ label: "Claims instructs; it never moves money" }, { label: "Recorded as instructed-not-yet-settled" }] }),
+      ev("b1-settled", "b1-instructed", "Payment settled", "The money moved and came back confirmed.", {
+        businessRules: [{ label: "Reconciliation; failed-payment void & reissue" }] }),
+      ev("b1-recovery-ref", "b1-settled", "Recovery referred", "Something can be gotten back — its own journey takes it from here.", { branch: "something to recover", isEndNode: true }),
+      ev("b1-recovery", "b1-settled", "Recovery assessed", "Nothing left to chase.", {
+        commands: [{ label: "Assess subrogation, deductible recovery, salvage", on: "CLAIM" }] }),
+      ev("b1-closed", "b1-recovery", "Claim closed", "The file is complete, and it closes.", { isPivotal: true, isEndNode: true,
+        businessRules: [{ label: "Closure checklist: all settled, no holds, no open tasks" }, { label: "Closed still accepts post-close credits and reopening (BJ-4 · BJ-5)" }] }),
+    ],
+  },
   {
     id: "bj-storm-2", name: "BJ-2 · Get the vehicle repaired — big-picture storm", contextId: null,
     summary: "The shop's journey from assignment to getting paid. Flat storm — boundaries come later.",
