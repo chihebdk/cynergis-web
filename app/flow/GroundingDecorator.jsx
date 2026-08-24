@@ -4,6 +4,7 @@ import { useNodeId } from "@xyflow/react";
 import { useNodeCache, useDecoratorsStore } from "@flowai/canvas";
 import { Icon } from "@iconify/react";
 import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE, TRIGGER_TYPES } from "./arch";
+import { HOME_NAMES } from "./journeys";
 
 function grounding(node) {
   if (!node) return { refs: 0, assumed: 0 };
@@ -121,6 +122,47 @@ export function registerTriggerBadgeDecorator() {
   store.register("TriggerBadge", TriggerBadge);
   store.setDecorator("TriggerBadge", true);
   tbRegistered = true;
+}
+
+// ── Home-context chip (D-162): the decomposition, worn by the storm ──
+// After the cut, each big-picture storm event carries its home context
+// (EVENT_HOMES); the chip under the card names it and clicks through to the
+// wall. Pre-decomposition storms have no homes — no chip: the chip's
+// presence IS the decomposed status, card by card.
+export function HomeContext() {
+  const id = useNodeId();
+  const { getItem } = useNodeCache();
+  const node = id ? getItem(id) : null;
+  const home = node && ((node.record || node).home);
+  if (!home) return null;
+  const name = HOME_NAMES[home] || home;
+  const isCtx = home.startsWith("CTX-");
+  const go = (e) => {
+    e.stopPropagation();
+    if (!isCtx || typeof window === "undefined") return;
+    const nav = window.__cynNav || {};
+    const t = { v: "prod", pf: nav.pf, prod: nav.prod, sub: "dashboard", phase: "Design", entry: "contexts", ctx: home, tab: "flow" };
+    window.cynPushUrl?.(t);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+  return (
+    <div style={{ position: "absolute", bottom: 0, left: "50%", width: 0, height: 0, zIndex: 10 }}>
+      <span className={"cyn-ctxkind cyn-ck-home" + (isCtx ? " clickable" : "")}
+        style={{ position: "absolute", top: "6px", left: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}
+        title={isCtx ? "Home context — click to open the wall" : "Owned outside the accepted cut"}
+        onClick={go}>
+        {name}
+      </span>
+    </div>
+  );
+}
+let hcRegistered = false;
+export function registerHomeContextDecorator() {
+  if (hcRegistered) return;
+  const store = useDecoratorsStore.getState();
+  store.register("HomeContext", HomeContext);
+  store.setDecorator("HomeContext", true);
+  hcRegistered = true;
 }
 
 // ── Context-map node kind, shown UNDER the box ──

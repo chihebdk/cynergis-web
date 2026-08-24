@@ -463,3 +463,8 @@
 .cyn-layout-org .react-flow__node[data-id="start"] > div {
   justify-content: flex-end;
 }
+
+/* D-162: the home-context chip under storm cards — the decomposition, worn */
+.cyn-ctxkind.cyn-ck-home { color: #3730a3; background: #eef2ff; border-color: #c7d2fe; }
+.cyn-ctxkind.cyn-ck-home.clickable { cursor: pointer; }
+.cyn-ctxkind.cyn-ck-home.clickable:hover { border-color: #818cf8; background: #e0e7ff; }

@@ -261,6 +261,17 @@ export const claimsCutMap = {
    assignment/lane is adjudication work-management; the invoice belongs to
    the repair case, the vendor payment to the ledger; the total-loss
    DECLARATION is repair's exit, the write-off path starts at receipt. */
+/* home id → display name (the chip under each storm card, D-162) */
+export const HOME_NAMES = {
+  "CTX-INTAKE": "Intake & registration",
+  "CTX-ADJUD": "Claim adjudication",
+  "CTX-REPAIR": "Repair & estimate coordination",
+  "CTX-PAYMENTS": "Claim payments",
+  "CTX-TOTALLOSS": "Total loss & salvage",
+  "CTX-RECOVERY": "Recovery & subrogation",
+  "EXT-SIU": "Fraud & SIU · outside the cut",
+};
+
 export const EVENT_HOMES = {
   /* BJ-1 · have my claim handled */
   "wf-b1-registered": null, /* (unused guard) */
