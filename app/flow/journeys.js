@@ -261,6 +261,17 @@ export const claimsCutMap = {
    assignment/lane is adjudication work-management; the invoice belongs to
    the repair case, the vendor payment to the ledger; the total-loss
    DECLARATION is repair's exit, the write-off path starts at receipt. */
+/* home id → chip colors (D-163: one color per bounded context) */
+export const HOME_COLORS = {
+  "CTX-INTAKE":    { ink: "#3730a3", bg: "#eef2ff", line: "#c7d2fe" },   /* indigo */
+  "CTX-ADJUD":     { ink: "#1d4ed8", bg: "#eff6ff", line: "#bfdbfe" },   /* blue */
+  "CTX-REPAIR":    { ink: "#0e7490", bg: "#ecfeff", line: "#a5f3fc" },   /* cyan */
+  "CTX-PAYMENTS":  { ink: "#047857", bg: "#ecfdf5", line: "#a7f3d0" },   /* green */
+  "CTX-TOTALLOSS": { ink: "#b45309", bg: "#fffbeb", line: "#fde68a" },   /* amber */
+  "CTX-RECOVERY":  { ink: "#be185d", bg: "#fdf2f8", line: "#fbcfe8" },   /* pink */
+  "EXT-SIU":       { ink: "#4b5563", bg: "#f9fafb", line: "#e5e7eb" },   /* gray — outside the cut */
+};
+
 /* home id → display name (the chip under each storm card, D-162) */
 export const HOME_NAMES = {
   "CTX-INTAKE": "Intake & registration",
@@ -306,4 +317,19 @@ export const EVENT_HOMES = {
 };
 for (const m of BJ_STORMS) for (const n of m.nodes) {
   if (n.kind === "event" && EVENT_HOMES[n.id]) n.home = EVENT_HOMES[n.id];
+}
+
+/* ── D-163: PIVOTAL, redefined and DERIVED — the sponsor's definition:
+   "pivotal is the node where we are changing the context." A card is
+   pivotal iff any of its child events lives in a DIFFERENT home. The old
+   hand-flagged narrative pivots are stripped: pivotal is computed from the
+   decomposition now, never authored. */
+for (const m of BJ_STORMS) {
+  const evs = m.nodes.filter((n) => n.kind === "event");
+  for (const n of evs) delete n.isPivotal;
+  for (const n of evs) {
+    if (!n.home) continue;
+    const kids = evs.filter((k) => k.parentId === n.id);
+    if (kids.some((k) => k.home && k.home !== n.home)) n.isPivotal = true;
+  }
 }

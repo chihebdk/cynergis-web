@@ -4,7 +4,7 @@ import { useNodeId } from "@xyflow/react";
 import { useNodeCache, useDecoratorsStore } from "@flowai/canvas";
 import { Icon } from "@iconify/react";
 import { componentById, deriveArch, archFor, ENTRY_META, TRIGGER_KIND_META, POLICY_VIA_META, KIND_TO_TYPE, TRIGGER_TYPES } from "./arch";
-import { HOME_NAMES } from "./journeys";
+import { HOME_NAMES, HOME_COLORS } from "./journeys";
 
 function grounding(node) {
   if (!node) return { refs: 0, assumed: 0 };
@@ -145,10 +145,14 @@ export function HomeContext() {
     window.cynPushUrl?.(t);
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
+  const c = HOME_COLORS[home] || {};
+  /* ON TOP of the card (D-163) — centred above it, clear of the trigger
+     badge at the top-left corner and of the pivotal/anchor row below */
   return (
-    <div style={{ position: "absolute", bottom: 0, left: "50%", width: 0, height: 0, zIndex: 10 }}>
+    <div style={{ position: "absolute", top: 0, left: "50%", width: 0, height: 0, zIndex: 10 }}>
       <span className={"cyn-ctxkind cyn-ck-home" + (isCtx ? " clickable" : "")}
-        style={{ position: "absolute", top: "6px", left: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}
+        style={{ position: "absolute", bottom: "6px", left: 0, transform: "translateX(-50%)", whiteSpace: "nowrap",
+          color: c.ink, background: c.bg, borderColor: c.line }}
         title={isCtx ? "Home context — click to open the wall" : "Owned outside the accepted cut"}
         onClick={go}>
         {name}
