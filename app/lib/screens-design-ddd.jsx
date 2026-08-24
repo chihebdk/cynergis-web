@@ -913,9 +913,14 @@ function DesignContexts({ product, prd }) {
       <div className="asc-section ddd-sec">
         <div className="asc-sec-head">
           <div className="asc-sec-title"><DDPico d={DDI.ctx} w={14} /> Bounded contexts</div>
-          <div className="asc-sec-sub">{D.contexts.length} identified · click to open</div>
+          <div className="asc-sec-sub">{D.contexts.filter(c => !c.retired).length} identified · click to open</div>
         </div>
-        <div className="ddd-ctx-grid">{D.contexts.map(c => <ContextCard c={c} key={c.id} onSelect={navSel} />)}</div>
+        <div className="ddd-ctx-grid">{D.contexts.filter(c => !c.retired).map(c => <ContextCard c={c} key={c.id} onSelect={navSel} />)}</div>
+        {D.contexts.some(c => c.retired) && (
+          <p className="ddd-detail-note" style={{ marginTop: 10 }}>
+            {D.contexts.filter(c => c.retired).length} superseded walls retired from this list (D-161) — their cargo lives on the successors; the pages remain reachable by deep link and at the org altitude.
+          </p>
+        )}
       </div>
     </div>
   );

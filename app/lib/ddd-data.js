@@ -559,4 +559,12 @@ window.__DDD__ = {
   _by('CTX-ADJUD').capabilities = ['UC3', 'UC4', 'UC6', 'UC8'];
   _by('CTX-TOTALLOSS').capabilities = ['UC7'];
   for (const id of ['CTX-FNOL', 'CTX-COVERAGE', 'CTX-TOTAL-LOSS']) _by(id).capabilities = [];
+  /* D-161 · Phase C: the superseded walls retire from the product LIST.
+     Equal-or-better is demonstrated (D-159/D-160: agents, capabilities,
+     grounds and all projections live on the successors). The entries stay
+     in the data — deep links and the org-altitude subdomain pages keep
+     resolving them, with the supersession banner explaining the state.
+     The ORG-level walls (team ownership, packaging) are untouched: their
+     restructure is its own decision on its own timeline. */
+  for (const id of ['CTX-FNOL', 'CTX-COVERAGE', 'CTX-TOTAL-LOSS']) _by(id).retired = true;
 }
