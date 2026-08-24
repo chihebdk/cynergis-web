@@ -225,6 +225,23 @@ window.__DDD__ = {
             { from: 'Mainframe policy system (ACL)', data: 'the coverage snapshot request keyed to date of loss — the strangler seam' },
             { from: 'Claims Workbench (product to be recorded)', data: 'the licensed intake surface for phone and broker doors' },
           ] },
+        { id: 'CTX-ADJUD', name: 'Claim adjudication', classification: 'core',
+          language: [
+            { term: 'claim', def: 'The adjudication file: coverages engaged, reserves, fault, decisions, lifecycle state. Born from the claim-opened seam.' },
+            { term: 'snapshot', def: 'The immutable coverage picture as at date of loss — adjudication\u2019s only meaning of \u201cpolicy\u201d.' },
+            { term: 'decision version', def: 'Decisions are appended, never edited — reopen supersedes, the history is the audit trail.' },
+            { term: 'hold', def: 'A typed stop on the file (SIU, dispute, litigation). While one stands, nothing pays. Released only by its owner.' },
+            { term: 'authority band', def: 'What an adjuster may approve; breaches are prevented in-flow, not audited after.' },
+            { term: 'closed', def: 'A lifecycle state, not a tombstone: a closed file still accepts credits and can reopen.' },
+          ],
+          note: 'The accepted cut\u2019s centre of gravity: verification, reserves, fault, settlement, authorization — and the claim lifecycle (D-152/D-153).',
+          summary: 'One aggregate from the claim-opened seam to a closed file that still listens. The sketch-facts are first-class events here: holds gate payment authorization in-flow, reopen appends a new decision version over an immutable history, and post-close credits land without re-adjudication. Publishes the appraisal-request, payment-instruction and recovery-referred seams.',
+          needs: [
+            { from: 'Intake & registration', data: 'the claim-opened seam — the registered claim with the triage payload (customer\u2013supplier)' },
+            { from: 'Repair & estimate coordination', data: 'the repair-verified seam with the estimate of record' },
+            { from: 'Claim payments', data: 'payment-settled confirmations and post-close credits' },
+            { from: 'Fraud & SIU / Disputes', data: 'typed holds in; findings and outcomes back as facts' },
+          ] },
         { id: 'CTX-FNOL', name: 'Notice of loss', classification: 'core',
           language: [
             { term: 'loss report', def: 'The record of the event as reported: circumstances, parties, vehicles, injuries alleged. Not yet a claim.' },

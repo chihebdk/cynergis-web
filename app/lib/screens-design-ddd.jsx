@@ -16,6 +16,7 @@ const FLOW_BY_CONTEXT = {
   'BC-DEC': 'decisioning', 'BC-CASE': 'casemgmt', 'BC-NOTIFY': 'notify',
   'CTX-FNOL': 'cc-fnol', 'CTX-COVERAGE': 'cc-coverage', 'CTX-AB': 'cc-ab', 'CTX-TOTAL-LOSS': 'cc-totalloss',
   'CTX-INTAKE': 'ds-intake',   // D-154: the accepted cut's first design-level storm
+  'CTX-ADJUD': 'ds-adjud',     // D-155: the cut's centre of gravity
 };
 
 /* ============================================================
