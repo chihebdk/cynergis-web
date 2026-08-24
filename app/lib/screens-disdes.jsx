@@ -636,6 +636,7 @@ const BJ_STATUS = {
 };
 function DesignJourneys() {
   const nav = (typeof window !== 'undefined' && window.__cynNav) || {};
+  const [selBj, setSelBj] = React.useState(null);
   const js = BUSINESS_JOURNEYS.filter(j => j.product === nav.prod);
   if (!js.length) return (
     <div className="ddd-empty-inline">
@@ -645,6 +646,33 @@ function DesignJourneys() {
   const must = js.filter(j => j.treatment === 'storm');
   const done = must.filter(j => j.status !== 'not-stormed');
   const gateOpen = done.length === must.length;
+
+  const sel = js.find(j => j.id === selBj);
+  if (sel) {
+    return (<>
+      <button type="button" className="dd-iback" onClick={() => setSelBj(null)}>← Business journeys</button>
+      <div className="asc-section">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">{sel.id} — {sel.name}</div>
+          <div className="asc-sec-sub">{sel.actor} · {sel.span}</div>
+        </div>
+        <p className="mer-sub-p" style={{ maxWidth: 860 }}><b>Needs from the engine:</b> {sel.needs}</p>
+        <p className="mer-sub-p" style={{ maxWidth: 860 }}>{sel.note}</p>
+        <div style={{ display: 'flex', gap: 6, margin: '6px 0 12px' }}>
+          <span className={'badge ' + BJ_TREATMENT[sel.treatment].cls}>{BJ_TREATMENT[sel.treatment].label}</span>
+          <span className={'badge ' + BJ_STATUS[sel.status].cls}>{BJ_STATUS[sel.status].label}</span>
+        </div>
+        {sel.storm ? (
+          <div style={{ height: '560px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden', position: 'relative', background: 'var(--panel)' }}>
+            <FlowEmbed flowId={sel.storm} variant={sel.stormVariant || 'flow'} />
+          </div>
+        ) : (
+          <div className="ddd-empty-inline">Deferred — no storm authored yet, by decision. {sel.note}</div>
+        )}
+      </div>
+    </>);
+  }
+
   return (<>
     <div className="asc-section">
       <div className="asc-sec-head">
@@ -668,7 +696,7 @@ function DesignJourneys() {
     <div className="asc-section">
       <div className="mer-subgrid">
         {js.map(j => (
-          <div className="mer-sub" key={j.id} style={{ cursor: 'default' }}>
+          <div className="mer-sub" key={j.id} style={{ cursor: 'pointer' }} onClick={() => setSelBj(j.id)}>
             <div className="mer-sub-top">
               <span className="mer-pat other">{j.id}</span>
               <h3>{j.name}</h3>
