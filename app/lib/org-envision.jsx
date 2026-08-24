@@ -87,15 +87,16 @@ const PHASE_ENTRIES = {
     { key: 'scope',        label: 'Product scope',               ico: 'arrow' },
   ],
   Design: [
-    /* D-148/D-149: the method order — the use cases ARE the workflows: each
-       use case gets its event flow, drawn before decomposition; bounded
-       contexts and system design follow. Key stays 'workflows' for links. */
-    { key: 'workflows',   label: 'Use cases',                  ico: 'flow' },
+    /* D-150: the rail IS the storming arc — storm the journeys, decompose
+       into bounded contexts, map them, design the system, then read it all
+       back per use case. Use cases are projections, so they come last. */
+    { key: 'journeys',    label: 'Business journeys',          ico: 'compass' },
     { key: 'contexts',    label: 'Bounded contexts',           ico: 'product' },
     { key: 'contextmap',  label: 'Context map',                ico: 'flow' },
     // D-045: renamed from Architecture — Design designs, Build architects. Key stays
     // 'arch' for deep links; the System map lives as this page's first tab.
     { key: 'arch',        label: 'System design',              ico: 'tree' },
+    { key: 'workflows',   label: 'Use cases',                  ico: 'flow' },   // D-149 per-UC flows (projections)
   ],
   Build: [
     { key: 'infra',    label: 'Resources', ico: 'tree' },   // as-built cloud resources & environments (D-035/D-039); key stays 'infra' for deep links

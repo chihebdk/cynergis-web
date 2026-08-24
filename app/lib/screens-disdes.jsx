@@ -1,6 +1,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { WORKFLOW_INVENTORY, workflowUcCoverage } from '../flow/workflows.js';
+import { BUSINESS_JOURNEYS } from '../flow/journeys.js';
 const FlowEmbed = dynamic(() => import('../flow/FlowEmbed.jsx'), { ssr: false });
 import './trace-core';
 import { componentArchetype } from '../flow/arch';
@@ -617,6 +618,75 @@ const SD_TABS = [
   { key: 'contracts',    label: 'Contracts' },
   { key: 'security',     label: 'Security' },
 ];
+/* ── D-150: Business journeys — the Design phase's first entry ──
+   The journey list (facts from Discover; the storm is Design's treatment of
+   them), each a card: actor, span, what it needs from the engine, its
+   treatment (storm fully / sketch / deferred) and its status. The gate
+   banner encodes the sequencing rule: decomposition only against the union
+   of the storm-fully journeys. */
+const BJ_TREATMENT = {
+  storm:    { label: 'storm fully', cls: 'ok' },
+  sketch:   { label: 'sketch',      cls: '' },
+  deferred: { label: 'deferred',    cls: 'err' },
+};
+const BJ_STATUS = {
+  'not-stormed': { label: 'not stormed', cls: '' },
+  stormed:       { label: 'stormed',     cls: 'ok' },
+  decomposed:    { label: 'decomposed',  cls: 'ok' },
+};
+function DesignJourneys() {
+  const nav = (typeof window !== 'undefined' && window.__cynNav) || {};
+  const js = BUSINESS_JOURNEYS.filter(j => j.product === nav.prod);
+  if (!js.length) return (
+    <div className="ddd-empty-inline">
+      No business journeys recorded for this product yet. The method starts here: one big-picture storm per journey, every storm-fully journey on the wall before decomposition.
+    </div>
+  );
+  const must = js.filter(j => j.treatment === 'storm');
+  const done = must.filter(j => j.status !== 'not-stormed');
+  const gateOpen = done.length === must.length;
+  return (<>
+    <div className="asc-section">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title">Business journeys — where Design starts</div>
+        <div className="asc-sec-sub">
+          One big-picture storm per journey, in domain language, hotspots marked. Boundaries are cut ONCE, against the union of these storms — the overlaps between journeys (payment, customer, policy) are where the boundary decisions live. Sketches exist to extract the facts that bend the model (reopen semantics, post-close credits) without the cost of a full storm.
+        </div>
+      </div>
+      <div className={'mer-health'}>
+        <div className="mer-h-top">
+          <b>Decomposition gate</b>
+          <span className={'badge ' + (gateOpen ? 'ok' : 'err')}>{gateOpen ? 'unlocked' : 'locked'}</span>
+        </div>
+        <div className="mer-h-act">
+          {done.length} of {must.length} storm-fully journeys on the wall{gateOpen
+            ? ' — decomposition may proceed against the union.'
+            : ` — the current decomposition is provisional until ${must.filter(j => j.status === 'not-stormed').map(j => j.id).join(' · ')} are stormed.`}
+        </div>
+      </div>
+    </div>
+    <div className="asc-section">
+      <div className="mer-subgrid">
+        {js.map(j => (
+          <div className="mer-sub" key={j.id} style={{ cursor: 'default' }}>
+            <div className="mer-sub-top">
+              <span className="mer-pat other">{j.id}</span>
+              <h3>{j.name}</h3>
+            </div>
+            <div className="mer-sub-bc">{j.actor} · {j.span}</div>
+            <p className="mer-sub-p"><b>Needs from the engine:</b> {j.needs}</p>
+            <p className="mer-sub-p">{j.note}</p>
+            <div className="mer-sub-foot">
+              <span className={'badge ' + BJ_TREATMENT[j.treatment].cls}>{BJ_TREATMENT[j.treatment].label}</span>
+              <span className={'badge ' + BJ_STATUS[j.status].cls}>{BJ_STATUS[j.status].label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </>);
+}
+
 /* ── D-149: Design starts at the USE CASES — each one IS an event flow ──
    The list first; click a use case and its event flow opens: step by step
    until the use case completes (success ends) or exits on a branch — the
@@ -2140,6 +2210,7 @@ function DisDesContent({ phase, entry, prd }) {
     // Design (genuine outputs)
     'Design/arch':           DesignArchitecture,
     'Design/workflows':      DesignWorkflows,
+    'Design/journeys':       DesignJourneys,
     // Build (as-built actuals — D-035)
     'Build/infra':           BuildInfrastructure,
     'Build/integ':           BuildIntegrations,
