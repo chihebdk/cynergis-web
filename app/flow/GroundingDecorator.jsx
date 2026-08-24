@@ -194,9 +194,10 @@ export function ContextKind() {
   // zero-footprint anchor at the card's bottom-centre so the chip never adds to the
   // node's measured height (which would shift the handle / edge). Colour-coded by
   // kind (cyn-ck-*) so actors / externals / contexts read apart at a glance.
+  /* D-172: pills sit ON TOP of the node (sponsor), clear of the badges below */
   return (
-    <div style={{ position: "absolute", bottom: 0, left: "50%", width: 0, height: 0, zIndex: 10 }}>
-      <span className={`cyn-ctxkind cyn-ck-${node.kind || "event"}`} style={{ position: "absolute", top: "6px", left: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
+    <div style={{ position: "absolute", top: 0, left: "50%", width: 0, height: 0, zIndex: 10 }}>
+      <span className={`cyn-ctxkind cyn-ck-${node.kind || "event"}`} style={{ position: "absolute", bottom: "6px", left: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
         {label}
       </span>
     </div>

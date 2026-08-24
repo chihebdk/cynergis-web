@@ -7,7 +7,7 @@ import { claimsFlows, ccContextMap, ccContextSubmaps, ccSystemMap, ccSystemSubma
 import { domainMaps, domainSubmaps } from "./domain-maps";
 import { buildDerivedFlows } from "./derived-flows";
 import { claimsWorkflow, claimsWorkflowSubmaps, claimsWorkflowV2, claimsWorkflowV2Submaps, UC_FLOWS } from "./workflows";
-import { BJ_STORMS, claimsCutMap } from "./journeys";
+import { BJ_STORMS, claimsCutMap, claimsCutSubmaps } from "./journeys";
 import { CLAIMS_DESIGN_STORMS } from "./claims-design-storms";
 
 // In-memory store (mapper starter pattern), seeded with our flows as `map` docs.
@@ -35,6 +35,7 @@ getCollection("map").set(claimsWorkflowV2.id, structuredClone(claimsWorkflowV2))
 for (const sm of claimsWorkflowV2Submaps) getCollection("submap").set(sm.id, structuredClone(sm));
 for (const m of BJ_STORMS) getCollection("map").set(m.id, structuredClone(m));   // D-151: big-picture storms per journey
 getCollection("map").set(claimsCutMap.id, structuredClone(claimsCutMap));        // D-153: the accepted cut's context map
+for (const sm of claimsCutSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));   // D-172: the walls expand
 for (const m of CLAIMS_DESIGN_STORMS) getCollection("map").set(m.id, structuredClone(m));   // D-154: design-level storms per context
 for (const sm of claimsWorkflowSubmaps) getCollection("submap").set(sm.id, structuredClone(sm));
 for (const m of domainMaps) getCollection("map").set(m.id, structuredClone(m));
