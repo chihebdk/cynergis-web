@@ -148,7 +148,7 @@ export const dsAdjud = {
       summary: "Claim denied — policy not in force", aggregate: "AGG-CLAIM",
       description: "The claim is denied — the policy was not in force at the date of loss — and the decision is communicated with reasons.",
       commands: [{ label: "Record the denial with reasons", on: "AGG-CLAIM" }],
-      policies: [{ label: "When denied → communicate the decision", desc: "The decision-communicated event opens the dispute door (BJ-5).", crosses: "Portals / disputes" }] },
+      policies: [{ label: "When denied → communicate the decision", desc: "The decision-communicated event opens the dispute door (BP-5).", crosses: "Portals / disputes" }] },
 
     { id: "adj-coverage", type: "SimpleNode", parentId: "adj-policy", kind: "event", isPivotal: true, grounds: ["UC4", "FR4"],
       summary: "Coverage confirmed", aggregate: "AGG-CLAIM",
@@ -227,7 +227,7 @@ export const dsAdjud = {
         { label: "Check standing holds", on: "AGG-CLAIM" },
         { label: "Screen the payee", on: "AGG-CLAIM" },
       ],
-      businessRules: [{ label: "A standing hold stops everything here", desc: "The BJ-6 gate, enforced in-flow." }],
+      businessRules: [{ label: "A standing hold stops everything here", desc: "The BP-6 gate, enforced in-flow." }],
       policies: [{ label: "When authorized → publish the payment instruction", desc: "THE new seam (D-152): adjudication instructs, Claim payments executes the ledger. Customer–supplier.", crosses: "Claim payments" }] },
 
     { id: "adj-closed", type: "SimpleNode", parentId: "adj-payauth", kind: "event", isPivotal: true, isEndNode: true,
@@ -242,7 +242,7 @@ export const dsAdjud = {
       ],
       commands: [{ label: "Run the closure checklist", on: "AGG-CLAIM", desc: "All settled, no holds, no open tasks, documents complete." }],
       businessRules: [
-        { label: "Closed still accepts post-close credits and reopening", desc: "Closed is a lifecycle state, not a tombstone (BJ-4 · BJ-5)." },
+        { label: "Closed still accepts post-close credits and reopening", desc: "Closed is a lifecycle state, not a tombstone (BP-4 · BP-5)." },
       ],
       policies: [{ label: "When something is recoverable → refer the recovery", desc: "Customer–supplier, post-close: the closed file's facts open the recovery case.", crosses: "Recovery & subrogation" }] },
 
@@ -257,7 +257,7 @@ export const dsAdjud = {
             spec: "AsyncAPI · claims-credits v1 (consumer)" } },
       ],
       commands: [{ label: "Apply the credit to the closed file", on: "AGG-CLAIM" }],
-      businessRules: [{ label: "Credits never re-adjudicate", desc: "The BJ-4 fact: money in changes the ledger, not the decisions." }] },
+      businessRules: [{ label: "Credits never re-adjudicate", desc: "The BP-4 fact: money in changes the ledger, not the decisions." }] },
   ],
 };
 

@@ -640,7 +640,7 @@ function DesignJourneys() {
   const js = BUSINESS_JOURNEYS.filter(j => j.product === nav.prod);
   if (!js.length) return (
     <div className="ddd-empty-inline">
-      No business journeys recorded for this product yet. The method starts here: one big-picture storm per journey, every storm-fully journey on the wall before decomposition.
+      No business processes recorded for this product yet. The method starts here: one big-picture storm per process, every storm-fully process on the wall before decomposition.
     </div>
   );
   const must = js.filter(j => j.treatment === 'storm');
@@ -650,7 +650,7 @@ function DesignJourneys() {
   const sel = js.find(j => j.id === selBj);
   if (sel) {
     return (<>
-      <button type="button" className="dd-iback" onClick={() => setSelBj(null)}>← Business journeys</button>
+      <button type="button" className="dd-iback" onClick={() => setSelBj(null)}>← Business processes</button>
       <div className="asc-section">
         <div className="asc-sec-head">
           <div className="asc-sec-title">{sel.id} — {sel.name}</div>
@@ -677,7 +677,7 @@ function DesignJourneys() {
           <div className="asc-section">
             <div className="asc-sec-head">
               <div className="asc-sec-title">Reconciliation with the design storms</div>
-              <div className="asc-sec-sub">Every card mapped: realized by a wall's card · journey-only (actor lens, no wall should model it) · or a gap — a moment no wall has designed yet</div>
+              <div className="asc-sec-sub">Every card mapped: realized by a wall's card · actor-lens (the actor's own moment, no wall should model it) · or a gap — a moment no wall has designed yet</div>
             </div>
             <div className="mer-seam">
               <span className="badge ok">{rep.realized} realized</span>
@@ -685,8 +685,8 @@ function DesignJourneys() {
             </div>
             {rep.journeyOnly.map(n => (
               <div className="mer-seam" key={'jo' + n}>
-                <span className="badge">journey-only</span>
-                <span className="mer-seam-what">{n} — an actor-lens moment; no wall should model it</span>
+                <span className="badge">actor-lens</span>
+                <span className="mer-seam-what">{n} — the actor's own moment; no wall should model it</span>
               </div>
             ))}
             {rep.gaps.map(n => (
@@ -704,9 +704,9 @@ function DesignJourneys() {
   return (<>
     <div className="asc-section">
       <div className="asc-sec-head">
-        <div className="asc-sec-title">Business journeys — where Design starts</div>
+        <div className="asc-sec-title">Business processes — where Design starts</div>
         <div className="asc-sec-sub">
-          One big-picture storm per journey, in domain language, hotspots marked. Boundaries are cut ONCE, against the union of these storms — the overlaps between journeys (payment, customer, policy) are where the boundary decisions live. Sketches exist to extract the facts that bend the model (reopen semantics, post-close credits) without the cost of a full storm.
+          One big-picture storm per process, in domain language, hotspots marked. Boundaries are cut ONCE, against the union of these storms — the overlaps between processes (payment, customer, policy) are where the boundary decisions live. Sketches exist to extract the facts that bend the model (reopen semantics, post-close credits) without the cost of a full storm.
         </div>
       </div>
       <div className={'mer-health'}>
@@ -715,7 +715,7 @@ function DesignJourneys() {
           <span className={'badge ' + (gateOpen ? 'ok' : 'err')}>{gateOpen ? 'unlocked' : 'locked'}</span>
         </div>
         <div className="mer-h-act">
-          {done.length} of {must.length} storm-fully journeys on the wall{gateOpen
+          {done.length} of {must.length} storm-fully processes on the wall{gateOpen
             ? ' — decomposition may proceed against the union.'
             : ` — the current decomposition is provisional until ${must.filter(j => j.status === 'not-stormed').map(j => j.id).join(' · ')} are stormed.`}
         </div>
@@ -723,8 +723,8 @@ function DesignJourneys() {
     </div>
     <div className="asc-section">
       <div className="asc-sec-head">
-        <div className="asc-sec-title">The decomposition — journeys × contexts</div>
-        <div className="asc-sec-sub">Every storm event has exactly one home context; a journey is a walk across them. Computed from the home tags — the overlaps are where the seams came from.</div>
+        <div className="asc-sec-title">The decomposition — processes × contexts</div>
+        <div className="asc-sec-sub">Every storm event has exactly one home context; a process is a walk across them. Computed from the home tags — the overlaps are where the seams came from.</div>
       </div>
       {(() => {
         /* D-166: a tripwire — only UNTRIAGED unreached cards surface; the
@@ -734,8 +734,8 @@ function DesignJourneys() {
         return (
           <div style={{ marginBottom: 14 }}>
             <div className="asc-sec-head">
-              <div className="asc-sec-title">Design cards no journey reaches — needs triage</div>
-              <div className="asc-sec-sub">New designed moments that no business journey walks and no verdict covers yet: accept as design-discovered, trim, or storm the missing journey.</div>
+              <div className="asc-sec-title">Design cards no process reaches — needs triage</div>
+              <div className="asc-sec-sub">New designed moments that no business process walks and no verdict covers yet: accept as design-discovered, trim, or storm the missing process.</div>
             </div>
             {open.map(d => (
               <div className="mer-seam" key={d.id}>

@@ -90,7 +90,7 @@ const PHASE_ENTRIES = {
     /* D-150: the rail IS the storming arc — storm the journeys, decompose
        into bounded contexts, map them, design the system, then read it all
        back per use case. Use cases are projections, so they come last. */
-    { key: 'journeys',    label: 'Business journeys',          ico: 'compass' },
+    { key: 'journeys',    label: 'Business processes',         ico: 'compass' },   // D-169: renamed (key stays for links)
     { key: 'contexts',    label: 'Bounded contexts',           ico: 'product' },
     { key: 'contextmap',  label: 'Context map',                ico: 'flow' },
     // D-045: renamed from Architecture — Design designs, Build architects. Key stays

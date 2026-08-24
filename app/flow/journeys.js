@@ -1,8 +1,8 @@
 "use client";
 
 /* ============================================================
-   D-150 — BUSINESS JOURNEYS (the Design phase's first entry).
-   The storming arc starts here: one big-picture storm per journey,
+   D-150 — BUSINESS PROCESSES (the Design phase's first entry; renamed from Business journeys, D-169).
+   The storming arc starts here: one big-picture storm per process,
    ALL "storm fully" journeys on the wall BEFORE decomposition —
    the gate banner computes from these statuses. Industry-grounded
    inventory for the claims modernization (sponsor-approved,
@@ -13,58 +13,58 @@
 
 export const BUSINESS_JOURNEYS = [
   {
-    id: "BJ-1", product: "PROD-CLAIMSCORE", name: "Have my claim handled",
+    id: "BP-1", product: "PROD-CLAIMSCORE", name: "Have my claim handled",
     actor: "Claimant", span: "Loss occurs → claim closed",
     needs: "Everything — the spine: intake and triage, coverage and reserves, the status stream at every milestone.",
     treatment: "storm", status: "decomposed", storm: "bj-storm-1",
     note: "Starts at the LOSS, not at claim-created — first notice is part of the journey; the portal is one door in, not the starting line. Decomposed: its moments now live in the six design-level context storms (D-154–D-156); the big picture remains as the wall it was drawn on.",
   },
   {
-    id: "BJ-2", product: "PROD-CLAIMSCORE", name: "Get the vehicle repaired",
+    id: "BP-2", product: "PROD-CLAIMSCORE", name: "Get the vehicle repaired",
     actor: "Repair shop / glass vendor", span: "Assignment received → repair completed → paid for the work",
     needs: "Assignments out, estimates and supplements in, approval decisions, vendor payment instruction.",
     treatment: "storm", status: "decomposed", storm: "bj-storm-2",
     note: "The shop's own lens on the claim: same events, different actor, different measures — cycle time, supplement rate, payment latency. The repair portal's reason to exist.",
   },
   {
-    id: "BJ-3", product: "PROD-CLAIMSCORE", name: "Pay and get paid",
+    id: "BP-3", product: "PROD-CLAIMSCORE", name: "Pay and get paid",
     actor: "Finance · claimant · vendors", span: "First payable event → all money settled",
     needs: "Payment instructions out, settlement confirmations in, the instructed-not-yet-settled ledger state; money in — salvage proceeds, recoveries, deductibles.",
     treatment: "storm", status: "decomposed", storm: "bj-storm-3",
     note: "Crosses claims and billing — which is exactly why the payment seam must not be frozen until this journey is on the wall.",
   },
   {
-    id: "BJ-4", product: "PROD-CLAIMSCORE", name: "Recover what others owe",
+    id: "BP-4", product: "PROD-CLAIMSCORE", name: "Recover what others owe",
     actor: "Recovery specialist", span: "Settlement paid → recovery closed (months later)",
     needs: "Reads the closed file; fault positions; credits recoveries back against it.",
     treatment: "sketch", status: "stormed", storm: "bj-sketch-4",
     note: "Sketch, not a full storm — it exists to extract one fact that bends the model: recovery credits land against a CLOSED claim.",
   },
   {
-    id: "BJ-5", product: "PROD-CLAIMSCORE", name: "Challenge the decision",
+    id: "BP-5", product: "PROD-CLAIMSCORE", name: "Challenge the decision",
     actor: "Claimant (disputing)", span: "Decision communicated → dispute resolved",
     needs: "Reopen semantics, holds, the decision history and audit trail — review, appraisal, ombudsman, litigation hold.",
     treatment: "sketch", status: "stormed", storm: "bj-sketch-5",
     note: "The forgotten journey with the sharpest design consequence: what does it mean to reopen a closed claim? The claim aggregate's lifecycle states depend on the answer.",
   },
   {
-    id: "BJ-6", product: "PROD-CLAIMSCORE", name: "Investigate suspected fraud",
+    id: "BP-6", product: "PROD-CLAIMSCORE", name: "Investigate suspected fraud",
     actor: "SIU investigator", span: "Flag raised → findings returned",
     needs: "Settlement-gating holds; findings land as facts — SIU never edits the claim model.",
     treatment: "sketch", status: "stormed", storm: "bj-sketch-6",
-    note: "Its hold semantics can ride with BJ-5's sketch; kept separate because the actor and the accountability are different.",
+    note: "Its hold semantics can ride with BP-5's sketch; kept separate because the actor and the accountability are different.",
   },
   {
-    id: "BJ-7", product: "PROD-CLAIMSCORE", name: "Get my injuries treated",
+    id: "BP-7", product: "PROD-CLAIMSCORE", name: "Get my injuries treated",
     actor: "Injured person", span: "Injury reported → treatment concluded",
     needs: "The whole AB module — statutory clocks, HCAI behind the ACL, treatment plans.",
     treatment: "deferred", status: "not-stormed",
     note: "Deliberately last: the most regulated lifecycle in the book waits for a battle-tested engine and team.",
   },
   {
-    id: "BJ-8", product: "PROD-CLAIMSCORE", name: "Survive the storm (catastrophe surge)",
+    id: "BP-8", product: "PROD-CLAIMSCORE", name: "Survive the storm (catastrophe surge)",
     actor: "Claims operations", span: "CAT event declared → surge worked off → reinsurance reported",
-    needs: "Mass intake, CAT coding, surge triage — an operational overlay on BJ-1 more than a model change.",
+    needs: "Mass intake, CAT coding, surge triage — an operational overlay on BP-1 more than a model change.",
     treatment: "deferred", status: "not-stormed",
     note: "Revisit before scaling beyond the pilot segment.",
   },
@@ -73,7 +73,7 @@ export const BUSINESS_JOURNEYS = [
 /* ── D-151: the big-picture storms themselves — FLAT, pre-decomposition.
    Events + actors + externals + hotspots only; no submaps, no triggers, no
    aggregates — that resolution belongs to the design-level storms after
-   the boundaries are cut. BJ-1's storm is wf-claims (already decomposed,
+   the boundaries are cut. BP-1's storm is wf-claims (already decomposed,
    so its "storm" is the stitched projection). Sketches are deliberately
    low-resolution: each exists to force ONE model-bending fact. */
 const ev = (id, parentId, summary, description, extra = {}) =>
@@ -85,7 +85,7 @@ const ext = (id, parentId, summary, description, extra = {}) =>
 
 export const BJ_STORMS = [
   {
-    id: "bj-storm-1", name: "BJ-1 · Have my claim handled — big-picture storm (from scratch)", contextId: null,
+    id: "bj-storm-1", name: "BP-1 · Have my claim handled — big-picture storm (from scratch)", contextId: null,
     summary: "The claim from request to close, one moment per card, nothing combined. Actions and policies live in each card's properties; the cards read as the story. Clusters carry no grounds yet — every ⚠ is an unmined industry assertion, on purpose.",
     nodes: [
       ev("b1-registered", "start", "Claim registered", "The claim request is registered — numbered, dated, and checked against existing claims.", {
@@ -108,7 +108,7 @@ export const BJ_STORMS = [
         commands: [{ label: "Assess severity & score fraud signals", on: "CLAIM" }, { label: "Route to a lane (glass fast-track / desk / field)", on: "CLAIM" }],
         businessRules: [{ label: "Segmentation & straight-through eligibility" }] }),
       ev("b1-fraud-hold", "b1-assigned", "Fraud hold applied", "A fraud hold is applied; settlement is gated while it stands.", { branch: "signals say look closer",
-        businessRules: [{ label: "Holds gate settlement; findings return as facts (BJ-6)" }] }),
+        businessRules: [{ label: "Holds gate settlement; findings return as facts (BP-6)" }] }),
       ev("b1-reserve", "b1-assigned", "Reserve established", "An initial reserve is established for the expected cost.", {
         commands: [{ label: "Set the initial reserve per coverage line", on: "CLAIM" }],
         businessRules: [{ label: "Reserving guidelines & authority limits" }, { label: "Every reserve move is evented" }] }),
@@ -147,11 +147,11 @@ export const BJ_STORMS = [
       ev("b1-recovery", "b1-settled", "Recovery assessed", "Recovery potential is assessed with none identified.", {
         commands: [{ label: "Assess subrogation, deductible recovery, salvage", on: "CLAIM" }] }),
       ev("b1-closed", "b1-recovery", "Claim closed", "The claim is closed with all obligations settled.", { isPivotal: true, isEndNode: true,
-        businessRules: [{ label: "Closure checklist: all settled, no holds, no open tasks" }, { label: "Closed still accepts post-close credits and reopening (BJ-4 · BJ-5)" }] }),
+        businessRules: [{ label: "Closure checklist: all settled, no holds, no open tasks" }, { label: "Closed still accepts post-close credits and reopening (BP-4 · BP-5)" }] }),
     ],
   },
   {
-    id: "bj-storm-2", name: "BJ-2 · Get the vehicle repaired — big-picture storm", contextId: null,
+    id: "bj-storm-2", name: "BP-2 · Get the vehicle repaired — big-picture storm", contextId: null,
     summary: "The shop's journey from assignment to getting paid. Flat storm — boundaries come later.",
     nodes: [
       actor("b2-shop", "start", "Repair shop / glass vendor", "The repair partner performing the work."),
@@ -167,7 +167,7 @@ export const BJ_STORMS = [
     ],
   },
   {
-    id: "bj-storm-3", name: "BJ-3 · Pay and get paid — big-picture storm", contextId: null,
+    id: "bj-storm-3", name: "BP-3 · Pay and get paid — big-picture storm", contextId: null,
     summary: "Every dollar out and in, from first payable event to money settled. Flat storm — the payment seam is frozen only after this wall.",
     nodes: [
       ev("b3-instructed", "start", "Payment instructed", "A payment instruction is issued and recorded as owed.", { isPivotal: true }),
@@ -181,7 +181,7 @@ export const BJ_STORMS = [
     ],
   },
   {
-    id: "bj-sketch-4", name: "BJ-4 · Recover what others owe — sketch", contextId: null,
+    id: "bj-sketch-4", name: "BP-4 · Recover what others owe — sketch", contextId: null,
     summary: "Low-resolution on purpose: this sketch exists to force one fact — recovery credits land against a CLOSED claim.",
     nodes: [
       ev("b4-closed", "start", "Claim closed & paid", "The claim is closed and indemnity paid — the recovery baseline."),
@@ -192,7 +192,7 @@ export const BJ_STORMS = [
     ],
   },
   {
-    id: "bj-sketch-5", name: "BJ-5 · Challenge the decision — sketch", contextId: null,
+    id: "bj-sketch-5", name: "BP-5 · Challenge the decision — sketch", contextId: null,
     summary: "Low-resolution on purpose: this sketch exists to force the reopen semantics the claim aggregate must carry.",
     nodes: [
       ev("b5-communicated", "start", "Decision communicated", "The decision is communicated to the claimant."),
@@ -203,7 +203,7 @@ export const BJ_STORMS = [
     ],
   },
   {
-    id: "bj-sketch-6", name: "BJ-6 · Investigate suspected fraud — sketch", contextId: null,
+    id: "bj-sketch-6", name: "BP-6 · Investigate suspected fraud — sketch", contextId: null,
     summary: "Low-resolution on purpose: holds gate settlement; findings land as facts — SIU never edits the claim model.",
     nodes: [
       ev("b6-flagged", "start", "Fraud flag raised", "A fraud indicator is raised against the file."),
@@ -226,7 +226,7 @@ const seam = (id, parentId, summary, description, extra = {}) =>
 
 export const claimsCutMap = {
   id: "cm-claims-v2", name: "Context map — the accepted cut (D-152)", contextId: null,
-  summary: "Six contexts and the deferred AB lane, cut against the union of BJ-1/2/3 and the sketch-facts. Every seam names its relationship pattern; the one bend from the old walls is Claim payments, extracted from adjudication.",
+  summary: "Six contexts and the deferred AB lane, cut against the union of BP-1/2/3 and the sketch-facts. Every seam names its relationship pattern; the one bend from the old walls is Claim payments, extracted from adjudication.",
   nodes: [
     actor("cm2-claimant", "start", "Claimant & channels", "Everyone who can start or follow a claim — portal, phone, broker, police feed."),
     cx("cm2-intake", "cm2-claimant", "Intake & registration · CORE", "The doors, and the moment a request becomes a numbered claim."),
@@ -242,7 +242,7 @@ export const claimsCutMap = {
     seam("cm2-s-threshold", "cm2-repair", "threshold breach", "Customer–supplier: an estimate over the total-loss line hands the vehicle over with the estimate of record."),
     cx("cm2-total", "cm2-s-threshold", "Total loss & salvage · SUPPORTING", "Valuation, owner settlement, title branding, disposal — one vehicle, one disposition."),
     seam("cm2-s-salvage", "cm2-total", "salvage proceeds", "Published events: disposal proceeds credit the claim through Claim payments.", { isEndNode: true }),
-    seam("cm2-s-payinstr", "cm2-adjud", "payment instruction", "Customer–supplier — THE NEW SEAM: adjudication instructs, payments executes the ledger. Two storms drew it independently (BJ-2 ends on the event BJ-3 settles)."),
+    seam("cm2-s-payinstr", "cm2-adjud", "payment instruction", "Customer–supplier — THE NEW SEAM: adjudication instructs, payments executes the ledger. Two storms drew it independently (BP-2 ends on the event BP-3 settles)."),
     cx("cm2-pay", "cm2-s-payinstr", "Claim payments · SUPPORTING", "The owed/settled ledger: instructed-not-yet-settled, reconciliation, void & reissue. Extracted from adjudication — its own language."),
     ext("cm2-x-disburse", "cm2-pay", "Legacy payment execution", "Conformist behind the payment-instruction contract — execution modernizes later without this map changing.", { isEndNode: true }),
     seam("cm2-s-credits", "cm2-pay", "money in — salvage & recovery credits", "Published events: credits land against the claim, even after it has closed.", { isEndNode: true }),
@@ -284,7 +284,7 @@ export const HOME_NAMES = {
 };
 
 export const EVENT_HOMES = {
-  /* BJ-1 · have my claim handled */
+  /* BP-1 · have my claim handled */
   "wf-b1-registered": null, /* (unused guard) */
   "b1-registered": "CTX-INTAKE",
   "b1-denied-force": "CTX-ADJUD", "b1-policy": "CTX-ADJUD", "b1-denied-cover": "CTX-ADJUD",
@@ -296,22 +296,22 @@ export const EVENT_HOMES = {
   "b1-calculated": "CTX-ADJUD", "b1-payauth": "CTX-ADJUD",
   "b1-instructed": "CTX-PAYMENTS", "b1-settled": "CTX-PAYMENTS",
   "b1-recovery-ref": "CTX-RECOVERY", "b1-recovery": "CTX-ADJUD", "b1-closed": "CTX-ADJUD",
-  /* BJ-2 · get the vehicle repaired */
+  /* BP-2 · get the vehicle repaired */
   "b2-assigned": "CTX-REPAIR", "b2-inspected": "CTX-REPAIR", "b2-estimate": "CTX-REPAIR",
   "b2-approved": "CTX-REPAIR", "b2-started": "CTX-REPAIR", "b2-supplement": "CTX-REPAIR",
   "b2-completed": "CTX-REPAIR", "b2-invoiced": "CTX-REPAIR",
   "b2-paid": "CTX-PAYMENTS",
-  /* BJ-3 · pay and get paid */
+  /* BP-3 · pay and get paid */
   "b3-instructed": "CTX-PAYMENTS", "b3-executed": "CTX-PAYMENTS", "b3-confirmed": "CTX-PAYMENTS",
   "b3-claimant": "CTX-PAYMENTS", "b3-vendor": "CTX-PAYMENTS",
   "b3-salvage": "CTX-PAYMENTS", "b3-recovery": "CTX-PAYMENTS",
-  /* BJ-4 · recover what others owe */
+  /* BP-4 · recover what others owe */
   "b4-closed": "CTX-ADJUD", "b4-fault": "CTX-RECOVERY", "b4-demand": "CTX-RECOVERY",
   "b4-received": "CTX-RECOVERY", "b4-credited": "CTX-ADJUD",
-  /* BJ-5 · challenge the decision */
+  /* BP-5 · challenge the decision */
   "b5-communicated": "CTX-ADJUD", "b5-disputed": "CTX-ADJUD", "b5-reopened": "CTX-ADJUD",
   "b5-upheld": "CTX-ADJUD", "b5-adjusted": "CTX-ADJUD",
-  /* BJ-6 · investigate suspected fraud — SIU's own moments sit OUTSIDE the cut */
+  /* BP-6 · investigate suspected fraud — SIU's own moments sit OUTSIDE the cut */
   "b6-flagged": "EXT-SIU", "b6-hold": "CTX-ADJUD", "b6-concluded": "EXT-SIU",
   "b6-facts": "CTX-ADJUD", "b6-released": "CTX-ADJUD",
 };
@@ -343,7 +343,7 @@ for (const m of BJ_STORMS) {
 import { CLAIMS_DESIGN_STORMS as _DS } from "./claims-design-storms";
 
 export const EVENT_REALIZES = {
-  /* BJ-1 */
+  /* BP-1 */
   "b1-registered": ["di-registered"], "b1-denied-force": ["adj-denied-force"], "b1-policy": ["adj-policy"],
   "b1-denied-cover": ["adj-denied-cover"], "b1-coverage": ["adj-coverage"],
   "b1-assigned": null,                       /* GAP: lane/handler assignment — work management, not yet designed */
@@ -356,7 +356,7 @@ export const EVENT_REALIZES = {
   "b1-recovery-ref": ["dv-referred"],
   "b1-recovery": null,                       /* GAP: the recovery ASSESSMENT at closure is not a designed moment */
   "b1-closed": ["adj-closed"],
-  /* BJ-2 */
+  /* BP-2 */
   "b2-assigned": ["dr-accepted"],
   "b2-inspected": "journey-only",            /* shop-internal */
   "b2-estimate": ["dr-estimate"], "b2-approved": ["dr-approved"],
@@ -364,21 +364,21 @@ export const EVENT_REALIZES = {
   "b2-supplement": ["dr-supplement"], "b2-completed": ["dr-completed"],
   "b2-invoiced": null,                       /* GAP: the vendor invoice moment is modeled nowhere */
   "b2-paid": ["dp-settled"],
-  /* BJ-3 */
+  /* BP-3 */
   "b3-instructed": ["dp-received"], "b3-executed": ["dp-dispatched"], "b3-confirmed": ["dp-settled"],
   "b3-claimant": ["dp-settled"], "b3-vendor": ["dp-settled"],
   "b3-salvage": ["dp-credit"], "b3-recovery": ["dp-credit"],
-  /* BJ-4 */
+  /* BP-4 */
   "b4-closed": ["adj-closed"],
   "b4-fault": null,                          /* GAP: recovery-side fault positioning is not designed */
   "b4-demand": ["dv-demand"], "b4-received": ["dv-received"], "b4-credited": ["adj-credit"],
-  /* BJ-5 */
+  /* BP-5 */
   "b5-communicated": null,                   /* GAP: decision communication is a policy, never an event — design question */
   "b5-disputed": "journey-only",             /* the claimant's act; our response is the reopen */
   "b5-reopened": ["adj-reopened"],
   "b5-upheld": null,                         /* GAP: the review outcome (upheld) is not designed */
   "b5-adjusted": null,                       /* GAP: the re-decision + re-close path is not designed */
-  /* BJ-6 */
+  /* BP-6 */
   "b6-flagged": "journey-only",              /* SIU's own moment, outside the cut */
   "b6-hold": ["adj-hold"],
   "b6-concluded": "journey-only",            /* SIU's own moment */
@@ -394,23 +394,23 @@ for (const m of BJ_STORMS) for (const n of m.nodes) {
    it disappears when healthy and reappears the moment a new wall grows
    cards no journey demands — a tripwire, not a scoreboard). */
 export const RECON_TRIAGE = {
-  /* BJ-1's storm starts at registration; the journey itself starts at the
+  /* BP-1's storm starts at registration; the journey itself starts at the
      loss — extending the storm back is an optional, parked action */
-  "di-reported": "BJ-1 storm starts at registration (extension parked)",
-  "di-merged": "BJ-1 storm starts at registration (extension parked)",
-  "di-triaged": "BJ-1 storm starts at registration (extension parked)",
-  "di-completed": "BJ-1 storm starts at registration (extension parked)",
+  "di-reported": "BP-1 storm starts at registration (extension parked)",
+  "di-merged": "BP-1 storm starts at registration (extension parked)",
+  "di-triaged": "BP-1 storm starts at registration (extension parked)",
+  "di-completed": "BP-1 storm starts at registration (extension parked)",
   /* design-discovered moments below the journeys' resolution — accepted */
-  "adj-opened": "design-discovered: the seam-entry moment BJ-1 compresses into registration",
+  "adj-opened": "design-discovered: the seam-entry moment BP-1 compresses into registration",
   "dp-failed": "design-discovered: the failure path — journeys storm happy paths",
-  "dv-closed": "design-discovered: case-close bookkeeping after BJ-4's last moment",
+  "dv-closed": "design-discovered: case-close bookkeeping after BP-4's last moment",
   /* the write-off path was designed but never told as a journey — the
-     BJ-9 decision is parked with the sponsor */
-  "dt-received": "write-off journey candidate (BJ-9 decision parked)",
-  "dt-valued": "write-off journey candidate (BJ-9 decision parked)",
-  "dt-settled": "write-off journey candidate (BJ-9 decision parked)",
-  "dt-branded": "write-off journey candidate (BJ-9 decision parked)",
-  "dt-disposed": "write-off journey candidate (BJ-9 decision parked)",
+     BP-9 decision is parked with the sponsor */
+  "dt-received": "write-off journey candidate (BP-9 decision parked)",
+  "dt-valued": "write-off journey candidate (BP-9 decision parked)",
+  "dt-settled": "write-off journey candidate (BP-9 decision parked)",
+  "dt-branded": "write-off journey candidate (BP-9 decision parked)",
+  "dt-disposed": "write-off journey candidate (BP-9 decision parked)",
 };
 
 /* the two-way report: per-journey statuses + design cards no journey reaches */
