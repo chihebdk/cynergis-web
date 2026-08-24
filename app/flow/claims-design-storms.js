@@ -19,7 +19,7 @@ export const dsIntake = {
   contextId: "CTX-INTAKE",
   summary: "From the first word of a loss to a numbered claim, on one aggregate. Every door triggers the same action; the exit event is the seam to adjudication.",
   nodes: [
-    { id: "di-reported", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+    { id: "di-reported", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true, grounds: ["UC1", "FR1"],
       summary: "Loss reported", aggregate: "AGG-LOSSREPORT",
       description: "Someone tells us about a loss for the first time.",
       triggers: [
@@ -48,13 +48,13 @@ export const dsIntake = {
         { label: "Mandatory fields per channel", desc: "A police feed carries less than a guided conversation — the report knows what it still lacks." },
       ] },
 
-    { id: "di-merged", type: "SimpleNode", parentId: "di-reported", kind: "event", branch: "another channel, same loss",
+    { id: "di-merged", type: "SimpleNode", parentId: "di-reported", kind: "event", branch: "another channel, same loss", grounds: ["FR1"],
       summary: "Report merged", aggregate: "AGG-LOSSREPORT",
       description: "A second channel touches the same loss; the report absorbs it.",
       commands: [{ label: "Match & merge the submissions", on: "AGG-LOSSREPORT", desc: "Match on parties, vehicle, date and place of loss." }],
       businessRules: [{ label: "Merge, never duplicate", desc: "Nothing reported is lost in the merge; provenance per field survives." }] },
 
-    { id: "di-triaged", type: "SimpleNode", parentId: "di-reported", kind: "event",
+    { id: "di-triaged", type: "SimpleNode", parentId: "di-reported", kind: "event", grounds: ["UC2", "FR2"],
       summary: "Severity triaged", aggregate: "AGG-LOSSREPORT",
       description: "The report gets a severity, a lane suggestion and a first reserve estimate.",
       triggers: [
@@ -65,7 +65,7 @@ export const dsIntake = {
       commands: [{ label: "Score severity & suggest the lane", on: "AGG-LOSSREPORT", desc: "Model-assisted; the number is a suggestion, not a decision." }],
       businessRules: [{ label: "The model assists, a licensed person decides", desc: "Intake judgment is never delegated to the score." }] },
 
-    { id: "di-completed", type: "SimpleNode", parentId: "di-triaged", kind: "event", isPivotal: true,
+    { id: "di-completed", type: "SimpleNode", parentId: "di-triaged", kind: "event", isPivotal: true, grounds: ["UC2", "FR1"],
       summary: "Report completed", aggregate: "AGG-LOSSREPORT",
       description: "A licensed person closes the intake conversation; the report is whole.",
       commands: [{ label: "Complete the report", on: "AGG-LOSSREPORT", desc: "Completeness at handoff is the measure that matters." }],
@@ -98,7 +98,7 @@ export const dsAdjud = {
   contextId: "CTX-ADJUD",
   summary: "From the claim-opened seam to a closed file that still listens: verification, reserves, fault, settlement, authorization — and the lifecycle rails the sketches forced.",
   nodes: [
-    { id: "adj-opened", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+    { id: "adj-opened", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true, grounds: ["UC3", "FR3"],
       summary: "Claim opened", aggregate: "AGG-CLAIM",
       description: "The registered report crosses the seam and becomes a claim file.",
       triggers: [
@@ -150,7 +150,7 @@ export const dsAdjud = {
       commands: [{ label: "Record the denial with reasons", on: "AGG-CLAIM" }],
       policies: [{ label: "When denied → communicate the decision", desc: "The decision-communicated event opens the dispute door (BJ-5).", crosses: "Portals / disputes" }] },
 
-    { id: "adj-coverage", type: "SimpleNode", parentId: "adj-policy", kind: "event", isPivotal: true,
+    { id: "adj-coverage", type: "SimpleNode", parentId: "adj-policy", kind: "event", isPivotal: true, grounds: ["UC4", "FR4"],
       summary: "Coverage confirmed", aggregate: "AGG-CLAIM",
       description: "The loss matches a coverage; the deductible is known.",
       commands: [
@@ -181,7 +181,7 @@ export const dsAdjud = {
       commands: [{ label: "Reopen with a new decision version", on: "AGG-CLAIM", desc: "The old decision is never edited — a new version supersedes it." }],
       businessRules: [{ label: "Decision history is immutable", desc: "Reopen means append, never rewrite — the audit trail is the point." }] },
 
-    { id: "adj-reserve", type: "SimpleNode", parentId: "adj-coverage", kind: "event",
+    { id: "adj-reserve", type: "SimpleNode", parentId: "adj-coverage", kind: "event", grounds: ["FR5"],
       summary: "Reserve established", aggregate: "AGG-CLAIM",
       description: "Money is set aside for what this will likely cost.",
       commands: [{ label: "Set the initial reserve per coverage line", on: "AGG-CLAIM" }],
@@ -200,7 +200,7 @@ export const dsAdjud = {
       businessRules: [{ label: "The fault chart is regulation, not judgment" }],
       policies: [{ label: "When repairable → request the appraisal", desc: "The customer–supplier seam to Repair & estimate coordination; the estimate of record returns.", crosses: "Repair & estimate coordination" }] },
 
-    { id: "adj-calculated", type: "SimpleNode", parentId: "adj-fault", kind: "event", isPivotal: true,
+    { id: "adj-calculated", type: "SimpleNode", parentId: "adj-fault", kind: "event", isPivotal: true, grounds: ["UC6", "FR6"],
       summary: "Settlement calculated", aggregate: "AGG-CLAIM",
       description: "The repair is verified elsewhere; now what we owe, and to whom, is computed.",
       triggers: [
@@ -219,7 +219,7 @@ export const dsAdjud = {
         { label: "Betterment schedule; direct-pay agreements" },
       ] },
 
-    { id: "adj-payauth", type: "SimpleNode", parentId: "adj-calculated", kind: "event", isPivotal: true,
+    { id: "adj-payauth", type: "SimpleNode", parentId: "adj-calculated", kind: "event", isPivotal: true, grounds: ["UC6", "FR6"],
       summary: "Payment authorized", aggregate: "AGG-CLAIM",
       description: "The payment clears its checks — authority, holds, the payee.",
       commands: [
@@ -355,7 +355,7 @@ export const dsPayments = {
   contextId: "CTX-PAYMENTS",
   summary: "Instructed, dispatched, settled — and the money that comes back in. Adjudication decides; this ledger keeps the truth about the money.",
   nodes: [
-    { id: "dp-received", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+    { id: "dp-received", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true, grounds: ["FR6"],
       summary: "Payment instruction received", aggregate: "AGG-PAYLEDGER",
       description: "Adjudication says pay; the ledger records it as owed.",
       triggers: [
@@ -383,7 +383,7 @@ export const dsPayments = {
       commands: [{ label: "Void & reissue", on: "AGG-PAYLEDGER" }],
       businessRules: [{ label: "A failed payment is never silent", desc: "Owed stays owed until settled — no orphaned instructions." }] },
 
-    { id: "dp-settled", type: "SimpleNode", parentId: "dp-dispatched", kind: "event", isPivotal: true, isEndNode: true,
+    { id: "dp-settled", type: "SimpleNode", parentId: "dp-dispatched", kind: "event", isPivotal: true, isEndNode: true, grounds: ["FR6"],
       summary: "Settlement confirmed", aggregate: "AGG-PAYLEDGER",
       description: "Confirmation comes back; owed becomes settled.",
       triggers: [
@@ -419,7 +419,7 @@ export const dsTotalLoss = {
   contextId: "CTX-TOTALLOSS",
   summary: "One vehicle, one disposition: valuation, settlement, title, disposal — and the proceeds back to the ledger.",
   nodes: [
-    { id: "dt-received", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
+    { id: "dt-received", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true, grounds: ["UC7"],
       summary: "Threshold breach received", aggregate: "AGG-SALVAGECASE",
       description: "The car arrives with the estimate of record: not worth fixing.",
       triggers: [
@@ -431,7 +431,7 @@ export const dsTotalLoss = {
       ],
       commands: [{ label: "Open the salvage case", on: "AGG-SALVAGECASE" }] },
 
-    { id: "dt-valued", type: "SimpleNode", parentId: "dt-received", kind: "event",
+    { id: "dt-valued", type: "SimpleNode", parentId: "dt-received", kind: "event", grounds: ["FR9"],
       summary: "Vehicle valued", aggregate: "AGG-SALVAGECASE",
       description: "The market says what the car was worth the day of the loss.",
       triggers: [
@@ -444,7 +444,7 @@ export const dsTotalLoss = {
       commands: [{ label: "Determine the actual cash value", on: "AGG-SALVAGECASE" }],
       businessRules: [{ label: "Valuation as at date of loss", desc: "Vendor-conformist behind an ACL — vendors change, the model survives." }] },
 
-    { id: "dt-settled", type: "SimpleNode", parentId: "dt-valued", kind: "event", isPivotal: true,
+    { id: "dt-settled", type: "SimpleNode", parentId: "dt-valued", kind: "event", isPivotal: true, grounds: ["UC7", "FR9"],
       summary: "Settlement offered & accepted", aggregate: "AGG-SALVAGECASE",
       description: "The owner takes the number; the car becomes ours.",
       commands: [{ label: "Offer ACV less deductible", on: "AGG-SALVAGECASE" }],
@@ -456,7 +456,7 @@ export const dsTotalLoss = {
       description: "The paperwork says what the car now is.",
       businessRules: [{ label: "Branding is regulation — salvage, rebuilt, irreparable" }] },
 
-    { id: "dt-disposed", type: "SimpleNode", parentId: "dt-branded", kind: "event", isPivotal: true, isEndNode: true,
+    { id: "dt-disposed", type: "SimpleNode", parentId: "dt-branded", kind: "event", isPivotal: true, isEndNode: true, grounds: ["FR9"],
       summary: "Salvage disposed", aggregate: "AGG-SALVAGECASE",
       description: "The auction sells the wreck; the money heads back to the ledger.",
       triggers: [

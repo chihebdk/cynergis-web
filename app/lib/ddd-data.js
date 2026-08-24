@@ -534,3 +534,29 @@ window.__DDD__ = {
     },
   },
 };
+
+/* ── D-159 · Phase B of the old-wall retirement: REHOME THE CARGO ──
+   The superseded walls' agents and capabilities move to their successors
+   (the deferred AB wall keeps its own). Done as a visible post-pass, not a
+   rewrite of the seed above — the migration is auditable and reversible
+   until Phase C retires the old entries. UC judgment calls: UC8 (status
+   tracking) follows the status stream to Claim adjudication (its open-host
+   publisher); UC6 (issue an indemnity payment) stays with adjudication —
+   it authorizes and instructs; Claim payments executes the ledger. */
+{
+  const _cc = window.__DDD__.byProduct['PROD-CLAIMSCORE'].contexts;
+  const _by = (id) => _cc.find((c) => c.id === id);
+  const _move = (fromId, toId) => {
+    const f = _by(fromId), t = _by(toId);
+    if (!f || !t) return;
+    if (f.agent && !t.agent) { t.agent = f.agent; delete f.agent; }
+    if (f.opsAgent && !t.opsAgent) { t.opsAgent = f.opsAgent; delete f.opsAgent; }
+  };
+  _move('CTX-FNOL', 'CTX-INTAKE');
+  _move('CTX-COVERAGE', 'CTX-ADJUD');
+  _move('CTX-TOTAL-LOSS', 'CTX-TOTALLOSS');
+  _by('CTX-INTAKE').capabilities = ['UC1', 'UC2'];
+  _by('CTX-ADJUD').capabilities = ['UC3', 'UC4', 'UC6', 'UC8'];
+  _by('CTX-TOTALLOSS').capabilities = ['UC7'];
+  for (const id of ['CTX-FNOL', 'CTX-COVERAGE', 'CTX-TOTAL-LOSS']) _by(id).capabilities = [];
+}
