@@ -155,6 +155,10 @@ export default function FlowEmbed({ flowId = "decisioning", variant = "flow" }) 
   return (
     <MapStateProvider>
       <div className={`cyn-flow-embed cyn-layout-${layoutMode} ${expanded ? "cyn-flow-expanded" : "cyn-flow-inline"}${variant === "contextmap" ? " cyn-flow-contextmap" : ""}${variant === "systemmap" ? " cyn-flow-systemmap" : ""}`} style={shell}>
+        {/* D-171: Ungroup does not apply — submaps ARE the bounded contexts; dissolving
+            one would falsify the decomposition. Injected unlayered so it beats the
+            vendored canvas CSS (the theme layer loses that cascade). */}
+        <style>{`.cyn-flow-embed button[title="Ungroup Submap"]{display:none !important;}`}</style>
         <button type="button" style={btn} onClick={toggleExpand}
           title={expanded ? "Collapse (Esc)" : "Expand to full page"} aria-label={expanded ? "Collapse" : "Expand"}>
           {expanded ? <IconCollapse /> : <IconExpand />}

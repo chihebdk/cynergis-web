@@ -468,3 +468,9 @@
 .cyn-ctxkind.cyn-ck-home { color: #3730a3; background: #eef2ff; border-color: #c7d2fe; }
 .cyn-ctxkind.cyn-ck-home.clickable { cursor: pointer; }
 .cyn-ctxkind.cyn-ck-home.clickable:hover { border-color: #818cf8; background: #e0e7ff; }
+
+/* D-171: the vendored canvas hardcodes an "Ungroup Submap" button on expanded
+   submaps. Ungrouping does not apply to our maps (submaps ARE the bounded
+   contexts — dissolving one would falsify the decomposition), so the button
+   is suppressed everywhere. */
+.cyn-flow-embed button[title="Ungroup Submap"] { display: none !important; }
