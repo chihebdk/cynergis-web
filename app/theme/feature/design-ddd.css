@@ -459,3 +459,8 @@
 /* D-182 polish: shape | rules tabs inside the aggregate card */
 .agu-tabs { margin: 4px 0 14px; }
 .agu-shape-note { margin-bottom: 10px; font-size: 11.5px; color: var(--ink-3, #6b7280); }
+
+/* D-183: authored policies — the executed-by chip */
+.ddd-pol-mode { font: 650 10.5px var(--font-sans, ui-sans-serif); text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.ddd-pol-mode.automated { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.ddd-pol-mode.manual { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; }

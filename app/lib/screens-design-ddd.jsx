@@ -6,6 +6,9 @@ import './domain-model-data';
 import { seedFlows } from '../flow/data';
 import { claimsFlows } from '../flow/claims-flows';
 import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds } from '../flow/claims-lifecycle';
+import { CONTEXT_POLICIES } from '../flow/claims-policies';
+import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
+import { HOME_NAMES } from '../flow/journeys';
 import { kgContracts } from './kg-query';
 import { componentById, componentsForBC, deriveArch } from '../flow/arch';
 const { Ref: DDRef } = window;
@@ -292,7 +295,13 @@ const domainData = product => (window.__DOMAIN__ && window.__DOMAIN__.byProduct[
    that executes the THEN) is the crosses target, or the flow's own context when
    the reaction stays inside. Consumed by the bounded context's
    Policies tab and the knowledge pack. */
-const derivedPolicies = () => [...seedFlows, ...claimsFlows].flatMap(f =>
+/* `crosses` in the design storms names the context in display language
+   ("Claim adjudication"); resolve it back to the id so ownership filters
+   work. Ids pass through; unresolvable strings (externals like "Portals /
+   disputes") stay as-is — they read fine and match no wall. */
+const CTX_BY_NAME = Object.fromEntries(Object.entries(HOME_NAMES).map(([id, nm]) => [nm, id]));
+const resolveCtx = v => (!v || /^(CTX|BC)-/.test(v)) ? v : (CTX_BY_NAME[v] || v);
+const derivedPolicies = () => [...seedFlows, ...claimsFlows, ...CLAIMS_DESIGN_STORMS].flatMap(f =>
   f.nodes.flatMap(n => (n.policies || []).map((p, i) => {
     const [whenRaw, then] = (p.label || '').split('→').map(s => s.trim());
     return {
@@ -303,7 +312,7 @@ const derivedPolicies = () => [...seedFlows, ...claimsFlows].flatMap(f =>
       grounds: p.grounds || [],
       event: n.summary,
       from: f.contextId,
-      owner: p.crosses || f.contextId,
+      owner: resolveCtx(p.crosses) || f.contextId,
     };
   })));
 
@@ -953,13 +962,39 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
               <span className="dm-pol-src">on “{p.event}”{p.owner !== p.from ? ` · ${p.from} → ${p.owner}` : ''}</span></span>
           </div>
         );
+        const authored = CONTEXT_POLICIES[c.id];
         return (<>
           <div className="asc-section ddd-sec">
             <div className="asc-sec-head">
               <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Reacts to</div>
-              <div className="asc-sec-sub">The reactions this context owns — whenever the event fires, this context executes the command (derived live from the event flows)</div>
+              <div className="asc-sec-sub">{authored
+                ? 'The reactions this context owns. Only the reaction lives here — the door’s mechanics are on the trigger record, the state change on the command, the legality on the lifecycle. A policy is the business’s reflex however executed — automation is an attribute, not the definition.'
+                : 'The reactions this context owns — whenever the event fires, this context executes the command (derived live from the event flows)'}</div>
             </div>
-            {policies.length ? <div className="dm-pol-list">{policies.map(polRow)}</div>
+            {authored ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="ddd-lc-table">
+                  <thead><tr><th>Whenever</th><th>From</th><th>Then</th><th>Executed</th><th>Within</th><th>If it can&apos;t</th><th>Grounded in</th></tr></thead>
+                  <tbody>
+                    {authored.map((p, i) => (
+                      <tr key={i}>
+                        <td><span className="dm-chip event">{p.when}</span></td>
+                        <td>{p.from}</td>
+                        <td>{p.card
+                          ? <button type="button" className="dm-chip command ddd-lc-ev" title={`lands as “${p.card}” on the wall`} onClick={() => navTab('flow')}>{p.then}</button>
+                          : <span className="dm-chip command">{p.then}</span>}</td>
+                        <td><span className={'ddd-pol-mode ' + p.mode}>{p.mode}</span></td>
+                        <td>{p.sla}</td>
+                        <td>{p.cant}</td>
+                        <td className="ddd-lc-gr">{(p.grounds || []).length
+                          ? p.grounds.map(g => <DDRef id={g} key={g} />)
+                          : <span className="ddd-lc-unmined" title="No captured requirement behind this yet — asserted while designing">⚠</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : policies.length ? <div className="dm-pol-list">{policies.map(polRow)}</div>
               : <div className="ddd-empty-inline">No inbound reactions — nothing wakes this context via a policy.</div>}
           </div>
           {outbound.length > 0 && (
