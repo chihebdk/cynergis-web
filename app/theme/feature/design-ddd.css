@@ -451,3 +451,7 @@
 .ddd-lc-table td { padding: 11px 12px; }
 .ddd-lc-table th { padding: 8px 12px; }
 .ddd-lc-never { padding: 11px 14px; margin-bottom: 8px; gap: 14px; }
+
+/* D-180 polish: section titles never squeeze into vertical word-stacks —
+   the (long) sub wraps instead */
+.ddd-sec .asc-sec-title { flex-shrink: 0; }
