@@ -21,7 +21,6 @@ export const dsIntake = {
   nodes: [
     { id: "di-reported", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true, grounds: ["UC1", "FR1"],
       summary: "Loss reported", aggregate: "AGG-LOSSREPORT",
-      readModels: [{ label: "Open loss reports — match view", desc: "Existing reports on matching parties, vehicle, and date and place of loss; the merge decision reads it." },],
       description: "The first notice of loss is received — the incident's earliest record, whatever the channel.",
       triggers: [
         { kind: "internal module call", type: "API",
@@ -57,7 +56,6 @@ export const dsIntake = {
 
     { id: "di-triaged", type: "SimpleNode", parentId: "di-reported", kind: "event", grounds: ["UC2", "FR2"],
       summary: "Severity triaged", aggregate: "AGG-LOSSREPORT",
-      readModels: [{ label: "Severity factors view", desc: "Damage, injury indicators and vehicle data as the model scores them — the suggested lane stays explainable against it." },],
       description: "The report is assessed for severity, yielding a recommended handling lane and an initial reserve estimate.",
       triggers: [
         { kind: "internal module call", type: "Sequential",
@@ -75,7 +73,6 @@ export const dsIntake = {
 
     { id: "di-registered", type: "SimpleNode", parentId: "di-completed", kind: "event", isPivotal: true, isEndNode: true,
       summary: "Claim registered", aggregate: "AGG-LOSSREPORT",
-      readModels: [{ label: "Registered claims index", desc: "Claims by loss and policy — the registration-side dedup reads it before a number is assigned." },],
       description: "The completed report is registered as a claim — numbered, dated, and passed to adjudication.",
       commands: [
         { label: "Check for an existing claim on this loss", on: "AGG-LOSSREPORT", desc: "The registration-side dedup — distinct from the report merge." },
@@ -103,7 +100,6 @@ export const dsAdjud = {
   nodes: [
     { id: "adj-opened", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true, grounds: ["UC3", "FR3"],
       summary: "Claim opened", aggregate: "AGG-CLAIM",
-      readModels: [{ label: "Coverage snapshot as at date of loss", desc: "The stored mainframe extract — adjudication reads the snapshot, never the live policy system." },],
       description: "A claim file is opened from the registered report and its triage payload.",
       triggers: [
         { kind: "domain call", type: "Message",
@@ -156,7 +152,6 @@ export const dsAdjud = {
 
     { id: "adj-coverage", type: "SimpleNode", parentId: "adj-policy", kind: "event", isPivotal: true, grounds: ["UC4", "FR4"],
       summary: "Coverage confirmed", aggregate: "AGG-CLAIM",
-      readModels: [{ label: "Coverage lines & limits view", desc: "What the policy responds to for this loss, line by line — the confirmation decision reads it." },],
       description: "Coverage is confirmed for the loss, with the applicable deductible identified.",
       commands: [
         { label: "Map loss cause to coverages & endorsements", on: "AGG-CLAIM" },
@@ -188,7 +183,6 @@ export const dsAdjud = {
 
     { id: "adj-reserve", type: "SimpleNode", parentId: "adj-coverage", kind: "event", grounds: ["FR5"],
       summary: "Reserve established", aggregate: "AGG-CLAIM",
-      readModels: [{ label: "Reserve adequacy view", desc: "Current reserves against estimates and payments to date, per coverage line." },],
       description: "An initial reserve is established for the claim's expected ultimate cost.",
       commands: [{ label: "Set the initial reserve per coverage line", on: "AGG-CLAIM" }],
       businessRules: [
@@ -198,7 +192,6 @@ export const dsAdjud = {
 
     { id: "adj-fault", type: "SimpleNode", parentId: "adj-reserve", kind: "event",
       summary: "Fault determined", aggregate: "AGG-CLAIM",
-      readModels: [{ label: "Fault determination rules", desc: "The applicable fault table for the jurisdiction and the reported circumstances." },],
       description: "Fault is determined under the applicable rules — or recorded as not applicable to the cause of loss.",
       commands: [
         { label: "Apply the fault determination rules", on: "AGG-CLAIM" },
@@ -209,7 +202,6 @@ export const dsAdjud = {
 
     { id: "adj-calculated", type: "SimpleNode", parentId: "adj-fault", kind: "event", isPivotal: true, grounds: ["UC6", "FR6"],
       summary: "Settlement calculated", aggregate: "AGG-CLAIM",
-      readModels: [{ label: "Estimate of record & payables", desc: "The verified repair figures, deductible and limits — the settlement is calculated from this view." },],
       description: "The settlement is calculated from the verified repair — the payable amount and its payees.",
       triggers: [
         { kind: "domain call", type: "Message",
@@ -229,7 +221,6 @@ export const dsAdjud = {
 
     { id: "adj-payauth", type: "SimpleNode", parentId: "adj-calculated", kind: "event", isPivotal: true, grounds: ["UC6", "FR6"],
       summary: "Payment authorized", aggregate: "AGG-CLAIM",
-      readModels: [{ label: "Holds & authority view", desc: "Open holds and the handler\u2019s authority limit — authorization reads both before it signs." },],
       description: "The payment is authorized after authority, hold, and payee checks clear.",
       commands: [
         { label: "Check the authority band", on: "AGG-CLAIM" },
@@ -241,7 +232,6 @@ export const dsAdjud = {
 
     { id: "adj-closed", type: "SimpleNode", parentId: "adj-payauth", kind: "event", isPivotal: true, isEndNode: true,
       summary: "Claim closed", aggregate: "AGG-CLAIM",
-      readModels: [{ label: "Closure checklist view", desc: "Settlements, holds, tasks and documents in one status view — every line green before the file closes." },],
       description: "The claim is closed with all obligations settled — remaining open to post-close credits and reopening.",
       triggers: [
         { kind: "domain call", type: "Message",
@@ -282,7 +272,6 @@ export const dsRepair = {
   nodes: [
     { id: "dr-requested", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
       summary: "Appraisal requested", aggregate: "AGG-REPAIRCASE",
-      readModels: [{ label: "Network shop capacity & programme terms", desc: "Who can take the vehicle, at what agreed rates — the assignment decision reads it." },],
       description: "An appraisal is requested; pricing of the damage begins.",
       triggers: [
         { kind: "domain call", type: "Message",
@@ -311,7 +300,6 @@ export const dsRepair = {
 
     { id: "dr-estimate", type: "SimpleNode", parentId: "dr-accepted", kind: "event",
       summary: "Estimate received", aggregate: "AGG-REPAIRCASE",
-      readModels: [{ label: "Estimate of record", desc: "The priced damage lines against guide times and rates; review works this view." },],
       description: "The repair estimate is submitted for review.",
       triggers: [
         { kind: "external system call", type: "API",
@@ -352,7 +340,6 @@ export const dsRepair = {
 
     { id: "dr-verified", type: "SimpleNode", parentId: "dr-completed", kind: "event", isPivotal: true, isEndNode: true,
       summary: "Repair verified", aggregate: "AGG-REPAIRCASE",
-      readModels: [{ label: "Repair file — photos, invoices, supplements", desc: "The completed work against the approved estimate; verification signs on this view." },],
       description: "The repair is verified, releasing the claim for settlement.",
       commands: [{ label: "Verify the work", on: "AGG-REPAIRCASE", desc: "Photos, QA sample, claimant sign-off." }],
       businessRules: [{ label: "QA sampling rules" }],
@@ -370,7 +357,6 @@ export const dsPayments = {
   nodes: [
     { id: "dp-received", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true, grounds: ["FR6"],
       summary: "Payment instruction received", aggregate: "AGG-PAYLEDGER",
-      readModels: [{ label: "Payee & banking details view", desc: "Verified payee identity and payment instructions — dispatch reads it, never free text." },],
       description: "A payment instruction is received and recorded as owed — instructed, not yet settled.",
       triggers: [
         { kind: "domain call", type: "Message",
@@ -399,7 +385,6 @@ export const dsPayments = {
 
     { id: "dp-settled", type: "SimpleNode", parentId: "dp-dispatched", kind: "event", isPivotal: true, isEndNode: true, grounds: ["FR6"],
       summary: "Settlement confirmed", aggregate: "AGG-PAYLEDGER",
-      readModels: [{ label: "Claim ledger balance", desc: "Instructed, dispatched, settled and credited per claim — the single truth about the money." },],
       description: "Settlement is confirmed; the ledger state moves from owed to settled.",
       triggers: [
         { kind: "external system call", type: "Message",
@@ -448,7 +433,6 @@ export const dsTotalLoss = {
 
     { id: "dt-valued", type: "SimpleNode", parentId: "dt-received", kind: "event", grounds: ["FR9"],
       summary: "Vehicle valued", aggregate: "AGG-SALVAGECASE",
-      readModels: [{ label: "Valuation comparables", desc: "Actual-cash-value evidence for this vehicle and market — the offer stands on it." },],
       description: "The vehicle is valued at its actual cash value as at the date of loss.",
       triggers: [
         { kind: "external system call", type: "Message",
@@ -462,7 +446,6 @@ export const dsTotalLoss = {
 
     { id: "dt-settled", type: "SimpleNode", parentId: "dt-valued", kind: "event", isPivotal: true, grounds: ["UC7", "FR9"],
       summary: "Settlement offered & accepted", aggregate: "AGG-SALVAGECASE",
-      readModels: [{ label: "Lien & title status view", desc: "Registered interests and the payout order — settlement reads it before funds move." },],
       description: "The total-loss settlement is offered and accepted; ownership of the vehicle transfers to the insurer.",
       commands: [{ label: "Offer ACV less deductible", on: "AGG-SALVAGECASE" }],
       businessRules: [{ label: "ACV doctrine — taxes, fees, comparable sales" }],
@@ -497,7 +480,6 @@ export const dsRecovery = {
   nodes: [
     { id: "dv-referred", type: "SimpleNode", parentId: "start", kind: "event", isPivotal: true,
       summary: "Recovery referred", aggregate: "AGG-RECOVERYCASE",
-      readModels: [{ label: "Recovery position file", desc: "Fault, quantum paid and evidence from the closed claim — the demand is built from this view." },],
       description: "A recovery case is opened from the closed claim's facts.",
       triggers: [
         { kind: "domain call", type: "Message",
@@ -517,7 +499,6 @@ export const dsRecovery = {
 
     { id: "dv-received", type: "SimpleNode", parentId: "dv-demand", kind: "event", isPivotal: true,
       summary: "Recovery received", aggregate: "AGG-RECOVERYCASE",
-      readModels: [{ label: "Recovery ledger view", desc: "Demanded against received, per party — the close decision reads the balance." },],
       description: "The recovery is received — often months after the claim closed.",
       triggers: [
         { kind: "external system call", type: "Message",
