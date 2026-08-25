@@ -700,6 +700,124 @@ function BcHead({ c, onBack }) {
   </>);
 }
 
+/* ── D-180: the Lifecycle surface, split into views so each part breathes ──
+   Story (the picture + stage definitions) · Moves (the table) · Never rules
+   (the guardrails) · ⚠ To Discover (rules the design found that no captured
+   requirement backs). The story-vs-wall check shows above whichever view is
+   open — it is rare and must not hide behind a tab. */
+function LifecycleSurface({ c, navTab }) {
+  const LC = CLAIMS_LIFECYCLES[c.id];
+  const [view, setView] = React.useState('story');
+  if (!LC) return null;
+  const stageName = id => (LC.stages.find(s => s.id === id) || {}).name;
+  const chk = lifecycleCheck(c.id);
+  const G = lifecycleGrounds(c.id);
+  const unmined = { moves: [], rules: LC.never.filter(n => !(n.grounds || []).length) };
+  const seenEv = new Set();
+  for (const m of LC.moves) {
+    if ((G[m.event] || []).length || seenEv.has(m.event)) continue;
+    seenEv.add(m.event); unmined.moves.push(m);
+  }
+  const nDisc = unmined.moves.length + unmined.rules.length;
+  const Grounds = ({ ids }) => (ids || []).length
+    ? (ids || []).map(g => <DDRef id={g} key={g} />)
+    : <span className="ddd-lc-unmined" title="No captured requirement behind this yet — asserted while designing">⚠</span>;
+  const VIEWS = [
+    { key: 'story', label: 'The story' },
+    { key: 'moves', label: 'The moves' },
+    { key: 'never', label: 'Never rules' },
+    ...(nDisc ? [{ key: 'disc', label: `⚠ To Discover · ${nDisc}` }] : []),
+  ];
+  return (<>
+    <div className="ddd-tabs ddd-subtabs">
+      {VIEWS.map(v => (
+        <button key={v.key} type="button" className={'ddd-tab' + (view === v.key ? ' on' : '')} onClick={() => setView(v.key)}>{v.label}</button>
+      ))}
+    </div>
+
+    {chk && !chk.healthy && (
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Story vs wall — needs attention</div>
+          <div className="asc-sec-sub">The story and the flow disagree; one of them is wrong.</div>
+        </div>
+        {chk.cardsWithoutRow.map(e => <div className="ddd-lc-never warn" key={'a' + e}><b>&ldquo;{e}&rdquo;</b><span>is on the wall, but the story has no row for it.</span></div>)}
+        {chk.rowsWithoutCard.map(e => <div className="ddd-lc-never warn" key={'b' + e}><b>&ldquo;{e}&rdquo;</b><span>is in the story, but no card on the wall says it.</span></div>)}
+        {chk.unreachable.map(st => <div className="ddd-lc-never warn" key={'c' + st}><b>{st}</b><span>is a stage no move can reach.</span></div>)}
+      </div>
+    )}
+
+    {view === 'story' && (
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> The life of {LC.record.toLowerCase()}</div>
+          <div className="asc-sec-sub">{LC.summary} The story is checked automatically against the wall — a card without a row in the moves, or a stage nothing can reach, is flagged on this page.</div>
+        </div>
+        <LifecycleDiagram lc={LC} />
+        <div className="ddd-lc-defs">
+          {LC.stages.map(st => <div key={st.id} className="ddd-lc-def"><b>{st.name}</b> — {st.def}</div>)}
+          {LC.flags.map(f => <div key={f.id} className="ddd-lc-def flag"><b>⏸ {f.name}</b> — {f.def}</div>)}
+        </div>
+      </div>
+    )}
+
+    {view === 'moves' && (
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> The moves — what advances the file</div>
+          <div className="asc-sec-sub">One row per event on the wall — same names, same facts. Click an event to open the flow; the last column names the Discover item behind the move, or ⚠ where none exists yet.</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ddd-lc-table">
+            <thead><tr><th>From</th><th>What happens</th><th>Only if</th><th>New stage</th><th>Also tells</th><th>Grounded in</th></tr></thead>
+            <tbody>
+              {LC.moves.map((m, i) => (
+                <tr key={i}>
+                  <td>{m.flag ? 'any open stage' : (m.from ? stageName(m.from) : '—')}</td>
+                  <td><button type="button" className="dm-chip event ddd-lc-ev" onClick={() => navTab('flow')}>{m.event}</button></td>
+                  <td>{m.onlyIf}</td>
+                  <td>{m.flag
+                    ? `same stage · ${(LC.flags.find(f => f.id === m.flag) || {}).name} flag set`
+                    : (m.to === m.from ? 'unchanged' : stageName(m.to))}</td>
+                  <td>{m.tells || '—'}</td>
+                  <td className="ddd-lc-gr"><Grounds ids={G[m.event]} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    {view === 'never' && (
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.ctx} w={14} /> Never — whatever the stage</div>
+          <div className="asc-sec-sub">The rules a builder may not soften. Each is enforced in code, not trusted — and each names the Discover item behind it, or ⚠ where none exists yet.</div>
+        </div>
+        {LC.never.map((n, i) => (
+          <div className="ddd-lc-never" key={i}><b>{n.rule}</b><span>{n.why} <Grounds ids={n.grounds} /></span></div>
+        ))}
+      </div>
+    )}
+
+    {view === 'disc' && nDisc > 0 && (
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">⚠ Found in design — not yet in Discover</div>
+          <div className="asc-sec-sub">These rules came from working the storm; no captured requirement says them yet. Candidates to take back to Discover and record as requirements — until then they stand as assertions.</div>
+        </div>
+        {unmined.rules.map((n, i) => (
+          <div className="ddd-lc-never disc" key={'r' + i}><b>{n.rule}</b><span>{n.why}</span></div>
+        ))}
+        {unmined.moves.map((m, i) => (
+          <div className="ddd-lc-never disc" key={'m' + i}><b>&ldquo;{m.event}&rdquo;</b><span>{m.onlyIf}</span></div>
+        ))}
+      </div>
+    )}
+  </>);
+}
+
 function ContextDetail({ c, D, M, prd, onBack }) {
   const [tab, setTab] = React.useState(() => normCtxTab(window.__cynCtxTab));   // restore on remount (Back / deep link)
   // navTab writes the active tab to the URL so Back/Forward + sharing work
@@ -804,94 +922,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         </div>
       )}
 
-      {tab === 'lifecycle' && LC && (() => {
-        const stageName = id => (LC.stages.find(s => s.id === id) || {}).name;
-        const chk = lifecycleCheck(c.id);
-        // D-178: "says who?" — each move's refs come from its wall card (derived);
-        // never-rules carry their own. No refs = ⚠ = found in design, not yet in Discover.
-        const G = lifecycleGrounds(c.id);
-        const unmined = { moves: [], rules: LC.never.filter(n => !(n.grounds || []).length) };
-        const seenEv = new Set();
-        for (const m of LC.moves) {
-          if ((G[m.event] || []).length || seenEv.has(m.event)) continue;
-          seenEv.add(m.event); unmined.moves.push(m);
-        }
-        const Grounds = ({ ids }) => (ids || []).length
-          ? (ids || []).map(g => <DDRef id={g} key={g} />)
-          : <span className="ddd-lc-unmined" title="No captured requirement behind this yet — asserted while designing">⚠</span>;
-        return (<>
-          <div className="asc-section ddd-sec">
-            <div className="asc-sec-head">
-              <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> The life of {LC.record.toLowerCase()}</div>
-              <div className="asc-sec-sub">{LC.summary} The story is checked automatically against the wall — a card without a row here, or a stage nothing can reach, is flagged at the bottom of this page.</div>
-            </div>
-            <LifecycleDiagram lc={LC} />
-            <div className="ddd-lc-defs">
-              {LC.stages.map(s => <div key={s.id} className="ddd-lc-def"><b>{s.name}</b> — {s.def}</div>)}
-              {LC.flags.map(f => <div key={f.id} className="ddd-lc-def flag"><b>⏸ {f.name}</b> — {f.def}</div>)}
-            </div>
-          </div>
-          <div className="asc-section ddd-sec">
-            <div className="asc-sec-head">
-              <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> The moves — what advances the file</div>
-              <div className="asc-sec-sub">One row per event on the wall — same names, same facts. Click an event to open the flow.</div>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="ddd-lc-table">
-                <thead><tr><th>From</th><th>What happens</th><th>Only if</th><th>New stage</th><th>Also tells</th><th>Grounded in</th></tr></thead>
-                <tbody>
-                  {LC.moves.map((m, i) => (
-                    <tr key={i}>
-                      <td>{m.flag ? 'any open stage' : (m.from ? stageName(m.from) : '—')}</td>
-                      <td><button type="button" className="dm-chip event ddd-lc-ev" onClick={() => navTab('flow')}>{m.event}</button></td>
-                      <td>{m.onlyIf}</td>
-                      <td>{m.flag
-                        ? `same stage · ${(LC.flags.find(f => f.id === m.flag) || {}).name} flag set`
-                        : (m.to === m.from ? 'unchanged' : stageName(m.to))}</td>
-                      <td>{m.tells || '—'}</td>
-                      <td className="ddd-lc-gr"><Grounds ids={G[m.event]} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div className="asc-section ddd-sec">
-            <div className="asc-sec-head">
-              <div className="asc-sec-title"><DDPico d={DDI.ctx} w={14} /> Never — whatever the stage</div>
-              <div className="asc-sec-sub">The rules a builder may not soften. Each is enforced in code, not trusted.</div>
-            </div>
-            {LC.never.map((n, i) => (
-              <div className="ddd-lc-never" key={i}><b>{n.rule}</b><span>{n.why} <Grounds ids={n.grounds} /></span></div>
-            ))}
-          </div>
-          {(unmined.moves.length > 0 || unmined.rules.length > 0) && (
-            <div className="asc-section ddd-sec">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title">⚠ Found in design — not yet in Discover</div>
-                <div className="asc-sec-sub">These rules came from working the storm; no captured requirement says them yet. Candidates to take back to Discover and record as requirements — until then they stand as assertions.</div>
-              </div>
-              {unmined.rules.map((n, i) => (
-                <div className="ddd-lc-never disc" key={'r' + i}><b>{n.rule}</b><span>{n.why}</span></div>
-              ))}
-              {unmined.moves.map((m, i) => (
-                <div className="ddd-lc-never disc" key={'m' + i}><b>&ldquo;{m.event}&rdquo;</b><span>{m.onlyIf}</span></div>
-              ))}
-            </div>
-          )}
-          {chk && !chk.healthy && (
-            <div className="asc-section ddd-sec">
-              <div className="asc-sec-head">
-                <div className="asc-sec-title">Story vs wall — needs attention</div>
-                <div className="asc-sec-sub">The story and the flow disagree; one of them is wrong.</div>
-              </div>
-              {chk.cardsWithoutRow.map(e => <div className="ddd-lc-never warn" key={'a' + e}><b>&ldquo;{e}&rdquo;</b><span>is on the wall, but the story has no row for it.</span></div>)}
-              {chk.rowsWithoutCard.map(e => <div className="ddd-lc-never warn" key={'b' + e}><b>&ldquo;{e}&rdquo;</b><span>is in the story, but no card on the wall says it.</span></div>)}
-              {chk.unreachable.map(s => <div className="ddd-lc-never warn" key={'c' + s}><b>{s}</b><span>is a stage no move can reach.</span></div>)}
-            </div>
-          )}
-        </>);
-      })()}
+      {tab === 'lifecycle' && LC && <LifecycleSurface c={c} navTab={navTab} />}
 
       {tab === 'policies' && (() => {
         const all = derivedPolicies();
