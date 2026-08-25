@@ -415,13 +415,13 @@ function AggregateUnit({ a }) {
 
       {hasShape && (
         <div className="ddd-tabs ddd-subtabs agu-tabs">
-          <button type="button" className={'ddd-tab' + (view === 'shape' ? ' on' : '')} onClick={() => setView('shape')}>State shape</button>
+          <button type="button" className={'ddd-tab' + (view === 'shape' ? ' on' : '')} onClick={() => setView('shape')}>Entities</button>
           <button type="button" className={'ddd-tab' + (view === 'rules' ? ' on' : '')} onClick={() => setView('rules')}>Rules &amp; behavior</button>
         </div>
       )}
 
       {hasShape && view === 'shape' && (<>
-        <div className="agu-sec-sub agu-shape-note">unmarked fields are values · this shape is the logical schema — the physical store is each box&apos;s Build decision</div>
+        <div className="agu-sec-sub agu-shape-note">one record changed as a unit — child entities are owned, changed only through the root · unmarked fields are values · the physical store is each box&apos;s Build decision</div>
         {root && <Tbl t={root} tag="root entity" />}
         {owned.map(t => <Tbl t={t} key={t.name} tag="owned · child entity" />)}
         {refs.length > 0 && (
