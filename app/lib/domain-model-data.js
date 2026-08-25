@@ -78,10 +78,10 @@ window.__DOMAIN__ = {
           commands: ['Open the loss report', 'Match & merge submissions', 'Score severity & suggest the lane', 'Complete the report', 'Register the claim'],
           events: ['Loss reported', 'Report merged', 'Severity triaged', 'Report completed', 'Claim registered'],
           invariants: [
-            { text: 'One loss, one report — phone, app, web, broker and police feeds are channels into the same record, never separate ones', fr: 'FR1' },
-            { text: 'Severity is recalculated as facts land — never frozen at intake', fr: 'FR2' },
-            { text: 'Only the licensed intake role completes a report' },
-            { text: 'One loss, one claim — registration checks for an existing claim before a number is assigned', fr: 'FR1' },
+            { id: 'INV-INTAKE-one-loss-one-report', text: 'One loss, one report — phone, app, web, broker and police feeds are channels into the same record, never separate ones', fr: 'FR1' },
+            { id: 'INV-INTAKE-severity-recalculated', text: 'Severity is recalculated as facts land — never frozen at intake', fr: 'FR2' },
+            { id: 'INV-INTAKE-licensed-completion', text: 'Only the licensed intake role completes a report' },
+            { id: 'INV-INTAKE-one-loss-one-claim', text: 'One loss, one claim — registration checks for an existing claim before a number is assigned', fr: 'FR1' },
           ],
         },
         {
@@ -152,8 +152,8 @@ window.__DOMAIN__ = {
           commands: ['Open the appraisal assignment', 'Accept the assignment', 'Price the estimate', 'Approve estimate & supplements', 'Verify the repair'],
           events: ['Appraisal requested', 'Assignment accepted', 'Estimate received', 'Threshold breach declared', 'Estimate approved', 'Supplement approved', 'Repair completed', 'Repair verified'],
           invariants: [
-            { text: 'One estimate of record per case — supplements append to it, never replace it' },
-            { text: 'An estimate over the total-loss line hands the vehicle over — coordination never settles a total loss itself', fr: 'FR9' },
+            { id: 'INV-REPAIR-one-estimate-of-record', text: 'One estimate of record per case — supplements append to it, never replace it' },
+            { id: 'INV-REPAIR-threshold-hands-over', text: 'An estimate over the total-loss line hands the vehicle over — coordination never settles a total loss itself', fr: 'FR9' },
           ],
         },
         {
@@ -161,8 +161,8 @@ window.__DOMAIN__ = {
           commands: ['Receive the instruction', 'Dispatch the payment', 'Confirm settlement', 'Record a failure', 'Book a credit'],
           events: ['Payment instruction received', 'Instruction dispatched', 'Payment failed', 'Settlement confirmed', 'Credit received'],
           invariants: [
-            { text: 'The ledger is the single truth about the money — instructed, dispatched, settled and credited, per claim', fr: 'FR6' },
-            { text: 'Entries append; no entry is ever edited or deleted' },
+            { id: 'INV-PAYMENTS-ledger-single-truth', text: 'The ledger is the single truth about the money — instructed, dispatched, settled and credited, per claim', fr: 'FR6' },
+            { id: 'INV-PAYMENTS-append-only', text: 'Entries append; no entry is ever edited or deleted' },
           ],
         },
         {
@@ -170,8 +170,8 @@ window.__DOMAIN__ = {
           commands: ['Open from the threshold breach', 'Value the vehicle', 'Offer & accept the settlement', 'Brand & transfer title', 'Dispose the salvage'],
           events: ['Threshold breach received', 'Vehicle valued', 'Settlement offered & accepted', 'Title branded & transferred', 'Salvage disposed'],
           invariants: [
-            { text: 'One vehicle, one disposition — settlement to the owner and recovery from the asset are the same file, never two', fr: 'FR9' },
-            { text: 'Funds move only after lien and title status are read' },
+            { id: 'INV-TOTALLOSS-one-vehicle-one-disposition', text: 'One vehicle, one disposition — settlement to the owner and recovery from the asset are the same file, never two', fr: 'FR9' },
+            { id: 'INV-TOTALLOSS-lien-before-funds', text: 'Funds move only after lien and title status are read' },
           ],
         },
         {
@@ -179,8 +179,8 @@ window.__DOMAIN__ = {
           commands: ['Open from the referral', 'Build & issue the demand', 'Receive the recovery', 'Close the case'],
           events: ['Recovery referred', 'Demand issued', 'Recovery received', 'Recovery closed'],
           invariants: [
-            { text: 'A recovery case exists only against a closed claim\u2019s facts' },
-            { text: 'Every receipt credits the claim through Claim payments, never directly' },
+            { id: 'INV-RECOVERY-closed-claim-basis', text: 'A recovery case exists only against a closed claim\u2019s facts' },
+            { id: 'INV-RECOVERY-credits-via-payments', text: 'Every receipt credits the claim through Claim payments, never directly' },
           ],
         },
         {

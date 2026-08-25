@@ -512,7 +512,11 @@ function contextGraph(c, D, M) {
   // aggregates → invariants → mandating requirements
   const aggs = ((M && M.aggregates) || []).filter(x => x.context === c.id);
   aggs.forEach(a => {
-    addN(a.id, 'aggregate', a.name); addE(c.id, 'contains', a.id);
+    addN(a.id, 'aggregate', a.name, undefined, a.shape ? {
+      description: a.shape.description,
+      entities: (a.shape.tables || []).map(t => ({ name: t.name, owned: !!t.owned, purpose: t.purpose, fields: (t.columns || []).map(col => col.name) })),
+    } : undefined);
+    addE(c.id, 'contains', a.id);
     (a.invariants || []).forEach((iv, i) => {
       const id = iv.id || `${a.id}-inv-${i}`;   // D-188: authored ids win (INV-ADJUD-…)
       addN(id, 'invariant', iv.text, 'INV'); addE(a.id, 'holds', id);
@@ -558,8 +562,10 @@ function contextGraph(c, D, M) {
 
   // capabilities and the event functions realizing them
   (c.capabilities || []).forEach(uc => { addN(uc, 'capability', uc); addE(c.id, 'groups', uc); });
-  ((D && D.realizations) || []).filter(r => r.context === c.id).forEach(r =>
-    (r.components || []).forEach(cp => { addN(cp, 'component', (componentById(cp) || {}).name || cp); addE(r.ucId, 'realized by', cp); }));
+  ((D && D.realizations) || []).filter(r => r.context === c.id).forEach(r => {
+    (r.components || []).forEach(cp => { addN(cp, 'component', (componentById(cp) || {}).name || cp); addE(r.ucId, 'realized by', cp); });
+    (r.enforces || []).forEach(en => { if (en.invId) addE(r.ucId, 'enforces', en.invId); });   // D-191: id join, not prose match
+  });
 
   /* ── D-188: THE PACKET, emitted — every D-187 id becomes a typed node,
      every id-join a labelled edge. What the pages show, the agent queries. */
