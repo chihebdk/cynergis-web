@@ -396,3 +396,26 @@
   border: 1px solid #fde68a; background: #fffbeb; color: #78350f;
   border-radius: 8px;
 }
+
+/* D-177: the Lifecycle tab — the record's life story */
+.ddd-lc-svg { width: 100%; height: auto; display: block; margin: 6px 0 2px; }
+.ddd-lc-pill { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+.ddd-lc-pill.term { stroke: #16a34a; stroke-width: 1.6; }
+.ddd-lc-pill.side { fill: #fef2f2; stroke: #fca5a5; }
+.ddd-lc-name { font: 600 12px var(--font-sans, ui-sans-serif); fill: var(--ink); }
+.ddd-lc-note { font: 500 9.5px var(--font-sans, ui-sans-serif); fill: var(--ink-3, #6b7280); }
+.ddd-lc-lbl { font: 600 9.5px var(--font-sans, ui-sans-serif); fill: var(--ink-3, #6b7280); }
+.ddd-lc-flag { font: 600 11px var(--font-sans, ui-sans-serif); fill: #92400e; }
+.ddd-lc-edge { fill: none; stroke: var(--ink-3, #6b7280); stroke-width: 1.3; }
+.ddd-lc-edge.back { stroke-dasharray: 4 3; }
+.ddd-lc-defs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; margin-top: 10px; }
+.ddd-lc-def { font-size: 12px; color: var(--ink-2); }
+.ddd-lc-def.flag { grid-column: 1 / -1; color: #92400e; }
+.ddd-lc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ddd-lc-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3, #6b7280); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ddd-lc-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+.ddd-lc-ev { cursor: pointer; border: 0; }
+.ddd-lc-never { display: grid; grid-template-columns: minmax(220px, 340px) 1fr; gap: 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm, 6px); margin-bottom: 6px; background: var(--panel); font-size: 12.5px; }
+.ddd-lc-never b { color: var(--ink); }
+.ddd-lc-never span { color: var(--ink-2); }
+.ddd-lc-never.warn { border-color: #fca5a5; background: #fef2f2; }

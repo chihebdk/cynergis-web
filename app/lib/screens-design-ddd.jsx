@@ -5,6 +5,7 @@ import './ddd-data';
 import './domain-model-data';
 import { seedFlows } from '../flow/data';
 import { claimsFlows } from '../flow/claims-flows';
+import { CLAIMS_LIFECYCLES, lifecycleCheck } from '../flow/claims-lifecycle';
 import { kgContracts } from './kg-query';
 import { componentById, componentsForBC, deriveArch } from '../flow/arch';
 const { Ref: DDRef } = window;
@@ -594,6 +595,81 @@ function ContextKnowledgeGraph({ c, D, M }) {
 }
 
 /* per-context detail: event flow · agent · domain model · language */
+/* ── D-177: the record's life story, drawn ──
+   Spine = the main stages left to right; side stages (Denied) sit below;
+   dashed arcs are the paths people forget: reopened, money after close.
+   Same-stage events don't clutter the picture — they collapse into a
+   small "recorded here" note under their stage (the table has them). */
+function LifecycleDiagram({ lc }) {
+  const spine = lc.stages.filter(s => !s.side);
+  const sides = lc.stages.filter(s => s.side);
+  const W = 920, PW = 118, PH = 40, Y = 46, SY = 158;
+  const gap = (W - 24 - spine.length * PW) / Math.max(1, spine.length - 1);
+  const X = {}; spine.forEach((s, i) => { X[s.id] = 12 + i * (PW + gap); });
+  const cx = id => X[id] + PW / 2;
+  const stageMoves = lc.moves.filter(m => m.from && m.to && m.from !== m.to);
+  sides.forEach(sd => {
+    const ins = stageMoves.filter(m => m.to === sd.id && X[m.from] != null);
+    const cc = ins.length ? ins.reduce((a, m) => a + cx(m.from), 0) / ins.length + 40 : W / 2;
+    X[sd.id] = Math.min(Math.max(12, cc - PW / 2), W - PW - 12);
+  });
+  const idx = id => spine.findIndex(s => s.id === id);
+  const isSide = id => sides.some(s => s.id === id);
+  const shortLabel = ev => { const p = ev.split('—'); return (p[1] || p[0]).trim().toLowerCase(); };
+  const selfNotes = {};
+  lc.moves.filter(m => m.from && m.to === m.from).forEach(m => { (selfNotes[m.from] = selfNotes[m.from] || []).push(shortLabel(m.event)); });
+  return (
+    <svg viewBox={`0 0 ${W} 236`} className="ddd-lc-svg" role="img" aria-label="lifecycle diagram">
+      <defs>
+        <marker id="lcArr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0 0 L8 4 L0 8 z" fill="var(--ink-3, #6b7280)" />
+        </marker>
+      </defs>
+      {lc.flags.map(f => (
+        <text key={f.id} x={W / 2} y={16} textAnchor="middle" className="ddd-lc-flag">⏸ {f.name} — {f.def.split('.')[0]}.</text>
+      ))}
+      {stageMoves.map((m, i) => {
+        const a = idx(m.from), b = idx(m.to);
+        if (isSide(m.to)) {
+          const x1 = cx(m.from), x2 = X[m.to] + PW / 2 + (cx(m.from) < X[m.to] + PW / 2 ? -22 : 22);
+          return (<g key={i}>
+            <path d={`M ${x1} ${Y + PH} C ${x1} ${SY - 28}, ${x2} ${SY - 34}, ${x2} ${SY - 3}`} className="ddd-lc-edge" markerEnd="url(#lcArr)" />
+            <text x={(x1 + x2) / 2 - 6} y={(Y + PH + SY) / 2 + 2} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(m.event)}</text>
+          </g>);
+        }
+        if (isSide(m.from)) {
+          const x1 = X[m.from] + PW - 10, x2 = cx(m.to) + 14;
+          return (<g key={i}>
+            <path d={`M ${x1} ${SY} C ${x1 + 40} ${SY - 40}, ${x2} ${Y + PH + 34}, ${x2} ${Y + PH + 3}`} className="ddd-lc-edge back" markerEnd="url(#lcArr)" />
+            <text x={(x1 + x2) / 2 + 34} y={(Y + PH + SY) / 2 + 12} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(m.event)}</text>
+          </g>);
+        }
+        if (b === a + 1) return <path key={i} d={`M ${X[m.from] + PW} ${Y + PH / 2} L ${X[m.to] - 2} ${Y + PH / 2}`} className="ddd-lc-edge" markerEnd="url(#lcArr)" />;
+        if (b > a + 1) {
+          const x1 = cx(m.from), x2 = cx(m.to);
+          return <path key={i} d={`M ${x1} ${Y} C ${x1} ${Y - 26}, ${x2} ${Y - 26}, ${x2} ${Y - 2}`} className="ddd-lc-edge" markerEnd="url(#lcArr)" />;
+        }
+        const x1 = cx(m.from), x2 = cx(m.to) + 20;
+        return (<g key={i}>
+          <path d={`M ${x1} ${Y + PH} C ${x1} 228, ${x2} 228, ${x2} ${Y + PH + 3}`} className="ddd-lc-edge back" markerEnd="url(#lcArr)" />
+          <text x={(x1 + x2) / 2} y={222} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(m.event)}</text>
+        </g>);
+      })}
+      {lc.stages.map(s => (
+        <g key={s.id}>
+          <rect x={X[s.id]} y={isSide(s.id) ? SY : Y} width={PW} height={PH} rx="10"
+            className={'ddd-lc-pill' + (s.terminal ? ' term' : '') + (s.side ? ' side' : '')} />
+          <text x={X[s.id] + PW / 2} y={(isSide(s.id) ? SY : Y) + 24} textAnchor="middle" className="ddd-lc-name">{s.name}</text>
+          {selfNotes[s.id] && (
+            <text x={Math.min(X[s.id] + PW / 2, W - 8)} y={(isSide(s.id) ? SY : Y) + PH + 13}
+              textAnchor={X[s.id] + PW / 2 > W - 130 ? 'end' : 'middle'} className="ddd-lc-note">{selfNotes[s.id].join(' · ')} — recorded here</text>
+          )}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function ContextDetail({ c, D, M, prd, onBack }) {
   // legacy deep links / cached tab state from the pre-split page (D-037)
   const LEGACY_TAB = { model: 'aggregates', rels: 'contracts' };
@@ -645,11 +721,15 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
   const ucTitle = id => { const u = (prd.usecases || []).find(x => x.id === id); return u ? u.title : id; };
   // BC-level tabs mirror the event-card panel's ownership levels (D-037): the
   // read-only Aggregate / Contracts cards on events point HERE as the edit home.
+  // D-177: the Lifecycle tab exists only where the record's story is written —
+  // the tab's presence tells you the work exists (no empty tabs).
+  const LC = CLAIMS_LIFECYCLES[c.id];
   const TABS = [
     { key: 'flow',         label: 'Event flow' },
     { key: 'agent',        label: 'Agents' },
     { key: 'kg',           label: 'Knowledge graph' },
     { key: 'aggregates',   label: 'Aggregates' },
+    ...(LC ? [{ key: 'lifecycle', label: 'Lifecycle' }] : []),
     { key: 'policies',     label: 'Policies' },
     { key: 'capabilities', label: 'Capabilities' },
     { key: 'contracts',    label: 'Contracts' },
@@ -711,6 +791,68 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
             : <div className="ddd-empty-inline">No domain state of its own — a pure reaction (generic). Nothing to model here.</div>}
         </div>
       )}
+
+      {tab === 'lifecycle' && LC && (() => {
+        const stageName = id => (LC.stages.find(s => s.id === id) || {}).name;
+        const chk = lifecycleCheck(c.id);
+        return (<>
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> The life of {LC.record.toLowerCase()}</div>
+              <div className="asc-sec-sub">{LC.summary} The story is checked automatically against the wall — a card without a row here, or a stage nothing can reach, is flagged at the bottom of this page.</div>
+            </div>
+            <LifecycleDiagram lc={LC} />
+            <div className="ddd-lc-defs">
+              {LC.stages.map(s => <div key={s.id} className="ddd-lc-def"><b>{s.name}</b> — {s.def}</div>)}
+              {LC.flags.map(f => <div key={f.id} className="ddd-lc-def flag"><b>⏸ {f.name}</b> — {f.def}</div>)}
+            </div>
+          </div>
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> The moves — what advances the file</div>
+              <div className="asc-sec-sub">One row per event on the wall — same names, same facts. Click an event to open the flow.</div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="ddd-lc-table">
+                <thead><tr><th>From</th><th>What happens</th><th>Only if</th><th>New stage</th><th>Also tells</th></tr></thead>
+                <tbody>
+                  {LC.moves.map((m, i) => (
+                    <tr key={i}>
+                      <td>{m.flag ? 'any open stage' : (m.from ? stageName(m.from) : '—')}</td>
+                      <td><button type="button" className="dm-chip event ddd-lc-ev" onClick={() => navTab('flow')}>{m.event}</button></td>
+                      <td>{m.onlyIf}</td>
+                      <td>{m.flag
+                        ? `same stage · ${(LC.flags.find(f => f.id === m.flag) || {}).name} flag set`
+                        : (m.to === m.from ? 'unchanged' : stageName(m.to))}</td>
+                      <td>{m.tells || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.ctx} w={14} /> Never — whatever the stage</div>
+              <div className="asc-sec-sub">The rules a builder may not soften. Each is enforced in code, not trusted.</div>
+            </div>
+            {LC.never.map((n, i) => (
+              <div className="ddd-lc-never" key={i}><b>{n.rule}</b><span>{n.why}</span></div>
+            ))}
+          </div>
+          {chk && !chk.healthy && (
+            <div className="asc-section ddd-sec">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title">Story vs wall — needs attention</div>
+                <div className="asc-sec-sub">The story and the flow disagree; one of them is wrong.</div>
+              </div>
+              {chk.cardsWithoutRow.map(e => <div className="ddd-lc-never warn" key={'a' + e}><b>&ldquo;{e}&rdquo;</b><span>is on the wall, but the story has no row for it.</span></div>)}
+              {chk.rowsWithoutCard.map(e => <div className="ddd-lc-never warn" key={'b' + e}><b>&ldquo;{e}&rdquo;</b><span>is in the story, but no card on the wall says it.</span></div>)}
+              {chk.unreachable.map(s => <div className="ddd-lc-never warn" key={'c' + s}><b>{s}</b><span>is a stage no move can reach.</span></div>)}
+            </div>
+          )}
+        </>);
+      })()}
 
       {tab === 'policies' && (() => {
         const all = derivedPolicies();
