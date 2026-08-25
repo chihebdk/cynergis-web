@@ -5,7 +5,7 @@ import './ddd-data';
 import './domain-model-data';
 import { seedFlows } from '../flow/data';
 import { claimsFlows } from '../flow/claims-flows';
-import { CLAIMS_LIFECYCLES, lifecycleCheck } from '../flow/claims-lifecycle';
+import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds } from '../flow/claims-lifecycle';
 import { kgContracts } from './kg-query';
 import { componentById, componentsForBC, deriveArch } from '../flow/arch';
 const { Ref: DDRef } = window;
@@ -795,6 +795,18 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
       {tab === 'lifecycle' && LC && (() => {
         const stageName = id => (LC.stages.find(s => s.id === id) || {}).name;
         const chk = lifecycleCheck(c.id);
+        // D-178: "says who?" — each move's refs come from its wall card (derived);
+        // never-rules carry their own. No refs = ⚠ = found in design, not yet in Discover.
+        const G = lifecycleGrounds(c.id);
+        const unmined = { moves: [], rules: LC.never.filter(n => !(n.grounds || []).length) };
+        const seenEv = new Set();
+        for (const m of LC.moves) {
+          if ((G[m.event] || []).length || seenEv.has(m.event)) continue;
+          seenEv.add(m.event); unmined.moves.push(m);
+        }
+        const Grounds = ({ ids }) => (ids || []).length
+          ? (ids || []).map(g => <DDRef id={g} key={g} />)
+          : <span className="ddd-lc-unmined" title="No captured requirement behind this yet — asserted while designing">⚠</span>;
         return (<>
           <div className="asc-section ddd-sec">
             <div className="asc-sec-head">
@@ -814,7 +826,7 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table className="ddd-lc-table">
-                <thead><tr><th>From</th><th>What happens</th><th>Only if</th><th>New stage</th><th>Also tells</th></tr></thead>
+                <thead><tr><th>From</th><th>What happens</th><th>Only if</th><th>New stage</th><th>Also tells</th><th>Grounded in</th></tr></thead>
                 <tbody>
                   {LC.moves.map((m, i) => (
                     <tr key={i}>
@@ -825,6 +837,7 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
                         ? `same stage · ${(LC.flags.find(f => f.id === m.flag) || {}).name} flag set`
                         : (m.to === m.from ? 'unchanged' : stageName(m.to))}</td>
                       <td>{m.tells || '—'}</td>
+                      <td className="ddd-lc-gr"><Grounds ids={G[m.event]} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -837,9 +850,23 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
               <div className="asc-sec-sub">The rules a builder may not soften. Each is enforced in code, not trusted.</div>
             </div>
             {LC.never.map((n, i) => (
-              <div className="ddd-lc-never" key={i}><b>{n.rule}</b><span>{n.why}</span></div>
+              <div className="ddd-lc-never" key={i}><b>{n.rule}</b><span>{n.why} <Grounds ids={n.grounds} /></span></div>
             ))}
           </div>
+          {(unmined.moves.length > 0 || unmined.rules.length > 0) && (
+            <div className="asc-section ddd-sec">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title">⚠ Found in design — not yet in Discover</div>
+                <div className="asc-sec-sub">These rules came from working the storm; no captured requirement says them yet. Candidates to take back to Discover and record as requirements — until then they stand as assertions.</div>
+              </div>
+              {unmined.rules.map((n, i) => (
+                <div className="ddd-lc-never disc" key={'r' + i}><b>{n.rule}</b><span>{n.why}</span></div>
+              ))}
+              {unmined.moves.map((m, i) => (
+                <div className="ddd-lc-never disc" key={'m' + i}><b>&ldquo;{m.event}&rdquo;</b><span>{m.onlyIf}</span></div>
+              ))}
+            </div>
+          )}
           {chk && !chk.healthy && (
             <div className="asc-section ddd-sec">
               <div className="asc-sec-head">

@@ -74,11 +74,23 @@ export const CLAIMS_LIFECYCLES = {
         why: "The reasons are what the claimant can challenge — and what the regulator reads." },
       { rule: "Reopening never overwrites a decision.",
         why: "A new decision version is added; every prior decision stays on record." },
-      { rule: "No approval beyond the handler's authority.",
+      { rule: "No approval beyond the handler's authority.", grounds: ["FR5"],
         why: "Bigger amounts need a bigger authority — the limit is checked in code, not trusted." },
     ],
   },
 };
+
+/* Each move's "grounded in" refs come from its event card on the wall —
+   derived, never re-authored. An event with no refs is an unmined
+   assertion (the design discovered it; Discover hasn't captured it). */
+export function lifecycleGrounds(ctxId) {
+  const lc = CLAIMS_LIFECYCLES[ctxId];
+  if (!lc) return {};
+  const storm = CLAIMS_DESIGN_STORMS.find((m) => m.contextId === ctxId);
+  return Object.fromEntries(
+    (storm ? storm.nodes : []).filter((n) => n.kind === "event").map((n) => [n.summary, n.grounds || []])
+  );
+}
 
 /* The automatic check: the story vs the wall. A card with no row, a row
    with no card, or a stage nothing can reach — each is a finding. Silent

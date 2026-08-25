@@ -419,3 +419,8 @@
 .ddd-lc-never b { color: var(--ink); }
 .ddd-lc-never span { color: var(--ink-2); }
 .ddd-lc-never.warn { border-color: #fca5a5; background: #fef2f2; }
+
+/* D-178: "says who?" on the lifecycle — requirement refs & the ⚠ unmined mark */
+.ddd-lc-gr { white-space: nowrap; }
+.ddd-lc-unmined { color: #b45309; font-size: 13px; cursor: help; }
+.ddd-lc-never.disc { border-color: #fde68a; background: #fffbeb; }
