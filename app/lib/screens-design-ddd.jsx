@@ -534,15 +534,29 @@ function contextGraph(c, D, M) {
       description: n.description,
       commands: (n.commands || []).map(x => x.label),
       businessRules: (n.businessRules || []).map(x => x.label),
+      announces: (n.policies || []).map(x => x.label),   // the seam-relay notes (D-193)
     });
     (n.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'capability' : 'requirement', g); addE(n.id, 'grounded by', g); });
     if (n.aggregate) { addN(n.aggregate, 'aggregate', n.aggregate); addE(n.aggregate, 'emits', n.id); }
     const comp = (n.arch || deriveArch(n) || {}).component;
     if (comp) { addN(comp, 'component', (componentById(comp) || {}).name || comp); addE(comp, 'handles', n.id); }
+    // D-193: a publisher note is the seam-relay HALF of a policy (D-183) — the
+    // policy NODE belongs to the box that owns the reaction. Where this box has
+    // authored policies, notes fold into the event (announces prop) and the
+    // downstream link becomes a direct id-keyed edge — no positional-id nodes,
+    // no display-name context duplicates. Legacy flows keep note-nodes until
+    // their boxes get authored policies.
     (n.policies || []).forEach((p, i) => {
+      const owner = resolveCtx(p.crosses);
+      const ownerNode = owner && owner !== c.id
+        ? (addN(owner, 'context', HOME_NAMES[owner] || owner), owner) : null;
+      if ((CONTEXT_POLICIES[c.id] || []).length) {
+        if (ownerNode) addE(n.id, 'fires into', ownerNode);
+        return;
+      }
       const id = `${n.id}-pol-${i}`; addN(id, 'policy', p.label, 'POLICY');
       addE(id, 'reacts to', n.id);
-      if (p.crosses && p.crosses !== c.id) { addN(p.crosses, 'context', p.crosses); addE(id, 'fires into', p.crosses); }
+      if (ownerNode) addE(id, 'fires into', ownerNode);
       (p.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'capability' : 'requirement', g); addE(id, 'grounded by', g); });
     });
   });
