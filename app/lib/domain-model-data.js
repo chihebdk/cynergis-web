@@ -67,24 +67,71 @@ window.__DOMAIN__ = {
        the lifecycle spec's FRs (kg/org/products/claimscore.js). */
     'PROD-CLAIMSCORE': {
       aggregates: [
+        /* D-181: the accepted cut's records. AGG-LOSSREPORT and AGG-CLAIM are
+           REHOMED to their successor walls (same ids the design storms stamp);
+           the four new records are added; the AB pair carries forward with its
+           deferred wall; AGG-SALVAGE stays with the retired wall so its page
+           keeps reading truthfully. Invariants echo the lifecycle's never-rules
+           — those without an fr surface as Discover gaps, on purpose. */
         {
-          id: 'AGG-LOSSREPORT', name: 'Loss report', context: 'CTX-FNOL', ucs: ['UC1', 'UC2', 'UC8'],
-          commands: ['Register report', 'Merge channel input', 'Score severity', 'Assign lane'],
-          events: ['Loss reported', 'Severity scored', 'Report assigned', 'Report handed to claim'],
+          id: 'AGG-LOSSREPORT', name: 'Loss report', context: 'CTX-INTAKE', ucs: ['UC1', 'UC2'],
+          commands: ['Open the loss report', 'Match & merge submissions', 'Score severity & suggest the lane', 'Complete the report', 'Register the claim'],
+          events: ['Loss reported', 'Report merged', 'Severity triaged', 'Report completed', 'Claim registered'],
           invariants: [
-            { text: 'One loss event, one report — phone, app, web, broker and police feeds are channels into the same model, never separate models', fr: 'FR1' },
+            { text: 'One loss, one report — phone, app, web, broker and police feeds are channels into the same record, never separate ones', fr: 'FR1' },
             { text: 'Severity is recalculated as facts land — never frozen at intake', fr: 'FR2' },
+            { text: 'Only the licensed intake role completes a report' },
+            { text: 'One loss, one claim — registration checks for an existing claim before a number is assigned', fr: 'FR1' },
           ],
         },
         {
-          id: 'AGG-CLAIM', name: 'Claim', context: 'CTX-COVERAGE', ucs: ['UC3', 'UC4', 'UC6'],
-          commands: ['Open claim against snapshot', 'Record coverage decision', 'Move reserve', 'Instruct payment', 'Apply investigation hold'],
-          events: ['Claim opened', 'Coverage decided', 'Reserve moved', 'Payment instructed', 'Settlement held'],
+          id: 'AGG-CLAIM', name: 'Claim file', context: 'CTX-ADJUD', ucs: ['UC3', 'UC4', 'UC6', 'UC8'],
+          commands: ['Create the claim file', 'Verify policy & coverage from the snapshot', 'Establish & move reserves', 'Determine fault', 'Calculate the settlement', 'Authorize payment', 'Apply & release holds', 'Close the file', 'Reopen with a new decision version', 'Apply post-close credits'],
+          events: ['Claim opened', 'Policy verified', 'Coverage confirmed', 'Claim denied', 'Reserve established', 'Fault determined', 'Settlement calculated', 'Payment authorized', 'Claim closed', 'Claim reopened', 'Credit accepted after close', 'Hold applied'],
           invariants: [
-            { text: 'A claim exists only against a coverage snapshot fixed as at the date of loss — later policy changes never alter an open claim\u2019s coverage basis', fr: 'FR3' },
+            { text: 'A claim adjudicates only against the stored coverage snapshot as at the date of loss — never a live policy call', fr: 'FR3' },
             { text: 'Every coverage decision carries limits, deductibles and endorsement effects (OPCF 47R elections)', fr: 'FR4' },
-            { text: 'Every reserve move is evented for actuarial consumption', fr: 'FR5' },
-            { text: 'The ledger reflects instructed-not-yet-settled until Billing\u2019s outcome event returns', fr: 'FR6' },
+            { text: 'Every reserve move is evented, and authorization respects the handler\u2019s authority limit', fr: 'FR5' },
+            { text: 'The money state is instructed-not-yet-settled until Claim payments\u2019 outcome event returns', fr: 'FR6' },
+            { text: 'No payment authorization and no closure while any hold is open' },
+            { text: 'A closed file is never edited — late money lands as new credit entries' },
+            { text: 'Reopening appends a new decision version; every prior decision stays on record' },
+          ],
+        },
+        {
+          id: 'AGG-REPAIRCASE', name: 'Repair case', context: 'CTX-REPAIR', ucs: [],
+          commands: ['Open the appraisal assignment', 'Accept the assignment', 'Price the estimate', 'Approve estimate & supplements', 'Verify the repair'],
+          events: ['Appraisal requested', 'Assignment accepted', 'Estimate received', 'Threshold breach declared', 'Estimate approved', 'Supplement approved', 'Repair completed', 'Repair verified'],
+          invariants: [
+            { text: 'One estimate of record per case — supplements append to it, never replace it' },
+            { text: 'An estimate over the total-loss line hands the vehicle over — coordination never settles a total loss itself', fr: 'FR9' },
+          ],
+        },
+        {
+          id: 'AGG-PAYLEDGER', name: 'Payment ledger', context: 'CTX-PAYMENTS', ucs: [],
+          commands: ['Receive the instruction', 'Dispatch the payment', 'Confirm settlement', 'Record a failure', 'Book a credit'],
+          events: ['Payment instruction received', 'Instruction dispatched', 'Payment failed', 'Settlement confirmed', 'Credit received'],
+          invariants: [
+            { text: 'The ledger is the single truth about the money — instructed, dispatched, settled and credited, per claim', fr: 'FR6' },
+            { text: 'Entries append; no entry is ever edited or deleted' },
+          ],
+        },
+        {
+          id: 'AGG-SALVAGECASE', name: 'Salvage case', context: 'CTX-TOTALLOSS', ucs: ['UC7'],
+          commands: ['Open from the threshold breach', 'Value the vehicle', 'Offer & accept the settlement', 'Brand & transfer title', 'Dispose the salvage'],
+          events: ['Threshold breach received', 'Vehicle valued', 'Settlement offered & accepted', 'Title branded & transferred', 'Salvage disposed'],
+          invariants: [
+            { text: 'One vehicle, one disposition — settlement to the owner and recovery from the asset are the same file, never two', fr: 'FR9' },
+            { text: 'Funds move only after lien and title status are read' },
+          ],
+        },
+        {
+          id: 'AGG-RECOVERYCASE', name: 'Recovery case', context: 'CTX-RECOVERY', ucs: [],
+          commands: ['Open from the referral', 'Build & issue the demand', 'Receive the recovery', 'Close the case'],
+          events: ['Recovery referred', 'Demand issued', 'Recovery received', 'Recovery closed'],
+          invariants: [
+            { text: 'A recovery case exists only against a closed claim\u2019s facts' },
+            { text: 'Every receipt credits the claim through Claim payments, never directly' },
           ],
         },
         {

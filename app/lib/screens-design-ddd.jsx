@@ -913,12 +913,12 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
       {tab === 'aggregates' && (
         <div className="asc-section ddd-sec">
           <div className="asc-sec-head">
-            <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The subdomain model — {aggregates.length || 'no'} aggregate{aggregates.length === 1 ? '' : 's'}</div>
-            <div className="asc-sec-sub">Each aggregate is a consistency boundary: its state shape (id · ref · owned markers; unmarked = value) IS the logical schema, guarded by its invariants. Relationships live inside an aggregate; between aggregates, identity references + events; between contexts, contracts.</div>
+            <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> {aggregates.length === 1 ? 'The record this context owns' : 'The records this context owns'} — {aggregates.length || 'no'} aggregate{aggregates.length === 1 ? '' : 's'}</div>
+            <div className="asc-sec-sub">An aggregate is one record changed as a unit — its commands, the events they raise, and the rules that guard every change. Between aggregates: identity references and events. Between contexts: contracts.</div>
           </div>
           {aggregates.length
             ? <div className="agu-list">{aggregates.map(a => <AggregateUnit a={a} key={a.id} />)}</div>
-            : <div className="ddd-empty-inline">No domain state of its own — a pure reaction (generic). Nothing to model here.</div>}
+            : <div className="ddd-empty-inline">No record modelled for this context yet. A generic, pure-reaction context genuinely owns none; for a core or supporting context this is a modelling gap.</div>}
         </div>
       )}
 
