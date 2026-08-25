@@ -7,6 +7,7 @@ import { seedFlows } from '../flow/data';
 import { claimsFlows } from '../flow/claims-flows';
 import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds, lifecycleEventNames } from '../flow/claims-lifecycle';
 import { CONTEXT_POLICIES } from '../flow/claims-policies';
+import { CONTEXT_CAPABILITIES } from '../flow/claims-capabilities';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
 import { BC_PACKET } from '../flow/claims-bc-packet';
@@ -536,7 +537,7 @@ function contextGraph(c, D, M) {
       businessRules: (n.businessRules || []).map(x => x.label),
       announces: (n.policies || []).map(x => x.label),   // the seam-relay notes (D-193)
     });
-    (n.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'capability' : 'requirement', g); addE(n.id, 'grounded by', g); });
+    (n.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'usecase' : 'requirement', g); addE(n.id, 'grounded by', g); });
     if (n.aggregate) { addN(n.aggregate, 'aggregate', n.aggregate); addE(n.aggregate, 'emits', n.id); }
     const comp = (n.arch || deriveArch(n) || {}).component;
     if (comp) { addN(comp, 'component', (componentById(comp) || {}).name || comp); addE(comp, 'handles', n.id); }
@@ -557,7 +558,7 @@ function contextGraph(c, D, M) {
       const id = `${n.id}-pol-${i}`; addN(id, 'policy', p.label, 'POLICY');
       addE(id, 'reacts to', n.id);
       if (ownerNode) addE(id, 'fires into', ownerNode);
-      (p.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'capability' : 'requirement', g); addE(id, 'grounded by', g); });
+      (p.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'usecase' : 'requirement', g); addE(id, 'grounded by', g); });
     });
   });
 
@@ -574,16 +575,25 @@ function contextGraph(c, D, M) {
     cons.forEach(x => addE(x, 'consumes', s.id));
   });
 
-  // capabilities and the event functions realizing them
-  (c.capabilities || []).forEach(uc => { addN(uc, 'capability', uc); addE(c.id, 'groups', uc); });
+  // D-194: capability = the box's SUPPLY (CAP- nodes) · use case = DEMAND
+  // (usecase nodes, Discover's). serves joins them many-to-many; realizations
+  // and enforces anchor to the capability where one exists.
+  const caps = CONTEXT_CAPABILITIES[c.id] || [];
+  caps.forEach(cap => {
+    addN(cap.id, 'capability', cap.name, 'CAP');
+    addE(c.id, 'provides', cap.id);
+    (cap.serves || []).forEach(uc => { addN(uc, 'usecase', uc); addE(cap.id, 'serves', uc); });
+  });
+  if (!caps.length) (c.capabilities || []).forEach(uc => { addN(uc, 'usecase', uc); addE(c.id, 'groups', uc); });
   ((D && D.realizations) || []).filter(r => r.context === c.id).forEach(r => {
-    (r.components || []).forEach(cp => { addN(cp, 'component', (componentById(cp) || {}).name || cp); addE(r.ucId, 'realized by', cp); });
-    (r.enforces || []).forEach(en => { if (en.invId) addE(r.ucId, 'enforces', en.invId); });   // D-191: id join, not prose match
+    const anchor = (r.capId && caps.some(x => x.id === r.capId)) ? r.capId : (addN(r.ucId, 'usecase', r.ucId), r.ucId);
+    (r.components || []).forEach(cp => { addN(cp, 'component', (componentById(cp) || {}).name || cp); addE(anchor, 'realized by', cp); });
+    (r.enforces || []).forEach(en => { if (en.invId) addE(anchor, 'enforces', en.invId); });   // D-191: id join, not prose match
   });
 
   /* ── D-188: THE PACKET, emitted — every D-187 id becomes a typed node,
      every id-join a labelled edge. What the pages show, the agent queries. */
-  const gType = g => g.startsWith('UC') ? 'capability' : 'requirement';
+  const gType = g => g.startsWith('UC') ? 'usecase' : 'requirement';
   const grounds = (id, gs) => (gs || []).forEach(g => { addN(g, gType(g), g); addE(id, 'grounded by', g); });
   const LCd = CLAIMS_LIFECYCLES[c.id];
   if (LCd) {
@@ -623,7 +633,7 @@ function contextGraph(c, D, M) {
       addN(sc.id, 'scenario', sc.name || sc.when, 'CAT', { given: sc.given, when: sc.when, then: sc.then, kind: sc.kind });
       if (sc.transition) addE(sc.id, 'verifies', sc.transition);
       if (sc.rule) addE(sc.id, 'verifies', sc.rule);
-      if (sc.uc) { addN(sc.uc, 'capability', sc.uc); addE(sc.id, 'tests', sc.uc); }
+      if (sc.uc) { addN(sc.uc, 'usecase', sc.uc); addE(sc.id, 'tests', sc.uc); }
       if (sc.at) { addN(sc.at, 'atest', sc.at, 'AT'); addE(sc.id, 'supports', sc.at); }
       grounds(sc.id, sc.grounds);
     });
@@ -645,11 +655,12 @@ function contextGraph(c, D, M) {
 /* The explorer's vocabulary for subdomain graphs — columns read left→right as
    the model was built: agent/context → capabilities & requirements → the
    aggregate model → behavior → realization → contracts. */
-const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['stage', 'transition', 'trule'], ['event'], ['scenario', 'atest', 'readmodel'], ['policy'], ['component'], ['contract'], ['servicelevel', 'access', 'measure', 'builddecision', 'gap']];
+const KG_COLS = [['agent', 'context'], ['capability', 'usecase', 'requirement'], ['aggregate', 'invariant'], ['stage', 'transition', 'trule'], ['event'], ['scenario', 'atest', 'readmodel'], ['policy'], ['component'], ['contract'], ['servicelevel', 'access', 'measure', 'builddecision', 'gap']];
 const KG_VTYPE = {
   context:     { label: 'Bounded context', ico: 'graph',   c: 'oklch(0.50 0.13 275)' },
   agent:       { label: 'Agent',           ico: 'user',    c: 'oklch(0.55 0.09 200)' },
   capability:  { label: 'Capability',      ico: 'usecase', c: 'oklch(0.52 0.15 255)' },
+  usecase:     { label: 'Use case',        ico: 'usecase', c: 'oklch(0.55 0.14 235)' },
   requirement: { label: 'Requirement',     ico: 'req',     c: 'oklch(0.58 0.12 75)'  },
   aggregate:   { label: 'Aggregate',       ico: 'doc',     c: 'oklch(0.60 0.11 95)'  },
   invariant:   { label: 'Invariant',       ico: 'lock',    c: 'oklch(0.50 0.05 260)' },
@@ -672,7 +683,7 @@ const KG_VTYPE = {
   gap:          { label: 'Open gap',        ico: 'req',     c: 'oklch(0.60 0.13 60)'  },
 };
 
-const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'policy', 'scenario', 'atest', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'requirement'];
+const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'policy', 'scenario', 'atest', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'usecase', 'requirement'];
 function ContextKnowledgeGraph({ c, D, M }) {
   const raw = React.useMemo(() => contextGraph(c, D, M), [c]);
   // the explorer's shape: byId map + fwd/rev edge labels for the neighbour panel
@@ -1302,26 +1313,58 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         );
       })()}
 
-      {tab === 'capabilities' && (
-        <div className="asc-section ddd-sec">
-          <div className="asc-sec-head">
-            <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Capabilities & realization</div>
-            <div className="asc-sec-sub">How each capability is built — least-agentic that fits · realized by this context's event functions</div>
-          </div>
-          {reals.length
-            ? <div className="ddd-real-list">{reals.map(r => (
-                <div key={r.ucId}>
-                  <div className="ddd-uc-title">{ucTitle(r.ucId)}
-                    {(r.components || []).map(id => { const cp = componentById(id); return (
-                      <span key={id} className="dm-chip comp" title={id}>{cp ? cp.name : id}</span>
-                    ); })}
+      {tab === 'capabilities' && (() => {
+        // D-194: capability = SUPPLY (this box's ability, CAP- id) · use case =
+        // DEMAND (the actor's goal, in Discover). serves joins them, many-to-many.
+        const caps = CONTEXT_CAPABILITIES[c.id];
+        if (!caps) return (
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Capabilities & realization</div>
+              <div className="asc-sec-sub">How each capability is built — least-agentic that fits · realized by this context's event functions</div>
+            </div>
+            {reals.length
+              ? <div className="ddd-real-list">{reals.map(r => (
+                  <div key={r.ucId}>
+                    <div className="ddd-uc-title">{ucTitle(r.ucId)}
+                      {(r.components || []).map(id => { const cp = componentById(id); return (
+                        <span key={id} className="dm-chip comp" title={id}>{cp ? cp.name : id}</span>
+                      ); })}
+                    </div>
+                    <RealizationCard r={r} />
                   </div>
-                  <RealizationCard r={r} />
-                </div>
-              ))}</div>
-            : <div className="ddd-empty-inline">No bespoke capability — reuse an off-the-shelf service for this context.</div>}
-        </div>
-      )}
+                ))}</div>
+              : <div className="ddd-empty-inline">No bespoke capability — reuse an off-the-shelf service for this context.</div>}
+          </div>
+        );
+        return (
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Capabilities — what this box supplies</div>
+              <div className="asc-sec-sub">Stable abilities owned here, each serving the use cases that need it — one use case may draw on several boxes. Where a build-form decision exists it hangs off the capability; a capability serving no captured use case is a Discover gap, said out loud.</div>
+            </div>
+            <div className="ddd-real-list">
+              {caps.map(cap => {
+                const r = reals.find(x => x.capId === cap.id);
+                return (
+                  <div key={cap.id}>
+                    <div className="ddd-uc-title">{cap.name} <IdChip id={cap.id} />
+                      <span className="ddd-cap-serves">{(cap.serves || []).length
+                        ? <>serves {cap.serves.map(u => <DDRef id={u} key={u} />)}</>
+                        : <span className="ddd-at-chip only" title="No captured use case names this ability — a Discover gap">no use case names this yet</span>}</span>
+                      {(r?.components || []).map(id => { const cp = componentById(id); return (
+                        <span key={id} className="dm-chip comp" title={id}>{cp ? cp.name : id}</span>
+                      ); })}
+                    </div>
+                    {r ? <RealizationCard r={r} />
+                      : <div className="ddd-empty-inline">No realization decision yet — how this ability is built is still open.</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === 'contracts' && (() => {
         const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
