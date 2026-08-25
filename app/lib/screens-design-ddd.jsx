@@ -683,7 +683,6 @@ const KG_VTYPE = {
   gap:          { label: 'Open gap',        ico: 'req',     c: 'oklch(0.60 0.13 60)'  },
 };
 
-const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'policy', 'scenario', 'atest', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'usecase', 'requirement'];
 /* D-195: every node's detail names its FULL id and can jump to the page that
    defines it — the workspace entry where the element is authored/shown. */
 const KG_TAB_BY_TYPE = {
@@ -706,7 +705,6 @@ function ContextKnowledgeGraph({ c, D, M, navTab }) {
   const Explorer = typeof window !== 'undefined' ? window.GraphExplorer : null;
   const label = id => (g.byId[id] || {}).label || id;
   const isRef = id => /^(UC\d|FR\d|NFR\d|POL\d|SCH-|C\d|AGG)/.test(id);
-  const byType = KG_TYPE_ORDER.map(t => [t, g.nodes.filter(n => n.type === t).length]).filter(([, n]) => n > 0);
   const byRel = {};
   g.edges.forEach(e => { (byRel[e.fwd] = byRel[e.fwd] || []).push(e); });
   return (
@@ -716,9 +714,10 @@ function ContextKnowledgeGraph({ c, D, M, navTab }) {
           <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Knowledge graph — what the agent queries</div>
           <div className="asc-sec-sub">Typed nodes + labelled edges, derived live from the flows, domain model, components and contracts — deployed with the agent as its MCP knowledge source. Every answer the agent gives resolves to a path in this graph. Click a node to walk it; hover to light up its neighbourhood.</div>
         </div>
+        {/* D-195 polish: the explorer's legend below is the type inventory —
+            coloured, clickable, filtering. One line here for the total only. */}
         <div className="kg-stats">
-          {byType.map(([t, n]) => <span key={t} className={'kg-stat kg-' + t}><b>{n}</b> {(() => { const L = (KG_VTYPE[t] || {}).label || t; return n > 1 ? (L === 'Policy' ? 'Policies' : L === 'Capability' ? 'Capabilities' : L + 's') : L; })()}</span>)}
-          <span className="kg-stat"><b>{g.edges.length}</b> facts</span>
+          <span className="kg-stat"><b>{g.nodes.length}</b> nodes · <b>{g.edges.length}</b> facts — every one citable by id</span>
         </div>
         {Explorer && <Explorer g={g} cols={KG_COLS} typeMeta={KG_VTYPE}
           onOpen={navTab ? (node => { const t = KG_TAB_BY_TYPE[node.type]; return t ? (() => navTab(t)) : null; }) : null}
