@@ -290,6 +290,10 @@ const AGENCY = {
   'human-in-loop': { label: 'Human in the loop',             tone: 'warn' },
 };
 
+/* D-188: every packet element wears its id — small, grey, selectable. If you
+   can see the id, you can cite it; the agent names it the same way. */
+const IdChip = ({ id }) => id ? <code className="ddd-idchip">{id}</code> : null;
+
 const dddData = product => (window.__DDD__ && window.__DDD__.byProduct[product.id]) || null;
 const domainData = product => (window.__DOMAIN__ && window.__DOMAIN__.byProduct[product.id]) || null;
 
@@ -507,15 +511,18 @@ function contextGraph(c, D, M) {
   aggs.forEach(a => {
     addN(a.id, 'aggregate', a.name); addE(c.id, 'contains', a.id);
     (a.invariants || []).forEach((iv, i) => {
-      const id = `${a.id}-inv-${i}`; addN(id, 'invariant', iv.text, 'INV'); addE(a.id, 'holds', id);
+      const id = iv.id || `${a.id}-inv-${i}`;   // D-188: authored ids win (INV-ADJUD-…)
+      addN(id, 'invariant', iv.text, 'INV'); addE(a.id, 'holds', id);
       if (iv.fr) { addN(iv.fr, 'requirement', iv.fr); addE(id, 'mandated by', iv.fr); }
     });
   });
 
   // the storming flow: events · commands · handling components · policies
-  const flow = seedFlows.find(f => f.contextId === c.id);
-  (flow?.nodes || []).forEach(n => {
+  // (the fraud contexts read their seed flows; the claims cut reads its design storms)
+  const flow = seedFlows.find(f => f.contextId === c.id) || CLAIMS_DESIGN_STORMS.find(m => m.contextId === c.id);
+  (flow?.nodes || []).filter(n => n.kind === 'event' || !n.kind).forEach(n => {
     addN(n.id, 'event', n.summary, 'EVENT');
+    (n.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'capability' : 'requirement', g); addE(n.id, 'grounded by', g); });
     if (n.aggregate) { addN(n.aggregate, 'aggregate', n.aggregate); addE(n.aggregate, 'emits', n.id); }
     (n.commands || []).forEach((cmd, i) => {
       const id = `${n.id}-cmd-${i}`; addN(id, 'command', cmd.label, 'CMD');
@@ -528,7 +535,7 @@ function contextGraph(c, D, M) {
       const id = `${n.id}-pol-${i}`; addN(id, 'policy', p.label, 'POLICY');
       addE(id, 'reacts to', n.id);
       if (p.crosses && p.crosses !== c.id) { addN(p.crosses, 'context', p.crosses); addE(id, 'fires into', p.crosses); }
-      (p.grounds || []).forEach(g => { addN(g, 'requirement', g); addE(id, 'grounded by', g); });
+      (p.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'capability' : 'requirement', g); addE(id, 'grounded by', g); });
     });
   });
 
@@ -550,13 +557,68 @@ function contextGraph(c, D, M) {
   ((D && D.realizations) || []).filter(r => r.context === c.id).forEach(r =>
     (r.components || []).forEach(cp => { addN(cp, 'component', (componentById(cp) || {}).name || cp); addE(r.ucId, 'realized by', cp); }));
 
+  /* ── D-188: THE PACKET, emitted — every D-187 id becomes a typed node,
+     every id-join a labelled edge. What the pages show, the agent queries. */
+  const gType = g => g.startsWith('UC') ? 'capability' : 'requirement';
+  const grounds = (id, gs) => (gs || []).forEach(g => { addN(g, gType(g), g); addE(id, 'grounded by', g); });
+  const LCd = CLAIMS_LIFECYCLES[c.id];
+  if (LCd) {
+    const NS = c.id.replace(/^CTX-/, '');
+    const stId = sid => `LCS-${NS}-${sid}`;
+    const stName = sid => (LCd.stages.find(x => x.id === sid) || {}).name || '—';
+    LCd.stages.forEach(st => { addN(stId(st.id), 'stage', st.name, 'STAGE'); addE(LCd.aggregate, 'moves through', stId(st.id)); });
+    LCd.moves.forEach(m => {
+      addN(m.id, 'transition', m.flag ? `any stage · flag: ${m.flag}` : `${m.from ? stName(m.from) : '·'} → ${stName(m.to)}`, 'TRN');
+      if (m.from) addE(stId(m.from), 'exits via', m.id);
+      if (m.to) addE(m.id, 'enters', stId(m.to));
+      if (m.eventId) addE(m.id, 'realized by', m.eventId);
+    });
+    LCd.never.forEach(r => {
+      addN(r.id, 'trule', r.rule, 'RULE'); addE(r.id, 'constrains', LCd.aggregate);
+      if (r.inv) addE(r.id, 'same rule as', r.inv);
+      grounds(r.id, r.grounds);
+    });
+  }
+  (CONTEXT_POLICIES[c.id] || []).forEach(p => {
+    addN(p.id, 'policy', `${p.when} → ${p.then}`, 'POL');
+    if (p.eventId) addE(p.id, 'lands as', p.eventId);
+    if (p.fromCtx) { addN(p.fromCtx, 'context', HOME_NAMES[p.fromCtx] || p.fromCtx); addE(p.fromCtx, 'fires', p.id); }
+    if (p.contract) addE(p.id, 'rides', p.contract);
+    grounds(p.id, p.grounds);
+  });
+  const PKd = BC_PACKET[c.id];
+  if (PKd) {
+    PKd.contracts.forEach(ct => {
+      addN(ct.id, 'contract', `${ct.name} ${ct.version}`, 'CT');
+      addE(c.id, ct.dir === 'in' ? 'consumes' : 'publishes', ct.id);
+      const other = resolveCtx(ct.withWhom);
+      if (/^CTX-/.test(other || '')) { addN(other, 'context', ct.withWhom); addE(other, ct.dir === 'in' ? 'publishes' : 'consumes', ct.id); }
+      grounds(ct.id, ct.grounds);
+    });
+    PKd.scenarios.forEach(sc => {
+      addN(sc.id, 'scenario', `${sc.when} — ${sc.kind}`, 'SCN');
+      if (sc.transition) addE(sc.id, 'verifies', sc.transition);
+      if (sc.rule) addE(sc.id, 'verifies', sc.rule);
+      grounds(sc.id, sc.grounds);
+    });
+    PKd.readModels.forEach(rm => {
+      addN(rm.id, 'readmodel', rm.name, 'RM');
+      (rm.eventIds || []).forEach(e => addE(rm.id, 'serves', e));
+    });
+    PKd.serviceLevels.forEach(sl => { addN(sl.id, 'servicelevel', sl.obligation, 'SL'); addE(sl.id, 'obliges', c.id); grounds(sl.id, sl.grounds); });
+    PKd.security.forEach(sec => { addN(sec.id, 'access', sec.who, 'SEC'); addE(sec.id, 'governs', c.id); grounds(sec.id, sec.grounds); });
+    PKd.howBuilt.decisions.forEach(hb => { addN(hb.id, 'builddecision', `${hb.aspect} — ${hb.choice}`, 'HB'); addE(hb.id, 'shapes', c.id); });
+    PKd.measures.forEach(m => { addN(m.id, 'measure', m.measure, 'MEA'); addE(m.id, 'measures', c.id); grounds(m.id, m.grounds); });
+    PKd.knownGaps.forEach(gp => { addN(gp.id, 'gap', gp.text, 'GAP'); addE(gp.id, 'flags', c.id); });
+  }
+
   return { nodes, edges };
 }
 
 /* The explorer's vocabulary for subdomain graphs — columns read left→right as
    the model was built: agent/context → capabilities & requirements → the
    aggregate model → behavior → realization → contracts. */
-const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['command'], ['event'], ['policy'], ['component'], ['contract']];
+const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['stage', 'transition', 'trule'], ['command'], ['event'], ['scenario', 'readmodel'], ['policy'], ['component'], ['contract'], ['servicelevel', 'access', 'measure', 'builddecision', 'gap']];
 const KG_VTYPE = {
   context:     { label: 'Bounded context', ico: 'graph',   c: 'oklch(0.50 0.13 275)' },
   agent:       { label: 'Agent',           ico: 'user',    c: 'oklch(0.55 0.09 200)' },
@@ -569,9 +631,20 @@ const KG_VTYPE = {
   policy:      { label: 'Policy',          ico: 'policy',  c: 'oklch(0.55 0.12 295)' },
   component:   { label: 'Component',       ico: 'graph',   c: 'oklch(0.52 0.13 268)' },
   contract:    { label: 'Contract',        ico: 'link',    c: 'oklch(0.55 0.10 215)' },
+  /* D-188: the packet's types */
+  stage:        { label: 'Lifecycle stage', ico: 'metric',  c: 'oklch(0.62 0.12 85)'  },
+  transition:   { label: 'Transition',      ico: 'export',  c: 'oklch(0.52 0.13 285)' },
+  trule:        { label: 'Transition rule', ico: 'lock',    c: 'oklch(0.52 0.14 25)'  },
+  scenario:     { label: 'Scenario',        ico: 'req',     c: 'oklch(0.55 0.13 150)' },
+  readmodel:    { label: 'Read model',      ico: 'doc',     c: 'oklch(0.55 0.10 195)' },
+  servicelevel: { label: 'Service level',   ico: 'metric',  c: 'oklch(0.55 0.10 240)' },
+  access:       { label: 'Access rule',     ico: 'lock',    c: 'oklch(0.50 0.10 330)' },
+  measure:      { label: 'Measure',         ico: 'metric',  c: 'oklch(0.58 0.12 120)' },
+  builddecision:{ label: 'Build decision',  ico: 'graph',   c: 'oklch(0.50 0.08 260)' },
+  gap:          { label: 'Open gap',        ico: 'req',     c: 'oklch(0.60 0.13 60)'  },
 };
 
-const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'event', 'command', 'policy', 'invariant', 'component', 'contract', 'capability', 'requirement'];
+const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'command', 'policy', 'scenario', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'requirement'];
 function ContextKnowledgeGraph({ c, D, M }) {
   const raw = React.useMemo(() => contextGraph(c, D, M), [c]);
   // the explorer's shape: byId map + fwd/rev edge labels for the neighbour panel
@@ -594,7 +667,7 @@ function ContextKnowledgeGraph({ c, D, M }) {
           <div className="asc-sec-sub">Typed nodes + labelled edges, derived live from the flows, domain model, components and contracts — deployed with the agent as its MCP knowledge source. Every answer the agent gives resolves to a path in this graph. Click a node to walk it; hover to light up its neighbourhood.</div>
         </div>
         <div className="kg-stats">
-          {byType.map(([t, n]) => <span key={t} className={'kg-stat kg-' + t}><b>{n}</b> {n > 1 ? (t === 'policy' ? 'policies' : t === 'capability' ? 'capabilities' : t + 's') : t}</span>)}
+          {byType.map(([t, n]) => <span key={t} className={'kg-stat kg-' + t}><b>{n}</b> {(() => { const L = (KG_VTYPE[t] || {}).label || t; return n > 1 ? (L === 'Policy' ? 'Policies' : L === 'Capability' ? 'Capabilities' : L + 's') : L; })()}</span>)}
           <span className="kg-stat"><b>{g.edges.length}</b> facts</span>
         </div>
         {Explorer && <Explorer g={g} cols={KG_COLS} typeMeta={KG_VTYPE}
@@ -826,7 +899,7 @@ function LifecycleSurface({ c, navTab }) {
           <div className="asc-sec-sub">The rules a builder may not soften. Each is enforced in code, not trusted — and each names the Discover item behind it, or ⚠ where none exists yet.</div>
         </div>
         {LC.never.map((n, i) => (
-          <div className="ddd-lc-never" key={i}><b>{n.rule}</b><span>{n.why} <Grounds ids={n.grounds} /></span></div>
+          <div className="ddd-lc-never" key={i}><b>{n.rule}<br /><IdChip id={n.id} /></b><span>{n.why} <Grounds ids={n.grounds} /></span></div>
         ))}
       </div>
     )}
@@ -986,7 +1059,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
                   <tbody>
                     {authored.map((p, i) => (
                       <tr key={i}>
-                        <td><span className="dm-chip event">{p.when}</span></td>
+                        <td><span className="dm-chip event">{p.when}</span><br /><IdChip id={p.id} /></td>
                         <td>{p.from}</td>
                         <td>{p.eventId
                           ? <button type="button" className="dm-chip command ddd-lc-ev" title={`${p.id} — lands as “${(lifecycleEventNames(c.id)[p.eventId]) || p.eventId}” on the wall`} onClick={() => navTab('flow')}>{p.then}</button>
@@ -1032,7 +1105,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
                     <td>{sc.given}</td>
                     <td>{sc.when}</td>
                     <td>{sc.then}</td>
-                    <td><span className={'ddd-scn-kind ' + sc.kind}>{sc.kind}</span></td>
+                    <td><span className={'ddd-scn-kind ' + sc.kind}>{sc.kind}</span><br /><IdChip id={sc.id} /></td>
                     <td className="ddd-lc-gr"><GRefs ids={sc.grounds} /></td>
                   </tr>
                 ))}
@@ -1053,7 +1126,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
               <thead><tr><th>View</th><th>Serves</th><th>Read by</th><th>What it is</th></tr></thead>
               <tbody>
                 {PK.readModels.map((r, i) => (
-                  <tr key={i}><td><b>{r.name}</b></td><td>{r.serves}</td><td>{r.readers}</td><td>{r.desc}</td></tr>
+                  <tr key={i}><td><b>{r.name}</b><br /><IdChip id={r.id} /></td><td>{r.serves}</td><td>{r.readers}</td><td>{r.desc}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -1072,7 +1145,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
               <thead><tr><th>Obligation</th><th>Level</th><th>Why it matters</th><th>Grounded in</th></tr></thead>
               <tbody>
                 {PK.serviceLevels.map((s, i) => (
-                  <tr key={i}><td><b>{s.obligation}</b></td><td>{s.level}</td><td>{s.why}</td><td className="ddd-lc-gr"><GRefs ids={s.grounds} /></td></tr>
+                  <tr key={i}><td><b>{s.obligation}</b><br /><IdChip id={s.id} /></td><td>{s.level}</td><td>{s.why}</td><td className="ddd-lc-gr"><GRefs ids={s.grounds} /></td></tr>
                 ))}
               </tbody>
             </table>
@@ -1087,7 +1160,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
             <div className="asc-sec-sub">The box&apos;s access register, in its own vocabulary — roles, their limits, and what the data itself demands.</div>
           </div>
           {PK.security.map((s, i) => (
-            <div className="ddd-lc-never" key={i}><b>{s.who}</b><span>{s.may} <GRefs ids={s.grounds} /></span></div>
+            <div className="ddd-lc-never" key={i}><b>{s.who}<br /><IdChip id={s.id} /></b><span>{s.may} <GRefs ids={s.grounds} /></span></div>
           ))}
         </div>
       )}
@@ -1106,7 +1179,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
               <thead><tr><th>Aspect</th><th>Choice</th><th>Why</th></tr></thead>
               <tbody>
                 {PK.howBuilt.decisions.map((d, i) => (
-                  <tr key={i}><td><b>{d.aspect}</b></td><td>{d.choice}</td><td>{d.why}</td></tr>
+                  <tr key={i}><td><b>{d.aspect}</b><br /><IdChip id={d.id} /></td><td>{d.choice}</td><td>{d.why}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -1137,7 +1210,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
               <thead><tr><th>Measure</th><th>Definition</th><th>Target</th><th>Grounded in</th></tr></thead>
               <tbody>
                 {PK.measures.map((m, i) => (
-                  <tr key={i}><td><b>{m.measure}</b></td><td>{m.def}</td><td>{m.target}</td><td className="ddd-lc-gr"><GRefs ids={m.grounds} /></td></tr>
+                  <tr key={i}><td><b>{m.measure}</b><br /><IdChip id={m.id} /></td><td>{m.def}</td><td>{m.target}</td><td className="ddd-lc-gr"><GRefs ids={m.grounds} /></td></tr>
                 ))}
               </tbody>
             </table>
@@ -1217,6 +1290,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
                     <span className="dm-agg-ico"><DDPico d={DDI.doc} w={15} /></span>
                     <span className="agu-nm">{k.name}</span>
                     <span className="agu-aid">{k.version}</span>
+                    <IdChip id={k.id} />
                     <span className={'ddd-ct-dir ' + k.dir}>{k.dir === 'in' ? '→ in' : 'out →'}</span>
                     <span className="agu-store">{k.dir === 'in' ? 'from' : 'to'} {k.withWhom}</span>
                   </div>

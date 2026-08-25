@@ -473,3 +473,6 @@
 .ddd-ct-dir.in { color: #3730a3; background: #eef2ff; border: 1px solid #c7d2fe; }
 .ddd-ct-dir.out { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }
 .ddd-ct-lines { display: grid; gap: 5px; margin-top: 10px; }
+
+/* D-188: the id chip — small, grey, selectable; if you can see it, you can cite it */
+.ddd-idchip { font-size: 10px; color: var(--ink-3, #9ca3af); letter-spacing: 0.01em; user-select: all; white-space: nowrap; }
