@@ -670,41 +670,50 @@ function LifecycleDiagram({ lc }) {
   );
 }
 
+// legacy deep links / cached tab state from the pre-split page (D-037)
+const LEGACY_TAB = { model: 'aggregates', rels: 'contracts' };
+const normCtxTab = t => (t && (LEGACY_TAB[t] || t)) || 'flow';
+
+/* the crumb + status banners + summary shared by the old in-page detail and
+   the D-179 workspace — one header, two shells */
+function BcHead({ c, onBack }) {
+  return (<>
+    <div className="ddd-crumbhead">
+      <h2 className="ddd-crumb-title">
+        <button type="button" className="ddd-crumb-link" onClick={onBack}>Bounded contexts</button>
+        <span className="ddd-crumb-sep">›</span>
+        <span className="ddd-crumb-cur">{c.name}</span>
+      </h2>
+      <span className={'ddd-class ' + c.classification}>{c.classification} subdomain</span>
+    </div>
+    {c.superseded && (
+      <div className="ddd-superseded-banner">
+        Superseded by the D-152 cut — its successor is <b>{c.superseded}</b>. This wall stays readable while the migration (agents, capabilities, grounded evidence) completes; it retires only once the successor carries everything — rehome, never remove.
+      </div>
+    )}
+    {c.deferredForward && (
+      <div className="ddd-superseded-banner" style={{ borderColor: 'var(--line)', background: 'var(--panel-2)' }}>
+        Deliberately deferred — this wall carries forward into the new cut unchanged. The AB module is last, by plan.
+      </div>
+    )}
+    <p className="ddd-detail-note">{c.summary || c.note}</p>
+  </>);
+}
+
 function ContextDetail({ c, D, M, prd, onBack }) {
-  // legacy deep links / cached tab state from the pre-split page (D-037)
-  const LEGACY_TAB = { model: 'aggregates', rels: 'contracts' };
-  const normTab = t => (t && (LEGACY_TAB[t] || t)) || 'flow';
-  const [tab, setTab] = React.useState(() => normTab(window.__cynCtxTab));   // restore on remount (Back / deep link)
+  const [tab, setTab] = React.useState(() => normCtxTab(window.__cynCtxTab));   // restore on remount (Back / deep link)
   // navTab writes the active tab to the URL so Back/Forward + sharing work
   const navTab = (t) => {
     window.__cynCtxTab = t; setTab(t);
     window.__cynPushProd?.();
   };
   React.useEffect(() => {
-    window.__cynSetTab = t => { const v = normTab(t); window.__cynCtxTab = v; setTab(v); };  // raw apply for Back/Forward (no URL push)
+    window.__cynSetTab = t => { const v = normCtxTab(t); window.__cynCtxTab = v; setTab(v); };  // raw apply for Back/Forward (no URL push)
     return () => { delete window.__cynSetTab; };
   });
   return (
     <div className="ddd-wrap">
-      <div className="ddd-crumbhead">
-        <h2 className="ddd-crumb-title">
-          <button type="button" className="ddd-crumb-link" onClick={onBack}>Bounded contexts</button>
-          <span className="ddd-crumb-sep">›</span>
-          <span className="ddd-crumb-cur">{c.name}</span>
-        </h2>
-        <span className={'ddd-class ' + c.classification}>{c.classification} subdomain</span>
-      </div>
-      {c.superseded && (
-        <div className="ddd-superseded-banner">
-          Superseded by the D-152 cut — its successor is <b>{c.superseded}</b>. This wall stays readable while the migration (agents, capabilities, grounded evidence) completes; it retires only once the successor carries everything — rehome, never remove.
-        </div>
-      )}
-      {c.deferredForward && (
-        <div className="ddd-superseded-banner" style={{ borderColor: 'var(--line)', background: 'var(--panel-2)' }}>
-          Deliberately deferred — this wall carries forward into the new cut unchanged. The AB module is last, by plan.
-        </div>
-      )}
-      <p className="ddd-detail-note">{c.summary || c.note}</p>
+      <BcHead c={c} onBack={onBack} />
       <BcTabs c={c} D={D} M={M} prd={prd} tab={tab} navTab={navTab} />
     </div>
   );
@@ -714,7 +723,7 @@ function ContextDetail({ c, D, M, prd, onBack }) {
    ContextDetail wraps it with the crumb + URL-wired tab state above; the
    Meridian subdomain page mounts it directly (window.CynBcTabs) with local
    tab state — one element, two homes, same seeds. */
-function BcTabs({ c, D, M, prd, tab, navTab }) {
+function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
   const aggregates = (M ? M.aggregates : []).filter(a => a.context === c.id);
   const policies = derivedPolicies().filter(p => p.owner === c.id);   // the reactions this context owns (derived from the flows)
   const reals = D.realizations.filter(r => r.context === c.id);
@@ -738,11 +747,14 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
 
   return (
     <>
-      <div className="ddd-tabs">
-        {TABS.map(t => (
-          <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => navTab(t.key)}>{t.label}</button>
-        ))}
-      </div>
+      {/* D-179: inside the BC workspace the left menu does the navigating — no tab row */}
+      {!hideTabs && (
+        <div className="ddd-tabs">
+          {TABS.map(t => (
+            <button key={t.key} type="button" className={'ddd-tab' + (tab === t.key ? ' on' : '')} onClick={() => navTab(t.key)}>{t.label}</button>
+          ))}
+        </div>
+      )}
 
       {tab === 'lang' && (
         <div className="asc-section ddd-sec">
@@ -1057,6 +1069,7 @@ function DesignContexts({ product, prd }) {
   // navSel writes the selection to the URL so Back/Forward + sharing work
   const navSel = (id) => {
     window.__cynCtxSel = id; window.__cynCtxTab = 'flow'; setSel(id);        // a freshly opened context starts on its Event flow
+    window.__cynShellCtx?.(id);                                              // D-179: the shell swaps to the BC workspace
     window.__cynPushProd?.();
   };
   React.useEffect(() => {
@@ -1307,6 +1320,89 @@ function DesignRealization({ product, prd }) {
 }
 
 window.DesignContexts = DesignContexts;
+
+/* ============================================================
+   D-179 — the bounded context is its own place.
+   When a context is open, the product shell hands the whole body to this
+   workspace: a BC-scoped left menu (grouped, with room to grow) + the
+   context's surfaces, one per entry. Tabs survive unchanged on the
+   Meridian subdomain pages (BcTabs without hideTabs); deep links keep
+   working — ?ctx=…&tab=… maps one-to-one onto the menu entries.
+   ============================================================ */
+const BC_MENU = [
+  { group: 'Model', items: [
+    { key: 'flow',       label: 'Event flow',          ico: 'flow' },
+    { key: 'lifecycle',  label: 'Lifecycle',           ico: 'event', needsLC: true },
+    { key: 'aggregates', label: 'Aggregates',          ico: 'agg' },
+  ] },
+  { group: 'Rules & handoffs', items: [
+    { key: 'policies',   label: 'Policies',            ico: 'policy' },
+    { key: 'contracts',  label: 'Contracts',           ico: 'doc' },
+    { key: 'lang',       label: 'Ubiquitous language', ico: 'ctx' },
+  ] },
+  { group: 'Build handoff', items: [
+    { key: 'capabilities', label: 'Capabilities',      ico: 'cap' },
+  ] },
+  { group: 'Team & knowledge', items: [
+    { key: 'agent',      label: 'Agents',              ico: 'owner' },
+    { key: 'kg',         label: 'Knowledge graph',     ico: 'bulb' },
+  ] },
+];
+
+function BcWorkspace({ product, prd, onBack }) {
+  const D = dddData(product);
+  const M = domainData(product);
+  const c = D && D.contexts.find(x => x.id === window.__cynCtxSel);
+  const [tab, setTab] = React.useState(() => normCtxTab(window.__cynCtxTab));
+  const navTab = (t) => {
+    window.__cynCtxTab = t; setTab(t);
+    window.__cynPushProd?.();
+    document.querySelector('.asc-main')?.scrollTo(0, 0);
+  };
+  React.useEffect(() => {
+    window.__cynSetTab = t => { const v = normCtxTab(t); window.__cynCtxTab = v; setTab(v); };
+    return () => { delete window.__cynSetTab; };
+  });
+  if (!c) return null;
+  const hasLC = !!CLAIMS_LIFECYCLES[c.id];
+  return (
+    <div className="asc-body">
+      <aside className="asc-rail bc-rail">
+        <button type="button" className="bc-rail-back" onClick={onBack}>
+          <DDPico d={DDI.arrow} w={12} /> Bounded contexts
+        </button>
+        <div className="bc-rail-head">
+          <div className="bc-rail-name">{c.name}</div>
+          <span className={'ddd-class ' + c.classification}>{c.classification}</span>
+        </div>
+        {BC_MENU.map(g => {
+          const items = g.items.filter(i => !i.needsLC || hasLC);
+          if (!items.length) return null;
+          return (
+            <div className="env-railgroup" key={g.group}>
+              <div className="env-railgroup-h"><span>{g.group}</span></div>
+              {items.map(e => (
+                <div key={e.key} className={'asc-nav env-navitem' + (tab === e.key ? ' on' : '')} onClick={() => navTab(e.key)}>
+                  <span className="bc-nav-ico"><DDPico d={DDI[e.ico]} w={15} /></span>
+                  <span className="env-navlabel">{e.label}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </aside>
+      <main className="asc-main">
+        <div className="asc-page env-page">
+          <div className="ddd-wrap">
+            <BcHead c={c} onBack={onBack} />
+            <BcTabs c={c} D={D} M={M} prd={prd} tab={tab} navTab={navTab} hideTabs />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+window.BcWorkspace = BcWorkspace;
 window.DesignContextMap = DesignContextMap;
 window.DesignSystemMap = DesignSystemMap;
 window.DesignRealization = DesignRealization;

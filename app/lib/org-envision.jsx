@@ -736,10 +736,13 @@ function ProductPage({ product, portfolio }) {
     const ph = (n && n.phase) || 'Envision';
     // legacy ?entry=overview links resolve to the phase's first entry (the brief moved to More)
     const en = (n && n.entry && n.entry !== 'overview') ? n.entry : firstEntry(ph);
-    return { phase: ph, entry: en };
+    return { phase: ph, entry: en, ctx: window.__cynCtxSel };
   }, [product]);
   const [phase, setPhase] = useStateE(boot.phase);
   const [entry, setEntry] = useStateE(boot.entry);
+  // D-179: the shell mirrors the selected bounded context — with one open, the
+  // whole body becomes the BC workspace (its own left menu, no phase strip)
+  const [ctxSel, setCtxSel] = useStateE(boot.ctx);
   const prd = prdFor(product);
   const scrollTop = () => document.querySelector('.asc-main')?.scrollTo(0, 0);
   // write the current in-product location to the URL (so Back/Forward + sharing work)
@@ -750,9 +753,9 @@ function ProductPage({ product, portfolio }) {
     if (n.entry !== 'contexts') n.ctx = null;
     window.cynPushUrl(n);
   };
-  const selectPhase = (ph) => { const en = firstEntry(ph); setPhase(ph); setEntry(en); window.__cynCtxSel = null; pushUrl({ phase: ph, entry: en }); scrollTop(); };
-  const goTo = (ph, en) => { setPhase(ph); setEntry(en); if (en !== 'contexts') window.__cynCtxSel = null; pushUrl({ phase: ph, entry: en }); scrollTop(); };
-  const navEntry = (en) => { setEntry(en); if (en !== 'contexts') window.__cynCtxSel = null; pushUrl({ entry: en }); scrollTop(); };
+  const selectPhase = (ph) => { const en = firstEntry(ph); setPhase(ph); setEntry(en); window.__cynCtxSel = null; setCtxSel(null); pushUrl({ phase: ph, entry: en }); scrollTop(); };
+  const goTo = (ph, en) => { setPhase(ph); setEntry(en); if (en !== 'contexts') { window.__cynCtxSel = null; setCtxSel(null); } pushUrl({ phase: ph, entry: en }); scrollTop(); };
+  const navEntry = (en) => { setEntry(en); if (en !== 'contexts') { window.__cynCtxSel = null; setCtxSel(null); } pushUrl({ entry: en }); scrollTop(); };
   // browser Back/Forward lands here for product-internal moves (phase / entry / ctx / tab)
   useEffectE(() => {
     window.__cynApplyProd = (n) => {
@@ -760,15 +763,31 @@ function ProductPage({ product, portfolio }) {
       setPhase(ph); setEntry(n.entry && n.entry !== 'overview' ? n.entry : firstEntry(ph));
       window.__cynCtxSel = n.entry === 'contexts' ? (n.ctx || null) : null;
       window.__cynCtxTab = (n.tab && n.tab !== 'rels') ? n.tab : 'flow';
+      setCtxSel(window.__cynCtxSel);
       if (window.__cynSetSel) window.__cynSetSel(window.__cynCtxSel);
       if (window.__cynSetTab) window.__cynSetTab(window.__cynCtxTab);
       scrollTop();
     };
+    window.__cynShellCtx = (id) => setCtxSel(id);   // D-179: a context opened/closed inside the Design surface
     window.__cynPushProd = () => pushUrl({});   // design surfaces push after changing ctx/tab
     window.__cynGoSources = () => navEntry('xsources');
-    return () => { delete window.__cynApplyProd; delete window.__cynPushProd; delete window.__cynGoSources; };
+    return () => { delete window.__cynApplyProd; delete window.__cynShellCtx; delete window.__cynPushProd; delete window.__cynGoSources; };
   }, [phase, entry]);
   const TP = window.TraceProvider;
+  // D-179: with a bounded context open, the body IS the BC workspace — its own
+  // left menu, no phase strip; the back gesture returns to the contexts list.
+  const BcW = typeof window !== 'undefined' ? window.BcWorkspace : null;
+  const bcCtxOk = ctxSel && window.__DDD__ && window.__DDD__.byProduct[product.id]
+    && window.__DDD__.byProduct[product.id].contexts.some(x => x.id === ctxSel);
+  if (phase === 'Design' && entry === 'contexts' && bcCtxOk && BcW) {
+    const backToList = () => { window.__cynCtxSel = null; window.__cynCtxTab = 'flow'; setCtxSel(null); pushUrl({}); scrollTop(); };
+    const bcInner = (
+      <div className="asc-prodwrap">
+        <BcW product={product} prd={prd} onBack={backToList} />
+      </div>
+    );
+    return TP ? <TP prd={prd} arch={window.__ARCH__} goTo={goTo}>{bcInner}</TP> : bcInner;
+  }
   const inner = (
     <div className="asc-prodwrap">
       <LifeBar product={product} active={phase} onSelect={selectPhase} />
