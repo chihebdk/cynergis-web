@@ -407,7 +407,7 @@ function KGraph({ g, L, sel, setSel, hover, setHover, typeFilter, expanded, type
    product Knowledge Graph, parameterized so other surfaces (the subdomain
    knowledge graphs) can mount it with their own columns / type palette / detail
    panel. g = { nodes:[{id,type,label,code?}], edges:[{from,to,fwd,rev,dash?}], byId }. */
-function GraphExplorer({ g, cols, typeMeta, evidenceable = [], renderDetail, emptyHint }) {
+function GraphExplorer({ g, cols, typeMeta, evidenceable = [], renderDetail, emptyHint, onOpen }) {
   const L = React.useMemo(() => vLayout(g, cols), [g, cols]);
   const [sel, setSel] = React.useState(null);
   const [hover, setHover] = React.useState(null);
@@ -461,7 +461,7 @@ function GraphExplorer({ g, cols, typeMeta, evidenceable = [], renderDetail, emp
             </div>
           ) : (renderDetail
             ? renderDetail(selNode, g, setSel)
-            : <GraphDetailLite g={g} node={selNode} onSelect={setSel} typeMeta={typeMeta} />)}
+            : <GraphDetailLite g={g} node={selNode} onSelect={setSel} typeMeta={typeMeta} onOpen={onOpen} />)}
         </aside>
       </div>
     </>
@@ -469,7 +469,7 @@ function GraphExplorer({ g, cols, typeMeta, evidenceable = [], renderDetail, emp
 }
 
 /* generic detail panel for parameterized graphs — type · label · connections */
-function GraphDetailLite({ g, node, onSelect, typeMeta }) {
+function GraphDetailLite({ g, node, onSelect, typeMeta, onOpen }) {
   const ty = typeMeta[node.type] || { label: node.type, c: 'oklch(0.5 0.02 260)' };
   const ns = neighborsOf(g, node.id);
   const byLabel = {};
@@ -480,12 +480,14 @@ function GraphDetailLite({ g, node, onSelect, typeMeta }) {
     <div className="asc-gd">
       <div className="asc-gd-head" style={{ '--gc': ty.c }}>
         <span className="asc-gd-type"><span className="dot"></span>{ty.label}</span>
-        <div className="asc-gd-id">{node.code || node.id}</div>
+        <div className="asc-gd-id" style={{ userSelect: "all", wordBreak: "break-all" }}>{node.id}</div>
         <div className="asc-gd-name">{node.label}</div>
       </div>
       <div className="asc-gd-facts">
         <div className="asc-gd-meta">{node.sub || ty.label}{node.desc ? <div className="asc-gd-desc">{node.desc}</div> : null}</div>
         {traceable && <button className="asc-gd-fulltrace" onClick={() => t.open(node.id)}>Open full trace →</button>}
+        {onOpen && (() => { const go = onOpen(node); return go
+          ? <button className="asc-gd-fulltrace" onClick={go}>Open the page that defines this →</button> : null; })()}
       </div>
       <div className="asc-gd-sect">
         <div className="asc-gd-sh">Connections ({ns.length})</div>

@@ -684,7 +684,18 @@ const KG_VTYPE = {
 };
 
 const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'policy', 'scenario', 'atest', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'usecase', 'requirement'];
-function ContextKnowledgeGraph({ c, D, M }) {
+/* D-195: every node's detail names its FULL id and can jump to the page that
+   defines it — the workspace entry where the element is authored/shown. */
+const KG_TAB_BY_TYPE = {
+  stage: 'lifecycle', transition: 'lifecycle', trule: 'lifecycle',
+  scenario: 'scenarios', readmodel: 'readmodels', policy: 'policies',
+  contract: 'contracts', servicelevel: 'slevels', access: 'security',
+  measure: 'measures', builddecision: 'howbuilt', gap: 'openitems',
+  aggregate: 'aggregates', invariant: 'aggregates', event: 'flow',
+  capability: 'capabilities', agent: 'agent',
+};
+
+function ContextKnowledgeGraph({ c, D, M, navTab }) {
   const raw = React.useMemo(() => contextGraph(c, D, M), [c]);
   // the explorer's shape: byId map + fwd/rev edge labels for the neighbour panel
   const g = React.useMemo(() => ({
@@ -710,6 +721,7 @@ function ContextKnowledgeGraph({ c, D, M }) {
           <span className="kg-stat"><b>{g.edges.length}</b> facts</span>
         </div>
         {Explorer && <Explorer g={g} cols={KG_COLS} typeMeta={KG_VTYPE}
+          onOpen={navTab ? (node => { const t = KG_TAB_BY_TYPE[node.type]; return t ? (() => navTab(t)) : null; }) : null}
           emptyHint={`Click any node to see what it is and everything it connects to — the columns read left→right as the model was built: agent → capabilities & requirements → aggregates & invariants → commands → events → policies → event functions → contracts.`} />}
       </div>
 
@@ -1039,7 +1051,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
 
       {tab === 'agent' && <AgentsTab key={c.id} c={c} D={D} M={M} prd={prd} onOpenKg={() => navTab('kg')} />}
 
-      {tab === 'kg' && <ContextKnowledgeGraph c={c} D={D} M={M} />}
+      {tab === 'kg' && <ContextKnowledgeGraph c={c} D={D} M={M} navTab={navTab} />}
 
       {tab === 'flow' && (
         (FLOW_BY_CONTEXT[c.id] || (typeof window !== 'undefined' && (window.__DERIVED_FLOWS_BY_CTX__ || {})[c.id]))
