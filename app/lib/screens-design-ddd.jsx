@@ -8,6 +8,7 @@ import { claimsFlows } from '../flow/claims-flows';
 import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds, lifecycleEventNames } from '../flow/claims-lifecycle';
 import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CONTEXT_CAPABILITIES } from '../flow/claims-capabilities';
+import { CLAIMS_CONTRACTS } from '../flow/claims-contracts';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
 import { BC_PACKET } from '../flow/claims-bc-packet';
@@ -620,15 +621,17 @@ function contextGraph(c, D, M) {
     if (p.contract) addE(p.id, 'rides', p.contract);
     grounds(p.id, p.grounds);
   });
+  // D-196: contracts come from the REGISTRY (authored once, two parties)
+  CLAIMS_CONTRACTS.filter(k => k.from === c.id || k.to === c.id).forEach(ct => {
+    addN(ct.id, 'contract', `${ct.name} ${ct.version}`, 'CT', { pattern: ct.pattern, fields: ct.fields, promises: ct.promises, change: ct.change, obligations: ct.obligations });
+    for (const [party, rel] of [[ct.from, 'publishes'], [ct.to, 'consumes']]) {
+      addN(party, 'context', HOME_NAMES[party] || party);
+      addE(party, rel, ct.id);
+    }
+    grounds(ct.id, ct.grounds);
+  });
   const PKd = BC_PACKET[c.id];
   if (PKd) {
-    PKd.contracts.forEach(ct => {
-      addN(ct.id, 'contract', `${ct.name} ${ct.version}`, 'CT', { dir: ct.dir, withWhom: ct.withWhom, pattern: ct.pattern, fields: ct.fields, promises: ct.promises, change: ct.change, obligations: ct.obligations });
-      addE(c.id, ct.dir === 'in' ? 'consumes' : 'publishes', ct.id);
-      const other = resolveCtx(ct.withWhom);
-      if (/^CTX-/.test(other || '')) { addN(other, 'context', ct.withWhom); addE(other, ct.dir === 'in' ? 'publishes' : 'consumes', ct.id); }
-      grounds(ct.id, ct.grounds);
-    });
     PKd.scenarios.forEach(sc => {
       addN(sc.id, 'scenario', sc.name || sc.when, 'CAT', { given: sc.given, when: sc.when, then: sc.then, kind: sc.kind });
       if (sc.transition) addE(sc.id, 'verifies', sc.transition);
@@ -1379,6 +1382,11 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
 
       {tab === 'contracts' && (() => {
         const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
+        // D-196: the registry is the single authoring place; this box sees its view
+        const cts = CLAIMS_CONTRACTS
+          .filter(k => k.from === c.id || k.to === c.id)
+          .map(k => ({ ...k, dir: k.from === c.id ? 'out' : 'in',
+            withWhom: k.from === c.id ? (HOME_NAMES[k.to] || k.to) : (HOME_NAMES[k.from] || k.from) }));
         const ids = new Set(componentsForBC(c.id).map(x => x.id));
         const schemas = (A.schemas || []).filter(s =>
           ids.has(s.ownedBy) || (s.producers || []).some(p => ids.has(p)) || (s.consumers || []).some(x => ids.has(x)));
@@ -1386,13 +1394,13 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         const partyName = id => (componentById(id) || {}).name
           || ((A.integrations || []).find(i => i.id === id) || {}).system || id;
         return (<>
-          {PK && PK.contracts && (
+          {cts.length > 0 && (
             <div className="asc-section ddd-sec">
               <div className="asc-sec-head">
-                <div className="asc-sec-title"><DDPico d={DDI.doc} w={14} /> The border agreements — {PK.contracts.length} contracts</div>
+                <div className="asc-sec-title"><DDPico d={DDI.doc} w={14} /> The border agreements — {cts.length} contracts</div>
                 <div className="asc-sec-sub">Everything both sides must agree on, and nothing either side can decide alone: parties &amp; pattern · the payload, field by field · the promises around it · how it may change · its obligations. What either box does with a message stays its own business.</div>
               </div>
-              {PK.contracts.map(k => (
+              {cts.map(k => (
                 <div className="agu" key={k.name}>
                   <div className="agu-h">
                     <span className="dm-agg-ico"><DDPico d={DDI.doc} w={15} /></span>
