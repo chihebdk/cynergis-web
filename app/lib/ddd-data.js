@@ -533,7 +533,7 @@ window.__DDD__ = {
             { inv: 'Payments beyond the authority band are prevented in-flow', by: 'authority.check gate (code) + operator flag' },
           ] },
         { ucId: 'UC6', context: 'CTX-COVERAGE', components: ['C2'], form: 'code', composition: 'workflow', surface: 'verb', agency: 'automated',
-          trigger: 'An approved indemnity payment on the claim — the instruction publishes to Billing.',
+          trigger: 'An approved indemnity payment on the claim — the instruction publishes to Claim payments over the payment-instruction seam.',
           nodes: ['code · build instruction', 'service · publish PaymentInstruction v2', 'code · ledger state instructed-not-settled'],
           testStrategy: 'AT5 acknowledge-and-return acceptance; contract test with Billing.',
           rationale: 'A published-language event across a domain seam — deterministic, contract-tested.',
@@ -582,6 +582,11 @@ window.__DDD__ = {
   _by('CTX-ADJUD').capabilities = ['UC3', 'UC4', 'UC6', 'UC8'];
   _by('CTX-TOTALLOSS').capabilities = ['UC7'];
   for (const id of ['CTX-FNOL', 'CTX-COVERAGE', 'CTX-TOTAL-LOSS']) _by(id).capabilities = [];
+  /* D-186: the realization decisions follow their capabilities to the
+     successor walls (same UC judgment calls as above) */
+  const _re = { UC1: 'CTX-INTAKE', UC2: 'CTX-INTAKE', UC3: 'CTX-ADJUD', UC4: 'CTX-ADJUD',
+    UC6: 'CTX-ADJUD', UC8: 'CTX-ADJUD', UC7: 'CTX-TOTALLOSS' };
+  for (const r of window.__DDD__.byProduct['PROD-CLAIMSCORE'].realizations) if (_re[r.ucId]) r.context = _re[r.ucId];
   /* D-161 · Phase C: the superseded walls retire from the product LIST.
      Equal-or-better is demonstrated (D-159/D-160: agents, capabilities,
      grounds and all projections live on the successors). The entries stay
