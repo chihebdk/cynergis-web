@@ -47,13 +47,13 @@ export const BC_PACKET = {
     ],
 
     readModels: [
-      { id: "RM-ADJUD-coverage-snapshot", eventIds: ["adj-opened", "adj-policy"], name: "Coverage snapshot view", serves: "policy verification & coverage confirmation", readers: "claims handlers", desc: "The stored mainframe extract as at date of loss — read here, never fetched live." },
-      { id: "RM-ADJUD-lines-limits", eventIds: ["adj-coverage"], name: "Coverage lines & limits view", serves: "coverage confirmation", readers: "claims handlers", desc: "What the policy responds to for this loss, line by line, endorsements applied." },
-      { id: "RM-ADJUD-reserve-adequacy", eventIds: ["adj-reserve"], name: "Reserve adequacy view", serves: "reserve moves", readers: "claims handlers · actuarial", desc: "Current reserves against estimates and payments to date, per coverage line." },
-      { id: "RM-ADJUD-fault-rules", eventIds: ["adj-fault"], name: "Fault determination rules", serves: "fault determination", readers: "claims handlers", desc: "The applicable fault table for the jurisdiction and the reported circumstances." },
-      { id: "RM-ADJUD-estimate-payables", eventIds: ["adj-calculated"], name: "Estimate of record & payables", serves: "settlement calculation", readers: "claims handlers", desc: "The verified repair figures, deductible and limits — the settlement is calculated from this view." },
-      { id: "RM-ADJUD-holds-authority", eventIds: ["adj-payauth"], name: "Holds & authority view", serves: "payment authorization", readers: "claims handlers · senior authority", desc: "Open holds and the handler's authority limit — authorization reads both before it signs." },
-      { id: "RM-ADJUD-closure-checklist", eventIds: ["adj-closed"], name: "Closure checklist view", serves: "closing the file", readers: "claims handlers", desc: "Settlements, holds, tasks and documents in one status view — every line green before close." },
+      { id: "RM-ADJUD-coverage-snapshot", eventIds: ["adj-opened", "adj-policy"], readerIds: ["SEC-ADJUD-handler"], name: "Coverage snapshot view", serves: "policy verification & coverage confirmation", readers: "claims handlers", desc: "The stored mainframe extract as at date of loss — read here, never fetched live." },
+      { id: "RM-ADJUD-lines-limits", eventIds: ["adj-coverage"], readerIds: ["SEC-ADJUD-handler"], name: "Coverage lines & limits view", serves: "coverage confirmation", readers: "claims handlers", desc: "What the policy responds to for this loss, line by line, endorsements applied." },
+      { id: "RM-ADJUD-reserve-adequacy", eventIds: ["adj-reserve"], readerIds: ["SEC-ADJUD-handler", "SEC-ADJUD-actuarial"], name: "Reserve adequacy view", serves: "reserve moves", readers: "claims handlers · actuarial", desc: "Current reserves against estimates and payments to date, per coverage line." },
+      { id: "RM-ADJUD-fault-rules", eventIds: ["adj-fault"], readerIds: ["SEC-ADJUD-handler"], name: "Fault determination rules", serves: "fault determination", readers: "claims handlers", desc: "The applicable fault table for the jurisdiction and the reported circumstances." },
+      { id: "RM-ADJUD-estimate-payables", eventIds: ["adj-calculated"], readerIds: ["SEC-ADJUD-handler"], name: "Estimate of record & payables", serves: "settlement calculation", readers: "claims handlers", desc: "The verified repair figures, deductible and limits — the settlement is calculated from this view." },
+      { id: "RM-ADJUD-holds-authority", eventIds: ["adj-payauth"], readerIds: ["SEC-ADJUD-handler", "SEC-ADJUD-senior-authority"], name: "Holds & authority view", serves: "payment authorization", readers: "claims handlers · senior authority", desc: "Open holds and the handler's authority limit — authorization reads both before it signs." },
+      { id: "RM-ADJUD-closure-checklist", eventIds: ["adj-closed"], readerIds: ["SEC-ADJUD-handler"], name: "Closure checklist view", serves: "closing the file", readers: "claims handlers", desc: "Settlements, holds, tasks and documents in one status view — every line green before close." },
     ],
 
     contracts: [

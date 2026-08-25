@@ -616,6 +616,7 @@ function contextGraph(c, D, M) {
     PKd.readModels.forEach(rm => {
       addN(rm.id, 'readmodel', rm.name, 'RM', { desc: rm.desc, serves: rm.serves, readers: rm.readers });
       (rm.eventIds || []).forEach(e => addE(rm.id, 'serves', e));
+      (rm.readerIds || []).forEach(rid => addE(rid, 'reads', rm.id));   // D-192: roles read views — a walk, not prose
     });
     PKd.serviceLevels.forEach(sl => { addN(sl.id, 'servicelevel', sl.obligation, 'SL', { level: sl.level, why: sl.why }); addE(sl.id, 'obliges', c.id); grounds(sl.id, sl.grounds); });
     PKd.security.forEach(sec => { addN(sec.id, 'access', sec.who, 'SEC', { may: sec.may }); addE(sec.id, 'governs', c.id); grounds(sec.id, sec.grounds); });
