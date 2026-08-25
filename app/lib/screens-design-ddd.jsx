@@ -1071,7 +1071,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         <div className="asc-section ddd-sec">
           <div className="asc-sec-head">
             <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> {aggregates.length === 1 ? 'The record this context owns' : 'The records this context owns'} — {aggregates.length || 'no'} aggregate{aggregates.length === 1 ? '' : 's'}</div>
-            <div className="asc-sec-sub">An aggregate is one record changed as a unit — its commands, the events they raise, and the rules that guard every change. Between aggregates: identity references and events. Between contexts: contracts.</div>
+            <div className="asc-sec-sub">An aggregate is one record changed as a unit — its commands, the events they raise, and the rules that guard every change. In CQRS terms this IS the write model: one guarded write path per record (the read models are its many projections). Between aggregates: identity references and events. Between contexts: contracts.</div>
           </div>
           {aggregates.length
             ? <div className="agu-list">{aggregates.map(a => <AggregateUnit a={a} key={a.id} />)}</div>
@@ -1195,7 +1195,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         <div className="asc-section ddd-sec">
           <div className="asc-sec-head">
             <div className="asc-sec-title"><DDPico d={DDI.doc} w={14} /> Read models — what the decisions read</div>
-            <div className="asc-sec-sub">The prepared views this box maintains so every decision reads ready data, never another box&apos;s internals — and who is allowed to read each.</div>
+            <div className="asc-sec-sub">The prepared views this box maintains so every decision reads ready data, never another box&apos;s internals — and who is allowed to read each. Every view is a projection built from the write model&apos;s events (the aggregate); nothing ever writes through a view.</div>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table className="ddd-lc-table">
