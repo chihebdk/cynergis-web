@@ -398,6 +398,10 @@ function AggregateUnit({ a }) {
       ))}
     </div>
   );
+  /* D-182 polish: shape and rules each get their own tab — a record with no
+     authored shape (the old walls) skips the tab row and shows rules alone */
+  const hasShape = tables.length > 0;
+  const [view, setView] = React.useState('shape');
   return (
     <div className="agu">
       <div className="agu-h">
@@ -409,24 +413,35 @@ function AggregateUnit({ a }) {
       </div>
       {agg && <div className="agu-about">{agg.description}</div>}
 
-      <div className="agu-sec">state shape <span className="agu-sec-sub">unmarked fields are values · this shape is the logical schema</span></div>
-      {root && <Tbl t={root} tag="root entity" />}
-      {owned.map(t => <Tbl t={t} key={t.name} tag="owned · child entity" />)}
-      {refs.length > 0 && (
-        <div className="agu-refs"><DDPico d={DDI.arrow} w={11} /> <b>References by identity</b> — {refs.map((r, i) => (
-          <span key={i}>{i > 0 && ' · '}<code>{r.table}.{r.name}</code> → {r.refTo}</span>
-        ))} — carried by events, never joined.</div>
+      {hasShape && (
+        <div className="ddd-tabs ddd-subtabs agu-tabs">
+          <button type="button" className={'ddd-tab' + (view === 'shape' ? ' on' : '')} onClick={() => setView('shape')}>State shape</button>
+          <button type="button" className={'ddd-tab' + (view === 'rules' ? ' on' : '')} onClick={() => setView('rules')}>Rules &amp; behavior</button>
+        </div>
       )}
 
-      <div className="agu-sec">rules & behavior</div>
-      <div className="dm-row"><span className="dm-k inv"><DDPico d={DDI.shield} w={11} /> invariants</span>
-        <ul className="dm-invs">{a.invariants.map((iv, i) => (
-          <li key={i}>{iv.text} {iv.fr ? <DDRef id={iv.fr} /> : <span className="coa-rule-gap">no requirement captured</span>}</li>
-        ))}</ul></div>
-      <div className="dm-row"><span className="dm-k command"><DDPico d={DDI.command} w={11} /> in</span>
-        <span className="dm-chips">{a.commands.map(x => <span key={x} className="dm-chip command">{x}</span>)}</span></div>
-      <div className="dm-row"><span className="dm-k event"><DDPico d={DDI.event} w={11} /> out</span>
-        <span className="dm-chips">{a.events.map(x => <span key={x} className="dm-chip event">{x}</span>)}</span></div>
+      {hasShape && view === 'shape' && (<>
+        <div className="agu-sec-sub agu-shape-note">unmarked fields are values · this shape is the logical schema — the physical store is each box&apos;s Build decision</div>
+        {root && <Tbl t={root} tag="root entity" />}
+        {owned.map(t => <Tbl t={t} key={t.name} tag="owned · child entity" />)}
+        {refs.length > 0 && (
+          <div className="agu-refs"><DDPico d={DDI.arrow} w={11} /> <b>References by identity</b> — {refs.map((r, i) => (
+            <span key={i}>{i > 0 && ' · '}<code>{r.table}.{r.name}</code> → {r.refTo}</span>
+          ))} — carried by events, never joined.</div>
+        )}
+      </>)}
+
+      {(!hasShape || view === 'rules') && (<>
+        {!hasShape && <div className="agu-sec">rules & behavior</div>}
+        <div className="dm-row"><span className="dm-k inv"><DDPico d={DDI.shield} w={11} /> invariants</span>
+          <ul className="dm-invs">{a.invariants.map((iv, i) => (
+            <li key={i}>{iv.text} {iv.fr ? <DDRef id={iv.fr} /> : <span className="coa-rule-gap">no requirement captured</span>}</li>
+          ))}</ul></div>
+        <div className="dm-row"><span className="dm-k command"><DDPico d={DDI.command} w={11} /> in</span>
+          <span className="dm-chips">{a.commands.map(x => <span key={x} className="dm-chip command">{x}</span>)}</span></div>
+        <div className="dm-row"><span className="dm-k event"><DDPico d={DDI.event} w={11} /> out</span>
+          <span className="dm-chips">{a.events.map(x => <span key={x} className="dm-chip event">{x}</span>)}</span></div>
+      </>)}
     </div>
   );
 }

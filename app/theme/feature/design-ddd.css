@@ -455,3 +455,7 @@
 /* D-180 polish: section titles never squeeze into vertical word-stacks —
    the (long) sub wraps instead */
 .ddd-sec .asc-sec-title { flex-shrink: 0; }
+
+/* D-182 polish: shape | rules tabs inside the aggregate card */
+.agu-tabs { margin: 4px 0 14px; }
+.agu-shape-note { margin-bottom: 10px; font-size: 11.5px; color: var(--ink-3, #6b7280); }
