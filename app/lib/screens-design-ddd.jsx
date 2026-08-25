@@ -723,10 +723,10 @@ function LifecycleSurface({ c, navTab }) {
     ? (ids || []).map(g => <DDRef id={g} key={g} />)
     : <span className="ddd-lc-unmined" title="No captured requirement behind this yet — asserted while designing">⚠</span>;
   const VIEWS = [
-    { key: 'story', label: 'The story' },
-    { key: 'moves', label: 'The moves' },
-    { key: 'never', label: 'Never rules' },
-    ...(nDisc ? [{ key: 'disc', label: `⚠ To Discover · ${nDisc}` }] : []),
+    { key: 'story', label: 'State machine' },
+    { key: 'moves', label: 'Transitions' },
+    { key: 'never', label: 'Transition rules' },
+    ...(nDisc ? [{ key: 'disc', label: `⚠ Gaps with Discovery · ${nDisc}` }] : []),
   ];
   return (<>
     <div className="ddd-tabs ddd-subtabs">
