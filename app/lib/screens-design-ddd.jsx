@@ -227,23 +227,25 @@ function OpsAgentCard({ c }) {
 
       <p className="coa-intro">{o.charter}</p>
 
-      <div className="coa-block">
-        <div className="coa-blk-h">Skills, as designed <span className="coa-blk-sub">the trust tier is the intent — earned and governed once deployed · shared skills are carried by both agents</span></div>
-        <div className="coa-opskills">
-          {o.skills.map((sk, i) => (
-            <div className={'coa-opskill' + (sk.planned ? ' planned' : '')} key={i}>
-              <span className={'agb-tier ' + sk.tier.toLowerCase()}>{sk.tier}</span>
-              <span className="coa-opskill-nm">{sk.name}</span>
-              {sk.shared && <span className="coa-shared" title="Shared with the domain agent">shared</span>}
-              {sk.planned && <span className="coa-shared planned">planned</span>}
-            </div>
-          ))}
+      {(o.skills || []).length > 0 && (
+        <div className="coa-block">
+          <div className="coa-blk-h">Skills, as designed <span className="coa-blk-sub">the trust tier is the intent — earned and governed once deployed · shared skills are carried by both agents</span></div>
+          <div className="coa-opskills">
+            {o.skills.map((sk, i) => (
+              <div className={'coa-opskill' + (sk.planned ? ' planned' : '')} key={i}>
+                <span className={'agb-tier ' + (sk.tier || '').toLowerCase()}>{sk.tier}</span>
+                <span className="coa-opskill-nm">{sk.name}</span>
+                {sk.shared && <span className="coa-shared" title="Shared with the domain agent">shared</span>}
+                {sk.planned && <span className="coa-shared planned">planned</span>}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="coa-block">
         <div className="coa-blk-h">Permission boundary</div>
-        <ul className="coa-rules">{o.permissions.map((p, i) => <li key={i}>{p}</li>)}</ul>
+        <ul className="coa-rules">{(o.permissions || []).map((p, i) => <li key={i}>{p}</li>)}</ul>
       </div>
 
       <div className="coa-install-note">

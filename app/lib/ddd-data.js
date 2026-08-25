@@ -336,6 +336,12 @@ window.__DDD__ = {
           },
           opsAgent: {
             name: 'Notice-of-loss Operator', asBuilt: 'AGT-FNOL-OPS',
+            skills: [
+              { ref: 'SKL-SHARED-kg-answers', name: 'Answer subdomain questions, grounded in the KG', tier: 'Autonomous', shared: true },
+              { ref: 'SKL-INTAKE-merge', name: 'Match & merge a multi-channel report', tier: 'Supervised' },
+              { ref: 'SKL-INTAKE-lane', name: 'Set severity & suggest the lane', tier: 'Autonomous' },
+              { ref: 'SKL-INTAKE-chase', name: 'Chase an incomplete report', tier: 'Suggest', planned: true },
+            ],
             charter: 'Deployed at Operate (APR-2): sets initial severity and lane without per-file confirmation; adjusters audit a 10% sample.',
             permissions: ['Role-scoped production MCP — acts + observes only', 'No repository or code access', 'Governance acts stay human (D-056)'],
           } },
@@ -377,6 +383,13 @@ window.__DDD__ = {
           },
           opsAgent: {
             name: 'Coverage Operator', asBuilt: 'AGT-CLM-OPS',
+            skills: [
+              { ref: 'SKL-SHARED-kg-answers', name: 'Answer subdomain questions, grounded in the KG', tier: 'Autonomous', shared: true },
+              { ref: 'SKL-ADJ-reserve', name: 'Suggest a reserve, drivers shown', tier: 'Suggest' },
+              { ref: 'SKL-ADJ-authority', name: 'Flag an authority breach before it happens', tier: 'Autonomous' },
+              { ref: 'SKL-ADJ-payprep', name: 'Prepare a payment instruction (never issue)', tier: 'Supervised' },
+              { ref: 'SKL-ADJ-closure', name: 'Run the closure checklist & report the reds', tier: 'Suggest', planned: true },
+            ],
             charter: 'Deployed at Assist: suggests reserves with drivers shown, flags authority breaches before they happen, prepares payment instructions — the adjuster decides.',
             permissions: ['Role-scoped production MCP — acts + observes only', 'Prepares payment instructions, never issues them', 'Governance acts stay human (D-056)'],
           } },
@@ -415,7 +428,12 @@ window.__DDD__ = {
             guardrails: ['Treatment plan decisions are human — SABS adjudication is never delegated', 'Clock escalations cannot be muted', 'No production access'],
           },
           opsAgent: {
-            name: 'AB Clock Operator', asBuilt: 'AGT-AB-OPS',
+            name: 'AB Clock Operator',
+            skills: [
+              { ref: 'SKL-SHARED-kg-answers', name: 'Answer subdomain questions, grounded in the KG', tier: 'Autonomous', shared: true },
+              { ref: 'SKL-AB-clock', name: 'Watch the SABS clocks & escalate at 80%', tier: 'Autonomous' },
+              { ref: 'SKL-AB-ocf', name: 'Pre-fill an OCF decision for review', tier: 'Suggest' },
+            ], asBuilt: 'AGT-AB-OPS',
             charter: 'Deployed at Operate: watches every adjournment clock, escalates at 80%, classifies OCF intake, prepares payments on approved plans.',
             permissions: ['Role-scoped production MCP — acts + observes only', 'Clock escalations cannot be muted', 'Governance acts stay human (D-056)'],
           } },
@@ -452,7 +470,12 @@ window.__DDD__ = {
             guardrails: ['Settlement offers are human', 'No production access'],
           },
           opsAgent: {
-            name: 'Total-loss Operator', asBuilt: 'AGT-TL-OPS',
+            name: 'Total-loss Operator',
+            skills: [
+              { ref: 'SKL-SHARED-kg-answers', name: 'Answer subdomain questions, grounded in the KG', tier: 'Autonomous', shared: true },
+              { ref: 'SKL-TL-comps', name: 'Assemble valuation comparables', tier: 'Autonomous' },
+              { ref: 'SKL-TL-offer', name: 'Draft the settlement offer', tier: 'Supervised' },
+            ], asBuilt: 'AGT-TL-OPS',
             charter: 'Deployed at Suggest: compares valuations against comparables with evidence attached — humans settle.',
             permissions: ['Role-scoped production MCP — observes + suggest-level acts', 'Governance acts stay human (D-056)'],
           } },
