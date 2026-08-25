@@ -1388,12 +1388,12 @@ const BC_MENU = [
     { key: 'contracts',  label: 'Contracts',           ico: 'doc' },
     { key: 'lang',       label: 'Ubiquitous language', ico: 'ctx' },
   ] },
-  { group: 'Build handoff', items: [
-    { key: 'capabilities', label: 'Capabilities',      ico: 'cap' },
-  ] },
   { group: 'Team & knowledge', items: [
     { key: 'agent',      label: 'Agents',              ico: 'owner' },
     { key: 'kg',         label: 'Knowledge graph',     ico: 'bulb' },
+  ] },
+  { group: 'Build handoff', items: [
+    { key: 'capabilities', label: 'Capabilities',      ico: 'cap' },
   ] },
 ];
 
