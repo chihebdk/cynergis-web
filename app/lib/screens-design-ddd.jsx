@@ -5,6 +5,8 @@ import './ddd-data';
 import './domain-model-data';
 import { seedFlows } from '../flow/data';
 import { claimsFlows } from '../flow/claims-flows';
+import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
+import { HOME_NAMES } from '../flow/journeys';
 import { kgContracts } from './kg-query';
 import { componentById, componentsForBC, deriveArch } from '../flow/arch';
 const { Ref: DDRef } = window;
@@ -291,7 +293,13 @@ const domainData = product => (window.__DOMAIN__ && window.__DOMAIN__.byProduct[
    that executes the THEN) is the crosses target, or the flow's own context when
    the reaction stays inside. Consumed by the bounded context's
    Policies tab and the knowledge pack. */
-const derivedPolicies = () => [...seedFlows, ...claimsFlows].flatMap(f =>
+/* `crosses` in the design storms names the context in display language
+   ("Claim adjudication"); resolve it back to the id so ownership filters
+   work. Ids pass through; unresolvable strings (externals like "Portals /
+   disputes") stay as-is — they read fine and match no wall. */
+const CTX_BY_NAME = Object.fromEntries(Object.entries(HOME_NAMES).map(([id, nm]) => [nm, id]));
+const resolveCtx = v => (!v || /^(CTX|BC)-/.test(v)) ? v : (CTX_BY_NAME[v] || v);
+const derivedPolicies = () => [...seedFlows, ...claimsFlows, ...CLAIMS_DESIGN_STORMS].flatMap(f =>
   f.nodes.flatMap(n => (n.policies || []).map((p, i) => {
     const [whenRaw, then] = (p.label || '').split('→').map(s => s.trim());
     return {
@@ -302,7 +310,7 @@ const derivedPolicies = () => [...seedFlows, ...claimsFlows].flatMap(f =>
       grounds: p.grounds || [],
       event: n.summary,
       from: f.contextId,
-      owner: p.crosses || f.contextId,
+      owner: resolveCtx(p.crosses) || f.contextId,
     };
   })));
 
@@ -643,6 +651,9 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
   const policies = derivedPolicies().filter(p => p.owner === c.id);   // the reactions this context owns (derived from the flows)
   const reals = D.realizations.filter(r => r.context === c.id);
   const ucTitle = id => { const u = (prd.usecases || []).find(x => x.id === id); return u ? u.title : id; };
+  // D-176: the build surface projects from the design storm — triggers and read
+  // models exist only where a storm exists; nothing here is authored twice.
+  const dStorm = CLAIMS_DESIGN_STORMS.find(m => m.contextId === c.id);
   // BC-level tabs mirror the event-card panel's ownership levels (D-037): the
   // read-only Aggregate / Contracts cards on events point HERE as the edit home.
   const TABS = [
@@ -650,7 +661,9 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
     { key: 'agent',        label: 'Agents' },
     { key: 'kg',           label: 'Knowledge graph' },
     { key: 'aggregates',   label: 'Aggregates' },
-    { key: 'policies',     label: 'Policies' },
+    ...(dStorm ? [{ key: 'triggers', label: 'Triggers' }] : []),
+    { key: 'policies',     label: 'Policies & reactions' },
+    ...(dStorm ? [{ key: 'readmodels', label: 'Read models' }] : []),
     { key: 'capabilities', label: 'Capabilities' },
     { key: 'contracts',    label: 'Contracts' },
     { key: 'lang',         label: 'Ubiquitous Language' },
@@ -711,6 +724,50 @@ function BcTabs({ c, D, M, prd, tab, navTab }) {
             : <div className="ddd-empty-inline">No domain state of its own — a pure reaction (generic). Nothing to model here.</div>}
         </div>
       )}
+
+      {tab === 'triggers' && dStorm && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Triggers — the doors into this context</div>
+            <div className="asc-sec-sub">Every way this context&apos;s actions start — the calling code&apos;s boundary relationship · mechanism · who calls · the contract ident. The full specification lives on the event card, on the wall.</div>
+          </div>
+          {dStorm.nodes.filter(n => (n.triggers || []).length).map(n => (
+            <div className="ddd-trig-group" key={n.id}>
+              <div className="ddd-trig-ev"><span className="dm-chip event">{n.summary}</span></div>
+              {n.triggers.map((t, i) => (
+                <div className="ddd-trig-row" key={i}>
+                  <span className={'ddd-trig-kind k-' + (t.kind || '').split(' ')[0]}>{t.kind}</span>
+                  <span className="ddd-trig-type">{t.type}</span>
+                  <span className="ddd-trig-src">{(t.sources || []).join(' · ')}</span>
+                  <code className="ddd-trig-ident">{(t.impl && (t.impl.endpoint || t.impl.topic || t.impl.schedule)) || '—'}</code>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'readmodels' && dStorm && (() => {
+        const rows = dStorm.nodes.flatMap(n => (n.readModels || []).map(r => ({ ...r, event: n.summary })));
+        return (
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> Read models — what the decisions read</div>
+              <div className="asc-sec-sub">The views this context maintains so each decision reads prepared data, never another context&apos;s internals. Each names the moment it serves.</div>
+            </div>
+            {rows.length
+              ? <div className="ddd-langdef">
+                  {rows.map((r, i) => (
+                    <div className="ddd-langdef-row" key={i}>
+                      <span className="ddd-langdef-term">{r.label}</span>
+                      <span className="ddd-langdef-def">{r.desc} <span className="dm-pol-src">serves &ldquo;{r.event}&rdquo;</span></span>
+                    </div>
+                  ))}
+                </div>
+              : <div className="ddd-empty-inline">No read models yet — no decision in this storm needs a prepared view.</div>}
+          </div>
+        );
+      })()}
 
       {tab === 'policies' && (() => {
         const all = derivedPolicies();
