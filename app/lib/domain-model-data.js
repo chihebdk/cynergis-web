@@ -86,6 +86,55 @@ window.__DOMAIN__ = {
         },
         {
           id: 'AGG-CLAIM', name: 'Claim file', context: 'CTX-ADJUD', ucs: ['UC3', 'UC4', 'UC6', 'UC8'],
+          /* D-182: the STATE SHAPE — the logical model, in business language.
+             No store is named on purpose: the physical schema (tables, indexes,
+             document vs rows vs event stream) is each box's private Build
+             decision, derived from this shape + packaging + NFRs. */
+          shape: {
+            description: 'One file, changed as a unit: the stage pointer, an immutable decision history, typed holds, reserves per line, and append-only credits. Everything another context needs travels as events by claim number — never as a join.',
+            tables: [
+              { name: 'claim_file', purpose: 'the root — one row per claim', columns: [
+                { name: 'claim_number', role: 'id', type: 'string', desc: 'Assigned at registration; the identity everywhere — events, ledger, portals.' },
+                { name: 'stage', type: 'enum', desc: 'The state machine\u2019s pointer — one of the seven lifecycle stages.' },
+                { name: 'notice_date', type: 'date', desc: 'The statutory notice date — recorded, not inferred.' },
+                { name: 'date_of_loss', type: 'date', desc: 'Anchors the coverage snapshot and every time-versioned rule.' },
+                { name: 'loss_report', role: 'ref', refTo: 'Loss report (Intake & registration)', type: 'string', desc: 'The registered report this file was opened from.' },
+                { name: 'fault_pct', type: 'pct', desc: 'The determined fault share under the applicable rules.' },
+                { name: 'settlement_amount', type: 'money', desc: 'The calculated amount payable — deductible and limits applied.' },
+                { name: 'estimate_of_record', role: 'ref', refTo: 'Repair case (Repair & estimate)', type: 'string', desc: 'The verified estimate the settlement stands on.' },
+                { name: 'payment_instruction', role: 'ref', refTo: 'Payment ledger (Claim payments)', type: 'string', desc: 'Instructed-not-yet-settled until the outcome event returns.' },
+              ] },
+              { name: 'coverage_snapshot', owned: true, purpose: 'the mainframe extract as at date of loss — stored locally, read-only', columns: [
+                { name: 'snapshot_id', role: 'id', type: 'string', desc: 'Keyed to policy and date of loss.' },
+                { name: 'policy_number', type: 'string', desc: 'The policy as the mainframe knew it — never re-fetched live.' },
+                { name: 'in_force', type: 'yes/no', desc: 'Whether the policy responds at the date of loss.' },
+                { name: 'lines_and_limits', type: 'list', desc: 'Coverage lines with limits, deductibles and endorsement effects (OPCF 47R).' },
+              ] },
+              { name: 'decision_version', owned: true, purpose: 'append-only — a new version supersedes, never edits (the reopen rail)', columns: [
+                { name: 'version_no', role: 'id', type: 'number', desc: 'Monotonic; the highest version is the effective decision.' },
+                { name: 'kind', type: 'enum', desc: 'coverage \u00b7 denial \u00b7 settlement \u00b7 reopen.' },
+                { name: 'outcome_and_reasons', type: 'text', desc: 'A denial never leaves without its reasons.' },
+                { name: 'decided_by_at', type: 'who/when', desc: 'The deciding authority and moment, on the record.' },
+              ] },
+              { name: 'hold', owned: true, purpose: 'the pause flags — typed by origin; only the owner releases', columns: [
+                { name: 'hold_id', role: 'id', type: 'string', desc: 'One row per hold, ever placed.' },
+                { name: 'origin', type: 'enum', desc: 'fraud & SIU \u00b7 disputes — the owner who alone releases it.' },
+                { name: 'placed_by_at', type: 'who/when', desc: 'Who said stop, and when.' },
+                { name: 'released_at', type: 'date', desc: 'Empty = open — and open gates authorization and closure.' },
+              ] },
+              { name: 'reserve_line', owned: true, purpose: 'reserves per coverage line — every move evented for actuarial reads', columns: [
+                { name: 'coverage_line', role: 'id', type: 'string', desc: 'The line this reserve stands against.' },
+                { name: 'amount', type: 'money', desc: 'The current reserve; history lives in the events.' },
+                { name: 'moved_by_at', type: 'who/when', desc: 'Every move has an author and a moment.' },
+              ] },
+              { name: 'credit', owned: true, purpose: 'money back after close — append-only; the closed file is never edited', columns: [
+                { name: 'credit_id', role: 'id', type: 'string', desc: 'One row per credit received.' },
+                { name: 'source', type: 'enum', desc: 'salvage \u00b7 recovery.' },
+                { name: 'amount', type: 'money', desc: 'The amount credited against the claim.' },
+                { name: 'ledger_entry', role: 'ref', refTo: 'Payment ledger (Claim payments)', type: 'string', desc: 'The ledger entry that carried the money in.' },
+              ] },
+            ],
+          },
           commands: ['Create the claim file', 'Verify policy & coverage from the snapshot', 'Establish & move reserves', 'Determine fault', 'Calculate the settlement', 'Authorize payment', 'Apply & release holds', 'Close the file', 'Reopen with a new decision version', 'Apply post-close credits'],
           events: ['Claim opened', 'Policy verified', 'Coverage confirmed', 'Claim denied', 'Reserve established', 'Fault determined', 'Settlement calculated', 'Payment authorized', 'Claim closed', 'Claim reopened', 'Credit accepted after close', 'Hold applied'],
           invariants: [

@@ -372,9 +372,11 @@ function buildKnowledgePack(c, D, M, prd) {
 function AggregateUnit({ a }) {
   const A = (typeof window !== 'undefined' && window.__ARCH__) || {};
   const ref = a.archRef || {};
-  const agg = ref.component ? (componentById(ref.component) || {}).aggregate
+  // D-182: the state shape can be authored directly on the seed (a.shape) —
+  // the claims records do this; the fraud ones still join via archRef.
+  const agg = a.shape || (ref.component ? (componentById(ref.component) || {}).aggregate
     : ref.domain ? ((A.domains || []).find(d => d.id === ref.domain) || {}).aggregate
-    : null;
+    : null);
   const tables = (agg && agg.tables) || [];
   const root = tables.find(t => !t.owned) || tables[0];
   const owned = tables.filter(t => t.owned);
