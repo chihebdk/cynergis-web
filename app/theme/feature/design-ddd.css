@@ -464,3 +464,12 @@
 .ddd-pol-mode { font: 650 10.5px var(--font-sans, ui-sans-serif); text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 .ddd-pol-mode.automated { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }
 .ddd-pol-mode.manual { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; }
+
+/* D-184: the build packet's new surfaces */
+.ddd-scn-kind { font: 650 10.5px var(--font-sans, ui-sans-serif); text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.ddd-scn-kind.move { color: #3730a3; background: #eef2ff; border: 1px solid #c7d2fe; }
+.ddd-scn-kind.refusal { color: #991b1b; background: #fef2f2; border: 1px solid #fca5a5; }
+.ddd-ct-dir { font: 650 10.5px var(--font-sans, ui-sans-serif); text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.ddd-ct-dir.in { color: #3730a3; background: #eef2ff; border: 1px solid #c7d2fe; }
+.ddd-ct-dir.out { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.ddd-ct-lines { display: grid; gap: 5px; margin-top: 10px; }

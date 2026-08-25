@@ -9,6 +9,7 @@ import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds } from '../flow/cla
 import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
+import { BC_PACKET } from '../flow/claims-bc-packet';
 import { kgContracts } from './kg-query';
 import { componentById, componentsForBC, deriveArch } from '../flow/arch';
 const { Ref: DDRef } = window;
@@ -877,6 +878,10 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
   // D-177: the Lifecycle tab exists only where the record's story is written —
   // the tab's presence tells you the work exists (no empty tabs).
   const LC = CLAIMS_LIFECYCLES[c.id];
+  const PK = BC_PACKET[c.id];   // D-184: the box's build packet (scenarios, contracts, levels…)
+  const GRefs = ({ ids }) => (ids || []).length
+    ? (ids || []).map(g => <DDRef id={g} key={g} />)
+    : <span className="ddd-lc-unmined" title="No captured requirement behind this yet — asserted while designing">⚠</span>;
   const TABS = [
     { key: 'flow',         label: 'Event flow' },
     { key: 'agent',        label: 'Agents' },
@@ -1009,6 +1014,164 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         </>);
       })()}
 
+      {tab === 'scenarios' && PK && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.test} w={14} /> Scenarios — what &ldquo;done&rdquo; means</div>
+            <div className="asc-sec-sub">One row per transition and one per refusal — the acceptance layer. A builder (human or agent) is finished when every row passes and no row can be made to fail.</div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>Given</th><th>When</th><th>Then</th><th>Kind</th><th>Grounded in</th></tr></thead>
+              <tbody>
+                {PK.scenarios.map((sc, i) => (
+                  <tr key={i}>
+                    <td>{sc.given}</td>
+                    <td>{sc.when}</td>
+                    <td>{sc.then}</td>
+                    <td><span className={'ddd-scn-kind ' + sc.kind}>{sc.kind}</span></td>
+                    <td className="ddd-lc-gr"><GRefs ids={sc.grounds} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'readmodels' && PK && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.doc} w={14} /> Read models — what the decisions read</div>
+            <div className="asc-sec-sub">The prepared views this box maintains so every decision reads ready data, never another box&apos;s internals — and who is allowed to read each.</div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>View</th><th>Serves</th><th>Read by</th><th>What it is</th></tr></thead>
+              <tbody>
+                {PK.readModels.map((r, i) => (
+                  <tr key={i}><td><b>{r.name}</b></td><td>{r.serves}</td><td>{r.readers}</td><td>{r.desc}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'slevels' && PK && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.shield} w={14} /> Service levels — the box&apos;s obligations</div>
+            <div className="asc-sec-sub">What this box promises about time and completeness, in its own language. A builder meets these here, not in a separate document.</div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>Obligation</th><th>Level</th><th>Why it matters</th><th>Grounded in</th></tr></thead>
+              <tbody>
+                {PK.serviceLevels.map((s, i) => (
+                  <tr key={i}><td><b>{s.obligation}</b></td><td>{s.level}</td><td>{s.why}</td><td className="ddd-lc-gr"><GRefs ids={s.grounds} /></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'security' && PK && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Security &amp; access — who may do what</div>
+            <div className="asc-sec-sub">The box&apos;s access register, in its own vocabulary — roles, their limits, and what the data itself demands.</div>
+          </div>
+          {PK.security.map((s, i) => (
+            <div className="ddd-lc-never" key={i}><b>{s.who}</b><span>{s.may} <GRefs ids={s.grounds} /></span></div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'howbuilt' && PK && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> How it&apos;s built — the packaging record</div>
+            <div className="asc-sec-sub">The runtime decisions a builder needs before starting. Design proposes; Build confirms — the walls never move either way.</div>
+          </div>
+          <div className="ddd-superseded-banner" style={{ borderColor: '#fde68a', background: '#fffbeb', color: '#78350f' }}>
+            {PK.howBuilt.status}
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>Aspect</th><th>Choice</th><th>Why</th></tr></thead>
+              <tbody>
+                {PK.howBuilt.decisions.map((d, i) => (
+                  <tr key={i}><td><b>{d.aspect}</b></td><td>{d.choice}</td><td>{d.why}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'ownership' && PK && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.owner} w={14} /> Ownership — the human side of the box</div>
+            <div className="asc-sec-sub">One team, one box: the language stays whole because the team does. Names join from the org page as Build staffs up.</div>
+          </div>
+          {PK.ownership.map((o, i) => (
+            <div className="ddd-lc-never" key={i}><b>{o.role}</b><span><b>{o.who}</b> — {o.note}</span></div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'measures' && PK && (
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.bulb} w={14} /> Measures — the numbers this box owns</div>
+            <div className="asc-sec-sub">Every box that owns a record owns the business numbers about it. Targets follow a baseline; the definitions are set now so the events carry what the numbers need.</div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>Measure</th><th>Definition</th><th>Target</th><th>Grounded in</th></tr></thead>
+              <tbody>
+                {PK.measures.map((m, i) => (
+                  <tr key={i}><td><b>{m.measure}</b></td><td>{m.def}</td><td>{m.target}</td><td className="ddd-lc-gr"><GRefs ids={m.grounds} /></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'openitems' && PK && (() => {
+        const G = lifecycleGrounds(c.id);
+        const seen = new Set();
+        const lcOpen = LC ? LC.moves.filter(m => { if ((G[m.event] || []).length || seen.has(m.event)) return false; seen.add(m.event); return true; }).length + LC.never.filter(n => !(n.grounds || []).length).length : 0;
+        const polOpen = (CONTEXT_POLICIES[c.id] || []).filter(p => !(p.grounds || []).length).length;
+        const invOpen = aggregates.flatMap(x => (x.invariants || []).filter(iv => !iv.fr)).length;
+        const groups = [
+          lcOpen && { n: lcOpen, what: 'transitions & transition rules without a captured requirement', go: 'lifecycle', label: 'Lifecycle' },
+          polOpen && { n: polOpen, what: 'policies without a captured requirement', go: 'policies', label: 'Policies' },
+          invOpen && { n: invOpen, what: 'invariants without a captured requirement', go: 'aggregates', label: 'Aggregates' },
+        ].filter(Boolean);
+        return (
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">⚠ Open items — what&apos;s unresolved in this box</div>
+              <div className="asc-sec-sub">The box&apos;s honesty roll-up: known wall gaps, and every ⚠ from the other pages in one place. Empty would mean ready; it isn&apos;t, and it says so.</div>
+            </div>
+            {PK.knownGaps.map((g, i) => (
+              <div className="ddd-lc-never disc" key={'k' + i}><b>{g.text}</b><span>lives in: {g.where}</span></div>
+            ))}
+            {groups.map((g, i) => (
+              <div className="ddd-lc-never disc" key={'g' + i}>
+                <b>{g.n} {g.what}</b>
+                <span>take back to Discover, or accept as design-discovered — <button type="button" className="ddd-crumb-link" onClick={() => navTab(g.go)}>open {g.label} →</button></span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {tab === 'capabilities' && (
         <div className="asc-section ddd-sec">
           <div className="asc-sec-head">
@@ -1039,6 +1202,41 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         const partyName = id => (componentById(id) || {}).name
           || ((A.integrations || []).find(i => i.id === id) || {}).system || id;
         return (<>
+          {PK && PK.contracts && (
+            <div className="asc-section ddd-sec">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title"><DDPico d={DDI.doc} w={14} /> The border agreements — {PK.contracts.length} contracts</div>
+                <div className="asc-sec-sub">Everything both sides must agree on, and nothing either side can decide alone: parties &amp; pattern · the payload, field by field · the promises around it · how it may change · its obligations. What either box does with a message stays its own business.</div>
+              </div>
+              {PK.contracts.map(k => (
+                <div className="agu" key={k.name}>
+                  <div className="agu-h">
+                    <span className="dm-agg-ico"><DDPico d={DDI.doc} w={15} /></span>
+                    <span className="agu-nm">{k.name}</span>
+                    <span className="agu-aid">{k.version}</span>
+                    <span className={'ddd-ct-dir ' + k.dir}>{k.dir === 'in' ? '→ in' : 'out →'}</span>
+                    <span className="agu-store">{k.dir === 'in' ? 'from' : 'to'} {k.withWhom}</span>
+                  </div>
+                  <div className="agu-about">{k.pattern}</div>
+                  <div className="agu-tbl">
+                    <div className="agu-tbl-h">payload<span className="agu-tbl-tag">what crosses</span><span className="agu-tbl-p">— and nothing more</span></div>
+                    {k.fields.map(f => (
+                      <div className="agu-row" key={f.name}>
+                        <span className="agu-f">{f.name}</span>
+                        <span className="agu-ty">{f.type}</span>
+                        <span className="agu-d">{f.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="ddd-ct-lines">
+                    <div className="ddd-lc-def"><b>Promises</b> — {k.promises}</div>
+                    <div className="ddd-lc-def"><b>Change policy</b> — {k.change}</div>
+                    <div className="ddd-lc-def"><b>Obligations</b> — {k.obligations} {(k.grounds || []).map(g => <DDRef id={g} key={g} />)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {rels.length > 0 && (
             <div className="asc-section ddd-sec">
               <div className="asc-sec-head">
@@ -1416,19 +1614,27 @@ const BC_MENU = [
   { group: 'Model', items: [
     { key: 'flow',       label: 'Event flow',          ico: 'flow' },
     { key: 'lifecycle',  label: 'Lifecycle',           ico: 'event', needsLC: true },
+    { key: 'scenarios',  label: 'Scenarios',           ico: 'test',  needsPk: true },
     { key: 'aggregates', label: 'Aggregates',          ico: 'agg' },
+    { key: 'readmodels', label: 'Read models',         ico: 'doc',   needsPk: true },
   ] },
   { group: 'Rules & handoffs', items: [
     { key: 'policies',   label: 'Policies',            ico: 'policy' },
     { key: 'contracts',  label: 'Contracts',           ico: 'doc' },
+    { key: 'slevels',    label: 'Service levels',      ico: 'shield', needsPk: true },
+    { key: 'security',   label: 'Security & access',   ico: 'policy', needsPk: true },
     { key: 'lang',       label: 'Ubiquitous language', ico: 'ctx' },
   ] },
   { group: 'Team & knowledge', items: [
     { key: 'agent',      label: 'Agents',              ico: 'owner' },
+    { key: 'ownership',  label: 'Ownership',           ico: 'owner', needsPk: true },
+    { key: 'measures',   label: 'Measures',            ico: 'bulb',  needsPk: true },
     { key: 'kg',         label: 'Knowledge graph',     ico: 'bulb' },
   ] },
   { group: 'Build handoff', items: [
+    { key: 'howbuilt',   label: "How it's built",      ico: 'cap',   needsPk: true },
     { key: 'capabilities', label: 'Capabilities',      ico: 'cap' },
+    { key: 'openitems',  label: 'Open items',          ico: 'test',  needsPk: true },
   ] },
 ];
 
@@ -1448,6 +1654,7 @@ function BcWorkspace({ product, prd, onBack }) {
   });
   if (!c) return null;
   const hasLC = !!CLAIMS_LIFECYCLES[c.id];
+  const hasPk = !!BC_PACKET[c.id];
   return (
     <div className="asc-body">
       <aside className="asc-rail bc-rail">
@@ -1459,7 +1666,7 @@ function BcWorkspace({ product, prd, onBack }) {
           <span className={'ddd-class ' + c.classification}>{c.classification}</span>
         </div>
         {BC_MENU.map(g => {
-          const items = g.items.filter(i => !i.needsLC || hasLC);
+          const items = g.items.filter(i => (!i.needsLC || hasLC) && (!i.needsPk || hasPk));
           if (!items.length) return null;
           return (
             <div className="env-railgroup" key={g.group}>
