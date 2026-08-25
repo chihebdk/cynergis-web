@@ -335,7 +335,7 @@ window.__PRD4__ = {
         postconditions:'One loss report exists with parties, vehicles and circumstances; the snapshot request is on its way.',
         mainFlow:['Guided intake captures circumstances, parties, vehicles.','Party resolution attaches canonical records.','The channel-merge rule lands the input on one report.','The snapshot request is keyed to the date of loss.'],
         acceptance:[
-          {title:'One loss event, one report', given:['a claimant reports a collision in the app'], when:['the police feed later references the same loss'], then:['both land on one loss report','no duplicate file exists']}
+          {id:'AT1', title:'One loss event, one report', given:['a claimant reports a collision in the app'], when:['the police feed later references the same loss'], then:['both land on one loss report','no duplicate file exists']}
         ]},
       {id:'UC2', driverRef:'VD1', title:'Take first notice by phone with model-assisted triage', journeyId:'J1', primaryActor:'P2', supportingActors:'Telephony platform (vendor), operations workforce management', frs:['FR2'],
         trigger:'A first-notice conversation completes on the recorded line.',
@@ -345,7 +345,7 @@ window.__PRD4__ = {
         postconditions:'The report carries a severity score and a lane; overrides are audited at a 10% sample.',
         mainFlow:['The intake adjuster completes the guided conversation.','The severity model scores the report and proposes a lane.','Lane rules route to desk, field, AB or fast-track.','An initial reserve suggestion attaches.'],
         acceptance:[
-          {title:'Injury indicators route to the AB lane', given:['a phoned-in first notice with injury indicators'], when:['intake completes the guided conversation'], then:['a severity score is attached','the file routes to the AB lane with an initial reserve suggestion']}
+          {id:'AT2', title:'Injury indicators route to the AB lane', given:['a phoned-in first notice with injury indicators'], when:['intake completes the guided conversation'], then:['a severity score is attached','the file routes to the AB lane with an initial reserve suggestion']}
         ]},
       {id:'UC3', driverRef:'VD2', title:'Open the claim against the coverage snapshot', journeyId:'J1', primaryActor:'P3', supportingActors:'Underwriting & Policy (CoverageSnapshot v3)', frs:['FR3'],
         trigger:'The completed loss report event arrives.',
@@ -356,7 +356,7 @@ window.__PRD4__ = {
         mainFlow:['The loss report event opens the claim.','Coverages engage from the stored snapshot.','Later policy changes never touch the open claim.'],
         workflow:'flowchart TD\n  A([loss.reported]) --> B[Open claim]\n  B --> C[Engage coverages from snapshot]\n  C --> D{Post-loss endorsement?}\n  D -- arrives later --> E([No effect on open claim])',
         acceptance:[
-          {title:'Temporal correctness holds', given:['a policy endorsed AFTER the date of loss'], when:['the claim opens'], then:['adjudication uses the snapshot as at date of loss','the later endorsement has no effect on coverage basis']}
+          {id:'AT3', title:'Temporal correctness holds', given:['a policy endorsed AFTER the date of loss'], when:['the claim opens'], then:['adjudication uses the snapshot as at date of loss','the later endorsement has no effect on coverage basis']}
         ]},
       {id:'UC4', driverRef:'VD2', title:'Decide coverage and set reserves', journeyId:'J1', primaryActor:'P3', supportingActors:'Fraud & SIU (holds), actuarial (reserve events)', frs:['FR4','FR5'],
         trigger:'Facts land on an open claim.',
@@ -366,7 +366,7 @@ window.__PRD4__ = {
         postconditions:'Coverage response recorded with limits, deductibles and endorsement effects; reserve events flow to actuarial.',
         mainFlow:['The agent suggests a reserve with its drivers shown.','The adjuster decides coverage — limits, deductibles, 47R election effects.','The reserve move is evented for actuarial consumption.','Authority is checked in-flow before any payment.'],
         acceptance:[
-          {title:'Election effects apply from the snapshot alone', given:['a snapshot carrying an OPCF 47R election and a $1,000 deductible'], when:['the desk adjuster records the coverage decision'], then:['limits, deductible and election effects are applied from the snapshot alone','the reserve move is evented for actuarial consumption']}
+          {id:'AT8', title:'Election effects apply from the snapshot alone', given:['a snapshot carrying an OPCF 47R election and a $1,000 deductible'], when:['the desk adjuster records the coverage decision'], then:['limits, deductible and election effects are applied from the snapshot alone','the reserve move is evented for actuarial consumption']}
         ]},
       {id:'UC5', driverRef:'VD4', title:'Adjudicate a treatment plan inside the SABS clock', journeyId:'J1', primaryActor:'P4', supportingActors:'HCAI (via the ACL), first-line risk seat', frs:['FR7','FR8'],
         trigger:'An OCF-18 arrives via the HCAI ACL.',
@@ -377,7 +377,7 @@ window.__PRD4__ = {
         mainFlow:['The OCF-18 is classified and queued from HCAI.','The clock ledger starts; the watch skill escalates at 80%.','The AB adjuster decides the plan — SABS adjudication is never delegated.','Payment authorizes only on the approved plan.'],
         workflow:'flowchart TD\n  A([OCF-18 via HCAI ACL]) --> B[Classify + queue]\n  B --> C[Clock ledger starts]\n  C --> D{80% of clock?}\n  D -- yes, undecided --> E([Escalate to queue head + risk seat])\n  D -- decided --> F([Timestamped decision])\n  F --> G[Authorize payment on approved plan]',
         acceptance:[
-          {title:'The clock guard escalates before a deemed approval', given:['an OCF-18 received via HCAI'], when:['the adjournment clock reaches 80% with no decision'], then:['the file escalates to the AB adjuster\u2019s queue head','the risk seat is notified before any deemed approval can occur']}
+          {id:'AT4', title:'The clock guard escalates before a deemed approval', given:['an OCF-18 received via HCAI'], when:['the adjournment clock reaches 80% with no decision'], then:['the file escalates to the AB adjuster\u2019s queue head','the risk seat is notified before any deemed approval can occur']}
         ]},
       {id:'UC6', driverRef:'VD1', title:'Issue an indemnity payment', journeyId:'J1', primaryActor:'P3', supportingActors:'Billing & Money Movement', frs:['FR6'],
         trigger:'An approved indemnity payment on the claim.',
@@ -387,7 +387,7 @@ window.__PRD4__ = {
         postconditions:'Billing acknowledged; the claim ledger is consistent with the money\u2019s true state.',
         mainFlow:['The instruction is built from the approved payment.','It publishes to Billing as PaymentInstruction v2.','The ledger holds instructed-not-yet-settled until the outcome event returns.'],
         acceptance:[
-          {title:'The ledger tracks the instruction lifecycle', given:['an approved indemnity payment'], when:['the instruction is published'], then:['Billing acknowledges the event','the claim ledger reflects instructed-not-yet-settled until the outcome event returns']}
+          {id:'AT5', title:'The ledger tracks the instruction lifecycle', given:['an approved indemnity payment'], when:['the instruction is published'], then:['Billing acknowledges the event','the claim ledger reflects instructed-not-yet-settled until the outcome event returns']}
         ]},
       {id:'UC7', driverRef:'VD1', title:'Settle a total loss and dispose of the salvage', journeyId:'J1', primaryActor:'P5', supportingActors:'Estimating & repair (threshold event), valuation vendors (ACL), Billing (payoffs)', frs:['FR9'],
         trigger:'Repair estimate revisions cross the total-loss threshold.',
@@ -397,7 +397,7 @@ window.__PRD4__ = {
         postconditions:'Owner settled, title branded, salvage proceeds credited against indemnity.',
         mainFlow:['The threshold-breach event hands the vehicle over.','ACV is determined from the valuation ACL, comparables attached.','The specialist settles with the owner; lienholders are paid off.','Brand is filed; salvage is disposed; proceeds credit the file.'],
         acceptance:[
-          {title:'The handoff carries the estimate of record', given:['repair estimate revisions crossing the total-loss threshold'], when:['the threshold-breach event fires'], then:['the vehicle moves to salvage disposition with the estimate of record attached','the repair job closes']}
+          {id:'AT7', title:'The handoff carries the estimate of record', given:['repair estimate revisions crossing the total-loss threshold'], when:['the threshold-breach event fires'], then:['the vehicle moves to salvage disposition with the estimate of record attached','the repair job closes']}
         ]},
       {id:'UC8', driverRef:'VD3', title:'Track my claim\u2019s status', journeyId:'J1', primaryActor:'P1', supportingActors:'Integration & API platform (event backbone)', frs:['FR10'],
         trigger:'Any module changes file state.',
@@ -407,7 +407,7 @@ window.__PRD4__ = {
         postconditions:'The claimant sees the change within the freshness SLO.',
         mainFlow:['A module changes file state.','The status projection updates.','The portal pane renders the change within its freshness SLO.'],
         acceptance:[
-          {title:'Status freshness holds', given:['an open claim'], when:['any module changes file state'], then:['a status event reaches the portal pane within its freshness SLO']}
+          {id:'AT6', title:'Status freshness holds', given:['an open claim'], when:['any module changes file state'], then:['a status event reaches the portal pane within its freshness SLO']}
         ]}
     ],
     specs:{

@@ -476,3 +476,13 @@
 
 /* D-188: the id chip — small, grey, selectable; if you can see it, you can cite it */
 .ddd-idchip { font-size: 10px; color: var(--ink-3, #9ca3af); letter-spacing: 0.01em; user-select: all; white-space: nowrap; }
+
+/* D-190: component tests as Gherkin blocks + the Discover AT chips */
+.ddd-gherkin { border: 1px solid var(--line); border-radius: var(--r-md, 8px); background: var(--panel); padding: 10px 14px; margin-bottom: 10px; }
+.ddd-gherkin.refusal { border-left: 3px solid #fca5a5; }
+.ddd-gherkin-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; font-size: 13px; }
+.ddd-gherkin-refs { margin-left: auto; display: flex; align-items: baseline; gap: 6px; }
+.ddd-gherkin-b { font: 12.5px/1.7 var(--font-mono, ui-monospace); color: var(--ink-2); }
+.ddd-gherkin-kw { font: 650 11px var(--font-mono, ui-monospace); color: #6d28d9; text-transform: none; margin-right: 4px; }
+.ddd-at-chip { font: 650 10.5px var(--font-mono, ui-monospace); color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.ddd-at-chip.only { color: var(--ink-3, #6b7280); background: var(--panel-2); border-color: var(--line); }

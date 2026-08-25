@@ -600,9 +600,11 @@ function contextGraph(c, D, M) {
       grounds(ct.id, ct.grounds);
     });
     PKd.scenarios.forEach(sc => {
-      addN(sc.id, 'scenario', `${sc.when} — ${sc.kind}`, 'SCN', { given: sc.given, when: sc.when, then: sc.then, kind: sc.kind });
+      addN(sc.id, 'scenario', sc.name || sc.when, 'CAT', { given: sc.given, when: sc.when, then: sc.then, kind: sc.kind });
       if (sc.transition) addE(sc.id, 'verifies', sc.transition);
       if (sc.rule) addE(sc.id, 'verifies', sc.rule);
+      if (sc.uc) { addN(sc.uc, 'capability', sc.uc); addE(sc.id, 'tests', sc.uc); }
+      if (sc.at) { addN(sc.at, 'atest', sc.at, 'AT'); addE(sc.id, 'supports', sc.at); }
       grounds(sc.id, sc.grounds);
     });
     PKd.readModels.forEach(rm => {
@@ -622,7 +624,7 @@ function contextGraph(c, D, M) {
 /* The explorer's vocabulary for subdomain graphs — columns read left→right as
    the model was built: agent/context → capabilities & requirements → the
    aggregate model → behavior → realization → contracts. */
-const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['stage', 'transition', 'trule'], ['event'], ['scenario', 'readmodel'], ['policy'], ['component'], ['contract'], ['servicelevel', 'access', 'measure', 'builddecision', 'gap']];
+const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['stage', 'transition', 'trule'], ['event'], ['scenario', 'atest', 'readmodel'], ['policy'], ['component'], ['contract'], ['servicelevel', 'access', 'measure', 'builddecision', 'gap']];
 const KG_VTYPE = {
   context:     { label: 'Bounded context', ico: 'graph',   c: 'oklch(0.50 0.13 275)' },
   agent:       { label: 'Agent',           ico: 'user',    c: 'oklch(0.55 0.09 200)' },
@@ -639,7 +641,8 @@ const KG_VTYPE = {
   stage:        { label: 'Lifecycle stage', ico: 'metric',  c: 'oklch(0.62 0.12 85)'  },
   transition:   { label: 'Transition',      ico: 'export',  c: 'oklch(0.52 0.13 285)' },
   trule:        { label: 'Transition rule', ico: 'lock',    c: 'oklch(0.52 0.14 25)'  },
-  scenario:     { label: 'Scenario',        ico: 'req',     c: 'oklch(0.55 0.13 150)' },
+  scenario:     { label: 'Component test',  ico: 'req',     c: 'oklch(0.55 0.13 150)' },
+  atest:        { label: 'Acceptance test', ico: 'req',     c: 'oklch(0.50 0.14 165)' },
   readmodel:    { label: 'Read model',      ico: 'doc',     c: 'oklch(0.55 0.10 195)' },
   servicelevel: { label: 'Service level',   ico: 'metric',  c: 'oklch(0.55 0.10 240)' },
   access:       { label: 'Access rule',     ico: 'lock',    c: 'oklch(0.50 0.10 330)' },
@@ -648,7 +651,7 @@ const KG_VTYPE = {
   gap:          { label: 'Open gap',        ico: 'req',     c: 'oklch(0.60 0.13 60)'  },
 };
 
-const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'policy', 'scenario', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'requirement'];
+const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'policy', 'scenario', 'atest', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'requirement'];
 function ContextKnowledgeGraph({ c, D, M }) {
   const raw = React.useMemo(() => contextGraph(c, D, M), [c]);
   // the explorer's shape: byId map + fwd/rev edge labels for the neighbour panel
@@ -1094,30 +1097,56 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
         </>);
       })()}
 
-      {tab === 'scenarios' && PK && (
-        <div className="asc-section ddd-sec">
-          <div className="asc-sec-head">
-            <div className="asc-sec-title"><DDPico d={DDI.test} w={14} /> Scenarios — what &ldquo;done&rdquo; means</div>
-            <div className="asc-sec-sub">One row per transition and one per refusal — the acceptance layer. A builder (human or agent) is finished when every row passes and no row can be made to fail.</div>
+      {tab === 'scenarios' && PK && (() => {
+        // D-190: two test levels, no duplication — Discover's acceptance tests
+        // (AT ids on use cases) are END-TO-END; these are COMPONENT tests for
+        // this box, each linked to the use case it serves and the AT it supports.
+        const ucAts = (prd.usecases || [])
+          .filter(u => (c.capabilities || []).includes(u.id))
+          .flatMap(u => (u.acceptance || []).map(at => ({ ...at, uc: u.id, ucTitle: u.title })));
+        const supported = new Set(PK.scenarios.map(sc => sc.at).filter(Boolean));
+        return (<>
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.test} w={14} /> Component tests — what &ldquo;done&rdquo; means for this box</div>
+              <div className="asc-sec-sub">One Gherkin scenario per transition and per refusal. A builder (human or agent) is finished when every one passes and none can be made to fail. Each names the use case it serves and the Discover acceptance test it supports — the end-to-end layer stays in Discover; nothing is written twice.</div>
+            </div>
+            {PK.scenarios.map(sc => (
+              <div className={'ddd-gherkin' + (sc.kind === 'refusal' ? ' refusal' : '')} key={sc.id}>
+                <div className="ddd-gherkin-h">
+                  <span className="ddd-gherkin-kw">Scenario:</span> <b>{sc.name}</b>
+                  <span className={'ddd-scn-kind ' + sc.kind}>{sc.kind}</span>
+                  <IdChip id={sc.id} />
+                  <span className="ddd-gherkin-refs">
+                    {sc.uc && <DDRef id={sc.uc} />}
+                    {sc.at ? <span className="ddd-at-chip" title="supports this Discover acceptance test">{sc.at}</span>
+                      : <span className="ddd-at-chip only" title="No end-to-end acceptance test covers this — a component-level fact">component-only</span>}
+                  </span>
+                </div>
+                <div className="ddd-gherkin-b">
+                  <div><span className="ddd-gherkin-kw">Given</span> {sc.given}</div>
+                  <div><span className="ddd-gherkin-kw">When</span> {sc.when}</div>
+                  <div><span className="ddd-gherkin-kw">Then</span> {sc.then}</div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="ddd-lc-table">
-              <thead><tr><th>Given</th><th>When</th><th>Then</th><th>Kind</th><th>Grounded in</th></tr></thead>
-              <tbody>
-                {PK.scenarios.map((sc, i) => (
-                  <tr key={i}>
-                    <td>{sc.given}</td>
-                    <td>{sc.when}</td>
-                    <td>{sc.then}</td>
-                    <td><span className={'ddd-scn-kind ' + sc.kind}>{sc.kind}</span><br /><IdChip id={sc.id} /></td>
-                    <td className="ddd-lc-gr"><GRefs ids={sc.grounds} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Discover&apos;s acceptance tests for this box&apos;s use cases</div>
+              <div className="asc-sec-sub">The end-to-end layer — authored in Discover, on the use case. An AT no component test supports is a coverage gap at this box; a component test marked component-only is finer-grained than Discover looked, which is normal.</div>
+            </div>
+            {ucAts.length ? ucAts.map(at => (
+              <div className={'ddd-lc-never' + (supported.has(at.id) ? '' : ' disc')} key={at.id}>
+                <b>{at.title}<br /><IdChip id={at.id} /> <DDRef id={at.uc} /></b>
+                <span>{supported.has(at.id)
+                  ? <>supported here by {PK.scenarios.filter(sc => sc.at === at.id).map(sc => <code className="ddd-idchip" key={sc.id}>{sc.id}</code>).reduce((acc, x, i) => acc === null ? [x] : [...acc, ' · ', x], null)}</>
+                  : 'no component test here supports it yet — covered only end-to-end, or a gap to close'}</span>
+              </div>
+            )) : <div className="ddd-empty-inline">Discover holds no acceptance tests for this box&apos;s use cases.</div>}
           </div>
-        </div>
-      )}
+        </>);
+      })()}
 
       {tab === 'readmodels' && PK && (
         <div className="asc-section ddd-sec">
@@ -1695,7 +1724,7 @@ const BC_MENU = [
   { group: 'Model', items: [
     { key: 'flow',       label: 'Event flow',          ico: 'flow' },
     { key: 'lifecycle',  label: 'Lifecycle',           ico: 'event', needsLC: true },
-    { key: 'scenarios',  label: 'Scenarios',           ico: 'test',  needsPk: true },
+    { key: 'scenarios',  label: 'Component tests',     ico: 'test',  needsPk: true },
     { key: 'aggregates', label: 'Aggregates',          ico: 'agg' },
     { key: 'readmodels', label: 'Read models',         ico: 'doc',   needsPk: true },
   ] },

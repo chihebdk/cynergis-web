@@ -4,9 +4,13 @@
    D-184 — THE BUILD PACKET, completed for the exemplar box
    (Claim adjudication). Every section holds only what is whole
    at box scope (the smallest-whole test, D-183):
-     scenarios      — the acceptance layer: Given/When/Then per
-                      transition AND per refusal (what "done" means
-                      for generated code)
+     scenarios      — COMPONENT acceptance tests (D-190): Gherkin
+                      Given/When/Then per transition AND per refusal —
+                      what "done" means for THIS box. Discover's
+                      acceptance tests (AT ids, on the use cases) stay
+                      the END-TO-END layer; `uc`/`at` link each component
+                      test to the use case it serves and the Discover
+                      test it supports — two levels, no duplication.
      readModels     — the prepared views the box maintains + who reads
      contracts      — the border agreements, field by field: parties &
                       pattern · payload · promises · change policy ·
@@ -26,20 +30,20 @@ export const BC_PACKET = {
   "CTX-ADJUD": {
 
     scenarios: [
-      { id: "SCN-ADJUD-open", transition: "TRN-ADJUD-open", given: "No file exists for the claim number", when: "the claim-opened message arrives", then: "A file is created in Opened; a replay of the same claim number changes nothing.", kind: "move", grounds: ["UC3", "FR3"] },
-      { id: "SCN-ADJUD-verify-policy", transition: "TRN-ADJUD-verify-policy", given: "Opened, and the stored snapshot shows the policy in force", when: "policy verification concludes", then: "The file moves to Policy verified.", kind: "move", grounds: ["FR3"] },
-      { id: "SCN-ADJUD-deny-not-in-force", transition: "TRN-ADJUD-deny-not-in-force", given: "Opened, and the snapshot shows no policy in force", when: "policy verification concludes", then: "The file moves to Denied; decision version 1 records the reasons.", kind: "move", grounds: [] },
-      { id: "SCN-ADJUD-confirm-coverage", transition: "TRN-ADJUD-confirm-coverage", given: "Policy verified, and a covered line responds within limits", when: "coverage is confirmed", then: "The file moves to Covered.", kind: "move", grounds: ["UC4", "FR4"] },
-      { id: "SCN-ADJUD-deny-no-coverage", transition: "TRN-ADJUD-deny-no-coverage", given: "Policy verified, and no covered line responds", when: "coverage is declined", then: "The file moves to Denied with its reasons on record.", kind: "move", grounds: [] },
-      { id: "SCN-ADJUD-calculate", transition: "TRN-ADJUD-calculate-settlement", given: "Covered, with the estimate of record on file", when: "the repair-verified message arrives", then: "The settlement is calculated; the file moves to Amount set.", kind: "move", grounds: ["UC6", "FR6"] },
-      { id: "SCN-ADJUD-authorize", transition: "TRN-ADJUD-authorize-payment", given: "Amount set, NO open holds, amount within the handler's authority", when: "payment is authorized", then: "The file moves to Payment approved and the payment instruction is published.", kind: "move", grounds: ["UC6", "FR6"] },
-      { id: "SCN-ADJUD-close", transition: "TRN-ADJUD-close", given: "Payment approved, the payment-settled message is back, the closure checklist is green", when: "closure runs", then: "The file moves to Closed; a recovery referral is published when someone else should pay.", kind: "move", grounds: [] },
-      { id: "SCN-ADJUD-accept-credit", transition: "TRN-ADJUD-accept-credit", given: "Closed", when: "a salvage or recovery credit arrives", then: "The credit is appended; the file stays Closed; nothing existing changes.", kind: "move", grounds: [] },
-      { id: "SCN-ADJUD-reopen", transition: "TRN-ADJUD-reopen-from-denied", given: "Denied or Closed, and the decision is challenged", when: "the file is reopened", then: "A NEW decision version opens; the file returns to Covered; every prior version stays intact.", kind: "move", grounds: [] },
-      { id: "SCN-ADJUD-refuse-held-authorization", rule: "TRL-ADJUD-holds-gate-money", given: "Amount set, and ANY hold is open", when: "authorization is attempted", then: "REFUSED — holds gate money. The attempt is recorded; the hold's owner is notified.", kind: "refusal", grounds: [] },
-      { id: "SCN-ADJUD-refuse-beyond-authority", rule: "TRL-ADJUD-authority-limit", given: "The amount exceeds the handler's authority", when: "authorization is attempted", then: "REFUSED — routed to the bigger authority; the limit is checked in code, not trusted.", kind: "refusal", grounds: ["FR5"] },
-      { id: "SCN-ADJUD-refuse-closed-edit", rule: "TRL-ADJUD-closed-never-edited", given: "Closed", when: "any edit of existing facts is attempted", then: "REFUSED — a closed file is never edited; late money lands as new credit entries.", kind: "refusal", grounds: [] },
-      { id: "SCN-ADJUD-apply-hold", transition: "TRN-ADJUD-apply-hold", given: "Any stage before Closed", when: "a hold is applied", then: "The flag is set, typed by origin; the stage does not change.", kind: "move", grounds: [] },
+      { id: "CAT-ADJUD-open", name: "One file per claim number, however often the message replays", uc: "UC3", at: "AT3", transition: "TRN-ADJUD-open", given: "No file exists for the claim number", when: "the claim-opened message arrives", then: "A file is created in Opened; a replay of the same claim number changes nothing.", kind: "move", grounds: ["UC3", "FR3"] },
+      { id: "CAT-ADJUD-verify-policy", name: "In force at the date of loss — from the snapshot alone", uc: "UC3", at: "AT3", transition: "TRN-ADJUD-verify-policy", given: "Opened, and the stored snapshot shows the policy in force", when: "policy verification concludes", then: "The file moves to Policy verified.", kind: "move", grounds: ["FR3"] },
+      { id: "CAT-ADJUD-deny-not-in-force", name: "Not in force is denied, with reasons", uc: "UC3", transition: "TRN-ADJUD-deny-not-in-force", given: "Opened, and the snapshot shows no policy in force", when: "policy verification concludes", then: "The file moves to Denied; decision version 1 records the reasons.", kind: "move", grounds: [] },
+      { id: "CAT-ADJUD-confirm-coverage", name: "A covered line responds, endorsements applied", uc: "UC4", at: "AT8", transition: "TRN-ADJUD-confirm-coverage", given: "Policy verified, and a covered line responds within limits", when: "coverage is confirmed", then: "The file moves to Covered.", kind: "move", grounds: ["UC4", "FR4"] },
+      { id: "CAT-ADJUD-deny-no-coverage", name: "No line responds — denied, with reasons", uc: "UC4", transition: "TRN-ADJUD-deny-no-coverage", given: "Policy verified, and no covered line responds", when: "coverage is declined", then: "The file moves to Denied with its reasons on record.", kind: "move", grounds: [] },
+      { id: "CAT-ADJUD-calculate", name: "The settlement stands on the estimate of record", uc: "UC6", transition: "TRN-ADJUD-calculate-settlement", given: "Covered, with the estimate of record on file", when: "the repair-verified message arrives", then: "The settlement is calculated; the file moves to Amount set.", kind: "move", grounds: ["UC6", "FR6"] },
+      { id: "CAT-ADJUD-authorize", name: "Clean file, within authority — the money moves", uc: "UC6", at: "AT5", transition: "TRN-ADJUD-authorize-payment", given: "Amount set, NO open holds, amount within the handler's authority", when: "payment is authorized", then: "The file moves to Payment approved and the payment instruction is published.", kind: "move", grounds: ["UC6", "FR6"] },
+      { id: "CAT-ADJUD-close", name: "A green checklist closes the file", uc: "UC6", at: "AT5", transition: "TRN-ADJUD-close", given: "Payment approved, the payment-settled message is back, the closure checklist is green", when: "closure runs", then: "The file moves to Closed; a recovery referral is published when someone else should pay.", kind: "move", grounds: [] },
+      { id: "CAT-ADJUD-accept-credit", name: "Late money lands without reopening the past", transition: "TRN-ADJUD-accept-credit", given: "Closed", when: "a salvage or recovery credit arrives", then: "The credit is appended; the file stays Closed; nothing existing changes.", kind: "move", grounds: [] },
+      { id: "CAT-ADJUD-reopen", name: "A challenge opens a new decision version", transition: "TRN-ADJUD-reopen-from-denied", given: "Denied or Closed, and the decision is challenged", when: "the file is reopened", then: "A NEW decision version opens; the file returns to Covered; every prior version stays intact.", kind: "move", grounds: [] },
+      { id: "CAT-ADJUD-refuse-held-authorization", name: "A hold stops the money", rule: "TRL-ADJUD-holds-gate-money", given: "Amount set, and ANY hold is open", when: "authorization is attempted", then: "REFUSED — holds gate money. The attempt is recorded; the hold's owner is notified.", kind: "refusal", grounds: [] },
+      { id: "CAT-ADJUD-refuse-beyond-authority", name: "Beyond authority is refused upward", uc: "UC4", rule: "TRL-ADJUD-authority-limit", given: "The amount exceeds the handler's authority", when: "authorization is attempted", then: "REFUSED — routed to the bigger authority; the limit is checked in code, not trusted.", kind: "refusal", grounds: ["FR5"] },
+      { id: "CAT-ADJUD-refuse-closed-edit", name: "The closed file refuses edits", rule: "TRL-ADJUD-closed-never-edited", given: "Closed", when: "any edit of existing facts is attempted", then: "REFUSED — a closed file is never edited; late money lands as new credit entries.", kind: "refusal", grounds: [] },
+      { id: "CAT-ADJUD-apply-hold", name: "A hold pauses the file without moving the stage", transition: "TRN-ADJUD-apply-hold", given: "Any stage before Closed", when: "a hold is applied", then: "The flag is set, typed by origin; the stage does not change.", kind: "move", grounds: [] },
     ],
 
     readModels: [
