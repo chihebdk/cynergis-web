@@ -47,6 +47,20 @@ export const CONTEXT_POLICIES = {
       cant: "—", grounds: [] },
     { id: "POL-ADJUD-hold-escalation-clock", when: "a hold stays open past its review period", from: "the clock", then: "Escalate to the hold's owner", eventId: "adj-hold",
       mode: "automated", sla: "at the period boundary, then weekly",
-      cant: "—", grounds: [] },
+      cant: "—", grounds: [] },  ],
+
+  "CTX-INTAKE": [
+    { id: "POL-INTAKE-merge-on-police-notice", when: "a police report notice arrives", from: "Provincial police feed", contract: "CT-police-notice", then: "Open or merge the loss report", eventId: "di-reported",
+      mode: "automated", sla: "immediate",
+      cant: "A notice the ACL cannot translate goes to the dead-letter queue — never silently dropped.", grounds: ["FR1"] },
+    { id: "POL-INTAKE-rescore-on-facts", when: "new facts land on a report", from: "own event", then: "Re-score severity & refresh the lane", eventId: "di-triaged",
+      mode: "automated", sla: "immediate",
+      cant: "—", grounds: ["FR2"] },
+    { id: "POL-INTAKE-chase-incomplete", when: "a report stays incomplete past its channel deadline", from: "the clock", then: "Chase the reporter; escalate to the desk lead", eventId: null,
+      mode: "manual", sla: "chase at deadline, escalate 3 days after",
+      cant: "An unreachable reporter is escalated, not abandoned — the report never just sits.", grounds: [] },
+    { id: "POL-INTAKE-acknowledge-registration", when: "a claim is registered", from: "own event", then: "Acknowledge to the claimant with the claim number", eventId: "di-registered",
+      mode: "automated", sla: "statutory acknowledgment period",
+      cant: "An undeliverable acknowledgment becomes a desk task — the clock does not stop.", grounds: [] },
   ],
 };

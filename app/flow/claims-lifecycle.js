@@ -83,6 +83,47 @@ export const CLAIMS_LIFECYCLES = {
         why: "Bigger amounts need a bigger authority — the limit is checked in code, not trusted." },
     ],
   },
+
+  "CTX-INTAKE": {
+    record: "The loss report",
+    aggregate: "AGG-LOSSREPORT",
+    stormId: "ds-intake",
+    summary: "Four stages from the first word of a loss to a numbered claim. Merges land within Reported — however many channels touch the loss, one report carries it.",
+    stages: [
+      { id: "reported",   name: "Reported",   def: "A loss report exists — the incident's earliest record, whatever the channel." },
+      { id: "triaged",    name: "Triaged",    def: "Severity is assessed; a handling lane and an initial reserve estimate are suggested." },
+      { id: "completed",  name: "Completed",  def: "Intake concludes under licensed review; the report is confirmed complete for handoff." },
+      { id: "registered", name: "Registered", def: "The report is a claim — numbered, notice-dated, and published to adjudication.", terminal: true },
+    ],
+    flags: [],
+    moves: [
+      { id: "TRN-INTAKE-report", from: null, eventId: "di-reported", to: "reported",
+        onlyIf: "A first notice arrives on any door — portal, desk, or the police feed through the ACL." },
+      { id: "TRN-INTAKE-merge", from: "reported", eventId: "di-merged", to: "reported",
+        onlyIf: "A later submission matches on parties, vehicle, and date and place of loss — consolidated, never duplicated." },
+      { id: "TRN-INTAKE-triage", from: "reported", eventId: "di-triaged", to: "triaged",
+        onlyIf: "The severity model scores the report as facts land; the number is a suggestion, not a decision." },
+      { id: "TRN-INTAKE-complete", from: "triaged", eventId: "di-completed", to: "completed",
+        onlyIf: "Mandatory fields for the channel are present, and the licensed intake role signs the completion." },
+      { id: "TRN-INTAKE-register", from: "completed", eventId: "di-registered", to: "registered",
+        onlyIf: "No claim exists on this loss; the number and statutory notice date are assigned.",
+        tells: "claim opened → Claim adjudication" },
+    ],
+    never: [
+      { id: "TRL-INTAKE-one-loss-one-report", inv: "INV-INTAKE-one-loss-one-report", grounds: ["FR1"],
+        rule: "One loss never has two reports.",
+        why: "Every channel merges into the same record — a duplicate report becomes a duplicate claim downstream." },
+      { id: "TRL-INTAKE-provenance-survives", 
+        rule: "A merge never loses what was reported.",
+        why: "Provenance per field survives — who said what, through which door, stays on record." },
+      { id: "TRL-INTAKE-licensed-completion", inv: "INV-INTAKE-licensed-completion",
+        rule: "Only the licensed intake role completes a report.",
+        why: "Completion is a regulated judgment, not a checkbox — the licence is the authority." },
+      { id: "TRL-INTAKE-one-loss-one-claim", inv: "INV-INTAKE-one-loss-one-claim", grounds: ["FR1"],
+        rule: "Registration never issues a second claim number for the same loss.",
+        why: "The registration-side dedup — distinct from the report merge, and just as absolute." },
+    ],
+  }
 };
 
 /* Each move's "grounded in" refs come from its event card on the wall —

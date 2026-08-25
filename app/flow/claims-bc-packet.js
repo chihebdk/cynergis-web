@@ -104,4 +104,68 @@ export const BC_PACKET = {
       { id: "GAP-ADJUD-how-built-unconfirmed", text: "How it's built is PROPOSED — the architect has not confirmed packaging, store, doors or runtime.", where: "How it's built" },
     ],
   },
+
+  "CTX-INTAKE": {
+    scenarios: [
+      { id: "CAT-INTAKE-open", name: "A first notice opens a report, whatever the door", transition: "TRN-INTAKE-report", uc: "UC1", at: "AT1",
+        given: "No report matches the parties, vehicle, and date and place of loss", when: "a first notice arrives on any channel", then: "A loss report opens in Reported, with the submission and its provenance on record.", kind: "move", grounds: ["UC1", "FR1"] },
+      { id: "CAT-INTAKE-merge", name: "A matching submission merges — never duplicates", transition: "TRN-INTAKE-merge", uc: "UC1", at: "AT1",
+        given: "A report matches on parties, vehicle, and date and place of loss", when: "another channel submits the same loss", then: "The submission merges into the existing report; provenance per field survives; no second report exists.", kind: "move", grounds: ["FR1"] },
+      { id: "CAT-INTAKE-triage", name: "Severity scored, lane suggested, drivers shown", transition: "TRN-INTAKE-triage", uc: "UC2", at: "AT2",
+        given: "A report with enough facts to score", when: "the severity model runs", then: "A lane is suggested with its drivers visible; the suggestion refreshes as facts land; no lane is binding.", kind: "move", grounds: ["UC2", "FR2"] },
+      { id: "CAT-INTAKE-complete", name: "Licensed completion, per-channel mandatory fields", transition: "TRN-INTAKE-complete", uc: "UC2",
+        given: "Mandatory fields for the channel are present", when: "the licensed intake role completes the report", then: "The report moves to Completed, signed by the licence that closed it.", kind: "move", grounds: ["UC2", "FR1"] },
+      { id: "CAT-INTAKE-register", name: "Registration stamps the number and tells adjudication", transition: "TRN-INTAKE-register", uc: "UC1", at: "AT1",
+        given: "A completed report and no existing claim on this loss", when: "the claim is registered", then: "A claim number and statutory notice date are assigned; claim-opened publishes to adjudication.", kind: "move", grounds: ["UC1", "FR1"] },
+      { id: "CAT-INTAKE-refuse-unlicensed", name: "An unlicensed completion is refused", rule: "TRL-INTAKE-licensed-completion",
+        given: "The completer lacks the licensed intake role", when: "completion is attempted", then: "REFUSED — completion is a regulated judgment; the attempt is recorded.", kind: "refusal", grounds: [] },
+      { id: "CAT-INTAKE-refuse-duplicate-claim", name: "A second claim on the same loss is refused", rule: "TRL-INTAKE-one-loss-one-claim",
+        given: "A claim already exists for this loss", when: "registration is attempted", then: "REFUSED — the report merges into the existing claim's story instead.", kind: "refusal", grounds: ["FR1"] },
+    ],
+    readModels: [
+      { id: "RM-INTAKE-match-candidates", eventIds: ["di-reported", "di-merged"], readerIds: ["SEC-INTAKE-agent"], name: "Open reports — match view", serves: "open & merge decisions", readers: "intake agents", desc: "Existing reports on matching parties, vehicle, and date and place of loss — one loss, one report stands on it." },
+      { id: "RM-INTAKE-severity-factors", eventIds: ["di-triaged"], readerIds: ["SEC-INTAKE-agent"], name: "Severity factors view", serves: "triage", readers: "intake agents", desc: "Damage, injury indicators and vehicle data as the model scores them — the lane stays explainable." },
+      { id: "RM-INTAKE-completeness", eventIds: ["di-completed"], readerIds: ["SEC-INTAKE-licensed"], name: "Completeness checklist", serves: "licensed completion", readers: "licensed intake", desc: "What the report still lacks, per channel — a police feed carries less than a guided conversation." },
+      { id: "RM-INTAKE-registered-index", eventIds: ["di-registered"], readerIds: ["SEC-INTAKE-agent"], name: "Registered claims index", serves: "registration dedup", readers: "intake agents", desc: "Claims by loss and policy — read before any number is assigned." },
+    ],
+    serviceLevels: [
+      { id: "SL-INTAKE-fnol-availability", obligation: "Digital FNOL availability", level: "≥ 99.9% — the front door stays open", why: "A claimant who cannot report a loss is the worst first impression an insurer can make.", grounds: ["NFR1"] },
+      { id: "SL-INTAKE-snapshot-request", obligation: "Coverage snapshot request", level: "issued at intake, keyed to date of loss", why: "Adjudication never calls live policy systems — the request must leave before the handoff.", grounds: ["NFR2"] },
+      { id: "SL-INTAKE-triage-latency", obligation: "Severity triage", level: "scored within minutes of facts landing", why: "The lane decides who works the file — a stale lane is a misrouted claim.", grounds: [] },
+      { id: "SL-INTAKE-acknowledgment", obligation: "Registration acknowledgment", level: "within the statutory period", why: "The claim number in the claimant's hands is the moment the story becomes navigable for them.", grounds: [] },
+    ],
+    security: [
+      { id: "SEC-INTAKE-agent", who: "Intake agent", may: "open, merge and work reports; every action attributed", grounds: [] },
+      { id: "SEC-INTAKE-licensed", who: "Licensed intake role", may: "complete reports — the only role that can; the licence is recorded with the completion", grounds: [] },
+      { id: "SEC-INTAKE-police-feed", who: "Police feed", may: "open or enrich reports through the ACL only — never register a claim", grounds: ["FR1"] },
+      { id: "SEC-INTAKE-portals", who: "Portals", may: "submit their own claimant's reports and read their own claimant's status — nothing else", grounds: ["FR10"] },
+      { id: "SEC-INTAKE-data-class", who: "The data itself", may: "PII from the first word — access logged; provenance retained with the report", grounds: [] },
+    ],
+    howBuilt: {
+      status: "proposed — for the architect to confirm in Build",
+      decisions: [
+        { id: "HB-INTAKE-packaging", aspect: "Packaging", choice: "One deployable service owning the loss report", why: "The doors differ; the record is one. Internal modules per door: portal API, desk, police ACL, plus triage." },
+        { id: "HB-INTAKE-store", aspect: "Store", choice: "Document-shaped store, private — submissions append-only", why: "A report is a growing dossier, not a ledger; provenance rows never rewrite." },
+        { id: "HB-INTAKE-doors", aspect: "Doors", choice: "Public API gateway (portal), internal API (desk), Kafka consumer (police feed)", why: "The trigger records already say so, contract by contract." },
+        { id: "HB-INTAKE-runtime", aspect: "Runtime", choice: "The claims cluster, beside adjudication", why: "Its one outbound seam is claim-opened; its latency duty is the front door." },
+      ],
+    },
+    ownership: [
+      { role: "Owning team", who: "Intake & FNOL desk (Claims operations)", note: "The team that answers the first call owns the record the call creates." },
+      { role: "Decider", who: "ClaimsCore product owner", note: "Signs the claim-opened contract on the publisher side; owns the intake gaps list." },
+      { role: "On call", who: "the owning team's rotation (from Build)", note: "Front-door availability is this team's pager." },
+      { role: "Knowledge steward", who: "the box's agent + its knowledge-graph slice", note: "Keeps the wall, the packet and the code pointing at the same facts." },
+    ],
+    measures: [
+      { id: "MEA-INTAKE-channel-mix", measure: "Channel mix", def: "Share of reports by door — portal, desk, broker, police", target: "portal share rising; the desk stays for judgment, not typing", grounds: [] },
+      { id: "MEA-INTAKE-merge-rate", measure: "Merge rate", def: "Submissions merged into existing reports vs new reports", target: "duplicates caught at the door, not downstream", grounds: ["FR1"] },
+      { id: "MEA-INTAKE-time-to-register", measure: "Time to register", def: "Median hours from first notice to claim number", target: "falling — the claimant's first wait is the one they remember", grounds: [] },
+      { id: "MEA-INTAKE-completeness", measure: "Completeness at handoff", def: "Registered claims returned by adjudication for missing facts", target: "near zero — completeness at handoff is the measure that matters", grounds: [] },
+    ],
+    knownGaps: [
+      { id: "GAP-INTAKE-chase-card", text: "The incomplete-report CHASE has no card on the wall — the clock policy reacts to a moment the flow never states.", where: "Event flow" },
+      { id: "GAP-INTAKE-abandoned", text: "Abandoned reports (never completed, never chased to conclusion) have no terminal stage — the story assumes every report registers.", where: "Lifecycle" },
+      { id: "GAP-INTAKE-how-built", text: "How it's built is PROPOSED — the architect has not confirmed.", where: "How it's built" },
+    ],
+  }
 };

@@ -75,6 +75,32 @@ window.__DOMAIN__ = {
            — those without an fr surface as Discover gaps, on purpose. */
         {
           id: 'AGG-LOSSREPORT', name: 'Loss report', context: 'CTX-INTAKE', ucs: ['UC1', 'UC2'],
+          shape: {
+            description: 'One report per loss, fed by every channel: submissions append with provenance, parties and vehicles consolidate, the triage assessment refreshes as facts land. Registration stamps the claim number and hands the story to adjudication.',
+            tables: [
+              { name: 'loss_report', purpose: 'the root — one row per loss', columns: [
+                { name: 'report_id', role: 'id', type: 'string', desc: 'The report\u2019s identity until a claim number exists.' },
+                { name: 'stage', type: 'enum', desc: 'The state machine\u2019s pointer — reported \u00b7 triaged \u00b7 completed \u00b7 registered.' },
+                { name: 'date_and_place_of_loss', type: 'date + text', desc: 'The merge key\u2019s anchor, and the snapshot request\u2019s key.' },
+                { name: 'claim_number', role: 'ref', refTo: 'Claim file (Claim adjudication)', type: 'string', desc: 'Assigned at registration — empty until then.' },
+                { name: 'snapshot_request', type: 'string', desc: 'The coverage snapshot requested at intake, keyed to date of loss.' },
+              ] },
+              { name: 'submission', owned: true, purpose: 'one row per channel touch — append-only, provenance kept', columns: [
+                { name: 'submission_id', role: 'id', type: 'string', desc: 'One per touch — portal, desk call, broker, police notice.' },
+                { name: 'channel', type: 'enum', desc: 'Which door it came through.' },
+                { name: 'received_at', type: 'date', desc: 'When — the earliest submission sets the report\u2019s clock.' },
+                { name: 'content_ref', type: 'string', desc: 'What was said, as received — never edited by the merge.' },
+              ] },
+              { name: 'party', owned: true, purpose: 'claimant, insured, third parties — consolidated across submissions', columns: [
+                { name: 'party_id', role: 'id', type: 'string', desc: 'One row per person or organization on the loss.' },
+                { name: 'role_and_contact', type: 'structured', desc: 'Who they are to the loss, and how to reach them.' },
+              ] },
+              { name: 'triage_assessment', owned: true, purpose: 'the model\u2019s suggestion, refreshed as facts land', columns: [
+                { name: 'assessed_at', role: 'id', type: 'date', desc: 'One row per re-score — the history of the suggestion.' },
+                { name: 'severity_and_lane', type: 'enum + score', desc: 'The suggested lane with its drivers — explainable, never binding.' },
+              ] },
+            ],
+          },
           commands: ['Open the loss report', 'Match & merge submissions', 'Score severity & suggest the lane', 'Complete the report', 'Register the claim'],
           events: ['Loss reported', 'Report merged', 'Severity triaged', 'Report completed', 'Claim registered'],
           invariants: [
