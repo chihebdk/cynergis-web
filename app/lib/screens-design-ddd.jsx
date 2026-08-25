@@ -500,7 +500,10 @@ function contextGraph(c, D, M) {
   const nodes = []; const edges = []; const seen = new Set();
   // `code` is the short tag the explorer node shows; real ids (UC1, C1, AGG-*)
   // display themselves, synthetic nodes get a type tag.
-  const addN = (id, type, label, code) => { if (!seen.has(id)) { seen.add(id); nodes.push({ id, type, label: label || id, code }); } return id; };
+  // D-189: a node carries its PROPERTIES — the substance a query needs lives on
+  // the node, not exploded into satellite nodes. Node = traversed or independently
+  // addressable; descriptive detail = props.
+  const addN = (id, type, label, code, props) => { if (!seen.has(id)) { seen.add(id); nodes.push({ id, type, label: label || id, code, props }); } return id; };
   const addE = (from, rel, to) => { if (from && to) edges.push({ from, rel, to }); };
 
   addN(c.id, 'context', c.name);
@@ -521,14 +524,15 @@ function contextGraph(c, D, M) {
   // (the fraud contexts read their seed flows; the claims cut reads its design storms)
   const flow = seedFlows.find(f => f.contextId === c.id) || CLAIMS_DESIGN_STORMS.find(m => m.contextId === c.id);
   (flow?.nodes || []).filter(n => n.kind === 'event' || !n.kind).forEach(n => {
-    addN(n.id, 'event', n.summary, 'EVENT');
+    // D-189: commands and rules are PROPERTIES of the moment, not satellite nodes —
+    // nothing traverses through a command; nobody addresses one independently.
+    addN(n.id, 'event', n.summary, 'EVENT', {
+      description: n.description,
+      commands: (n.commands || []).map(x => x.label),
+      businessRules: (n.businessRules || []).map(x => x.label),
+    });
     (n.grounds || []).forEach(g => { addN(g, g.startsWith('UC') ? 'capability' : 'requirement', g); addE(n.id, 'grounded by', g); });
     if (n.aggregate) { addN(n.aggregate, 'aggregate', n.aggregate); addE(n.aggregate, 'emits', n.id); }
-    (n.commands || []).forEach((cmd, i) => {
-      const id = `${n.id}-cmd-${i}`; addN(id, 'command', cmd.label, 'CMD');
-      addE(id, 'produces', n.id);
-      if (cmd.on) { addN(cmd.on, 'aggregate', cmd.on); addE(id, 'targets', cmd.on); }
-    });
     const comp = (n.arch || deriveArch(n) || {}).component;
     if (comp) { addN(comp, 'component', (componentById(comp) || {}).name || comp); addE(comp, 'handles', n.id); }
     (n.policies || []).forEach((p, i) => {
@@ -566,21 +570,21 @@ function contextGraph(c, D, M) {
     const NS = c.id.replace(/^CTX-/, '');
     const stId = sid => `LCS-${NS}-${sid}`;
     const stName = sid => (LCd.stages.find(x => x.id === sid) || {}).name || '—';
-    LCd.stages.forEach(st => { addN(stId(st.id), 'stage', st.name, 'STAGE'); addE(LCd.aggregate, 'moves through', stId(st.id)); });
+    LCd.stages.forEach(st => { addN(stId(st.id), 'stage', st.name, 'STAGE', { def: st.def, terminal: !!st.terminal, side: !!st.side }); addE(LCd.aggregate, 'moves through', stId(st.id)); });
     LCd.moves.forEach(m => {
-      addN(m.id, 'transition', m.flag ? `any stage · flag: ${m.flag}` : `${m.from ? stName(m.from) : '·'} → ${stName(m.to)}`, 'TRN');
+      addN(m.id, 'transition', m.flag ? `any stage · flag: ${m.flag}` : `${m.from ? stName(m.from) : '·'} → ${stName(m.to)}`, 'TRN', { onlyIf: m.onlyIf, tells: m.tells, flag: m.flag });
       if (m.from) addE(stId(m.from), 'exits via', m.id);
       if (m.to) addE(m.id, 'enters', stId(m.to));
       if (m.eventId) addE(m.id, 'realized by', m.eventId);
     });
     LCd.never.forEach(r => {
-      addN(r.id, 'trule', r.rule, 'RULE'); addE(r.id, 'constrains', LCd.aggregate);
+      addN(r.id, 'trule', r.rule, 'RULE', { why: r.why }); addE(r.id, 'constrains', LCd.aggregate);
       if (r.inv) addE(r.id, 'same rule as', r.inv);
       grounds(r.id, r.grounds);
     });
   }
   (CONTEXT_POLICIES[c.id] || []).forEach(p => {
-    addN(p.id, 'policy', `${p.when} → ${p.then}`, 'POL');
+    addN(p.id, 'policy', `${p.when} → ${p.then}`, 'POL', { mode: p.mode, sla: p.sla, ifItCant: p.cant, from: p.from });
     if (p.eventId) addE(p.id, 'lands as', p.eventId);
     if (p.fromCtx) { addN(p.fromCtx, 'context', HOME_NAMES[p.fromCtx] || p.fromCtx); addE(p.fromCtx, 'fires', p.id); }
     if (p.contract) addE(p.id, 'rides', p.contract);
@@ -589,27 +593,27 @@ function contextGraph(c, D, M) {
   const PKd = BC_PACKET[c.id];
   if (PKd) {
     PKd.contracts.forEach(ct => {
-      addN(ct.id, 'contract', `${ct.name} ${ct.version}`, 'CT');
+      addN(ct.id, 'contract', `${ct.name} ${ct.version}`, 'CT', { dir: ct.dir, withWhom: ct.withWhom, pattern: ct.pattern, fields: ct.fields, promises: ct.promises, change: ct.change, obligations: ct.obligations });
       addE(c.id, ct.dir === 'in' ? 'consumes' : 'publishes', ct.id);
       const other = resolveCtx(ct.withWhom);
       if (/^CTX-/.test(other || '')) { addN(other, 'context', ct.withWhom); addE(other, ct.dir === 'in' ? 'publishes' : 'consumes', ct.id); }
       grounds(ct.id, ct.grounds);
     });
     PKd.scenarios.forEach(sc => {
-      addN(sc.id, 'scenario', `${sc.when} — ${sc.kind}`, 'SCN');
+      addN(sc.id, 'scenario', `${sc.when} — ${sc.kind}`, 'SCN', { given: sc.given, when: sc.when, then: sc.then, kind: sc.kind });
       if (sc.transition) addE(sc.id, 'verifies', sc.transition);
       if (sc.rule) addE(sc.id, 'verifies', sc.rule);
       grounds(sc.id, sc.grounds);
     });
     PKd.readModels.forEach(rm => {
-      addN(rm.id, 'readmodel', rm.name, 'RM');
+      addN(rm.id, 'readmodel', rm.name, 'RM', { desc: rm.desc, serves: rm.serves, readers: rm.readers });
       (rm.eventIds || []).forEach(e => addE(rm.id, 'serves', e));
     });
-    PKd.serviceLevels.forEach(sl => { addN(sl.id, 'servicelevel', sl.obligation, 'SL'); addE(sl.id, 'obliges', c.id); grounds(sl.id, sl.grounds); });
-    PKd.security.forEach(sec => { addN(sec.id, 'access', sec.who, 'SEC'); addE(sec.id, 'governs', c.id); grounds(sec.id, sec.grounds); });
-    PKd.howBuilt.decisions.forEach(hb => { addN(hb.id, 'builddecision', `${hb.aspect} — ${hb.choice}`, 'HB'); addE(hb.id, 'shapes', c.id); });
-    PKd.measures.forEach(m => { addN(m.id, 'measure', m.measure, 'MEA'); addE(m.id, 'measures', c.id); grounds(m.id, m.grounds); });
-    PKd.knownGaps.forEach(gp => { addN(gp.id, 'gap', gp.text, 'GAP'); addE(gp.id, 'flags', c.id); });
+    PKd.serviceLevels.forEach(sl => { addN(sl.id, 'servicelevel', sl.obligation, 'SL', { level: sl.level, why: sl.why }); addE(sl.id, 'obliges', c.id); grounds(sl.id, sl.grounds); });
+    PKd.security.forEach(sec => { addN(sec.id, 'access', sec.who, 'SEC', { may: sec.may }); addE(sec.id, 'governs', c.id); grounds(sec.id, sec.grounds); });
+    PKd.howBuilt.decisions.forEach(hb => { addN(hb.id, 'builddecision', `${hb.aspect} — ${hb.choice}`, 'HB', { why: hb.why, status: PKd.howBuilt.status }); addE(hb.id, 'shapes', c.id); });
+    PKd.measures.forEach(m => { addN(m.id, 'measure', m.measure, 'MEA', { def: m.def, target: m.target }); addE(m.id, 'measures', c.id); grounds(m.id, m.grounds); });
+    PKd.knownGaps.forEach(gp => { addN(gp.id, 'gap', gp.text, 'GAP', { where: gp.where }); addE(gp.id, 'flags', c.id); });
   }
 
   return { nodes, edges };
@@ -618,7 +622,7 @@ function contextGraph(c, D, M) {
 /* The explorer's vocabulary for subdomain graphs — columns read left→right as
    the model was built: agent/context → capabilities & requirements → the
    aggregate model → behavior → realization → contracts. */
-const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['stage', 'transition', 'trule'], ['command'], ['event'], ['scenario', 'readmodel'], ['policy'], ['component'], ['contract'], ['servicelevel', 'access', 'measure', 'builddecision', 'gap']];
+const KG_COLS = [['agent', 'context'], ['capability', 'requirement'], ['aggregate', 'invariant'], ['stage', 'transition', 'trule'], ['event'], ['scenario', 'readmodel'], ['policy'], ['component'], ['contract'], ['servicelevel', 'access', 'measure', 'builddecision', 'gap']];
 const KG_VTYPE = {
   context:     { label: 'Bounded context', ico: 'graph',   c: 'oklch(0.50 0.13 275)' },
   agent:       { label: 'Agent',           ico: 'user',    c: 'oklch(0.55 0.09 200)' },
@@ -644,7 +648,7 @@ const KG_VTYPE = {
   gap:          { label: 'Open gap',        ico: 'req',     c: 'oklch(0.60 0.13 60)'  },
 };
 
-const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'command', 'policy', 'scenario', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'requirement'];
+const KG_TYPE_ORDER = ['context', 'agent', 'aggregate', 'stage', 'transition', 'trule', 'event', 'policy', 'scenario', 'readmodel', 'invariant', 'component', 'contract', 'servicelevel', 'access', 'measure', 'builddecision', 'gap', 'capability', 'requirement'];
 function ContextKnowledgeGraph({ c, D, M }) {
   const raw = React.useMemo(() => contextGraph(c, D, M), [c]);
   // the explorer's shape: byId map + fwd/rev edge labels for the neighbour panel
