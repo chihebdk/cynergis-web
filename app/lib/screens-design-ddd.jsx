@@ -5,7 +5,7 @@ import './ddd-data';
 import './domain-model-data';
 import { seedFlows } from '../flow/data';
 import { claimsFlows } from '../flow/claims-flows';
-import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds } from '../flow/claims-lifecycle';
+import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds, lifecycleEventNames } from '../flow/claims-lifecycle';
 import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
@@ -629,7 +629,7 @@ function ContextKnowledgeGraph({ c, D, M }) {
    dashed arcs are the paths people forget: reopened, money after close.
    Same-stage events don't clutter the picture — they collapse into a
    small "recorded here" note under their stage (the table has them). */
-function LifecycleDiagram({ lc }) {
+function LifecycleDiagram({ lc, names }) {
   const spine = lc.stages.filter(s => !s.side);
   const sides = lc.stages.filter(s => s.side);
   const W = 920, PW = 118, PH = 40, Y = 46, SY = 158;
@@ -646,7 +646,7 @@ function LifecycleDiagram({ lc }) {
   const isSide = id => sides.some(s => s.id === id);
   const shortLabel = ev => { const p = ev.split('—'); return (p[1] || p[0]).trim().toLowerCase(); };
   const selfNotes = {};
-  lc.moves.filter(m => m.from && m.to === m.from).forEach(m => { (selfNotes[m.from] = selfNotes[m.from] || []).push(shortLabel(m.event)); });
+  lc.moves.filter(m => m.from && m.to === m.from).forEach(m => { (selfNotes[m.from] = selfNotes[m.from] || []).push(shortLabel(names[m.eventId] || '')); });
   return (
     <svg viewBox={`0 0 ${W} 236`} className="ddd-lc-svg" role="img" aria-label="lifecycle diagram">
       <defs>
@@ -663,14 +663,14 @@ function LifecycleDiagram({ lc }) {
           const x1 = cx(m.from), x2 = X[m.to] + PW / 2 + (cx(m.from) < X[m.to] + PW / 2 ? -22 : 22);
           return (<g key={i}>
             <path d={`M ${x1} ${Y + PH} C ${x1} ${SY - 28}, ${x2} ${SY - 34}, ${x2} ${SY - 3}`} className="ddd-lc-edge" markerEnd="url(#lcArr)" />
-            <text x={(x1 + x2) / 2 - 6} y={(Y + PH + SY) / 2 + 2} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(m.event)}</text>
+            <text x={(x1 + x2) / 2 - 6} y={(Y + PH + SY) / 2 + 2} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(names[m.eventId] || '')}</text>
           </g>);
         }
         if (isSide(m.from)) {
           const x1 = X[m.from] + PW - 10, x2 = cx(m.to) + 14;
           return (<g key={i}>
             <path d={`M ${x1} ${SY} C ${x1 + 40} ${SY - 40}, ${x2} ${Y + PH + 34}, ${x2} ${Y + PH + 3}`} className="ddd-lc-edge back" markerEnd="url(#lcArr)" />
-            <text x={(x1 + x2) / 2 + 34} y={(Y + PH + SY) / 2 + 12} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(m.event)}</text>
+            <text x={(x1 + x2) / 2 + 34} y={(Y + PH + SY) / 2 + 12} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(names[m.eventId] || '')}</text>
           </g>);
         }
         if (b === a + 1) return <path key={i} d={`M ${X[m.from] + PW} ${Y + PH / 2} L ${X[m.to] - 2} ${Y + PH / 2}`} className="ddd-lc-edge" markerEnd="url(#lcArr)" />;
@@ -681,7 +681,7 @@ function LifecycleDiagram({ lc }) {
         const x1 = cx(m.from), x2 = cx(m.to) + 20;
         return (<g key={i}>
           <path d={`M ${x1} ${Y + PH} C ${x1} 228, ${x2} 228, ${x2} ${Y + PH + 3}`} className="ddd-lc-edge back" markerEnd="url(#lcArr)" />
-          <text x={(x1 + x2) / 2} y={222} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(m.event)}</text>
+          <text x={(x1 + x2) / 2} y={222} textAnchor="middle" className="ddd-lc-lbl">{shortLabel(names[m.eventId] || '')}</text>
         </g>);
       })}
       {lc.stages.map(s => (
@@ -740,12 +740,13 @@ function LifecycleSurface({ c, navTab }) {
   if (!LC) return null;
   const stageName = id => (LC.stages.find(s => s.id === id) || {}).name;
   const chk = lifecycleCheck(c.id);
-  const G = lifecycleGrounds(c.id);
+  const G = lifecycleGrounds(c.id);           // keyed by CARD ID (D-187)
+  const NAMES = lifecycleEventNames(c.id);    // id → title; presentation only
   const unmined = { moves: [], rules: LC.never.filter(n => !(n.grounds || []).length) };
   const seenEv = new Set();
   for (const m of LC.moves) {
-    if ((G[m.event] || []).length || seenEv.has(m.event)) continue;
-    seenEv.add(m.event); unmined.moves.push(m);
+    if ((G[m.eventId] || []).length || seenEv.has(m.eventId)) continue;
+    seenEv.add(m.eventId); unmined.moves.push(m);
   }
   const nDisc = unmined.moves.length + unmined.rules.length;
   const Grounds = ({ ids }) => (ids || []).length
@@ -782,7 +783,7 @@ function LifecycleSurface({ c, navTab }) {
           <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> The life of {LC.record.toLowerCase()}</div>
           <div className="asc-sec-sub">{LC.summary} The story is checked automatically against the wall — a card without a row in the moves, or a stage nothing can reach, is flagged on this page.</div>
         </div>
-        <LifecycleDiagram lc={LC} />
+        <LifecycleDiagram lc={LC} names={NAMES} />
         <div className="ddd-lc-defs">
           {LC.stages.map(st => <div key={st.id} className="ddd-lc-def"><b>{st.name}</b> — {st.def}</div>)}
           {LC.flags.map(f => <div key={f.id} className="ddd-lc-def flag"><b>⏸ {f.name}</b> — {f.def}</div>)}
@@ -803,13 +804,13 @@ function LifecycleSurface({ c, navTab }) {
               {LC.moves.map((m, i) => (
                 <tr key={i}>
                   <td>{m.flag ? 'any open stage' : (m.from ? stageName(m.from) : '—')}</td>
-                  <td><button type="button" className="dm-chip event ddd-lc-ev" onClick={() => navTab('flow')}>{m.event}</button></td>
+                  <td><button type="button" className="dm-chip event ddd-lc-ev" title={m.id} onClick={() => navTab('flow')}>{NAMES[m.eventId] || m.eventId}</button></td>
                   <td>{m.onlyIf}</td>
                   <td>{m.flag
                     ? `same stage · ${(LC.flags.find(f => f.id === m.flag) || {}).name} flag set`
                     : (m.to === m.from ? 'unchanged' : stageName(m.to))}</td>
                   <td>{m.tells || '—'}</td>
-                  <td className="ddd-lc-gr"><Grounds ids={G[m.event]} /></td>
+                  <td className="ddd-lc-gr"><Grounds ids={G[m.eventId]} /></td>
                 </tr>
               ))}
             </tbody>
@@ -840,7 +841,7 @@ function LifecycleSurface({ c, navTab }) {
           <div className="ddd-lc-never disc" key={'r' + i}><b>{n.rule}</b><span>{n.why}</span></div>
         ))}
         {unmined.moves.map((m, i) => (
-          <div className="ddd-lc-never disc" key={'m' + i}><b>&ldquo;{m.event}&rdquo;</b><span>{m.onlyIf}</span></div>
+          <div className="ddd-lc-never disc" key={'m' + i}><b>&ldquo;{NAMES[m.eventId] || m.eventId}&rdquo;</b><span>{m.onlyIf}</span></div>
         ))}
       </div>
     )}
@@ -987,9 +988,9 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
                       <tr key={i}>
                         <td><span className="dm-chip event">{p.when}</span></td>
                         <td>{p.from}</td>
-                        <td>{p.card
-                          ? <button type="button" className="dm-chip command ddd-lc-ev" title={`lands as “${p.card}” on the wall`} onClick={() => navTab('flow')}>{p.then}</button>
-                          : <span className="dm-chip command">{p.then}</span>}</td>
+                        <td>{p.eventId
+                          ? <button type="button" className="dm-chip command ddd-lc-ev" title={`${p.id} — lands as “${(lifecycleEventNames(c.id)[p.eventId]) || p.eventId}” on the wall`} onClick={() => navTab('flow')}>{p.then}</button>
+                          : <span className="dm-chip command" title={p.id}>{p.then}</span>}</td>
                         <td><span className={'ddd-pol-mode ' + p.mode}>{p.mode}</span></td>
                         <td>{p.sla}</td>
                         <td>{p.cant}</td>
@@ -1147,7 +1148,7 @@ function BcTabs({ c, D, M, prd, tab, navTab, hideTabs }) {
       {tab === 'openitems' && PK && (() => {
         const G = lifecycleGrounds(c.id);
         const seen = new Set();
-        const lcOpen = LC ? LC.moves.filter(m => { if ((G[m.event] || []).length || seen.has(m.event)) return false; seen.add(m.event); return true; }).length + LC.never.filter(n => !(n.grounds || []).length).length : 0;
+        const lcOpen = LC ? LC.moves.filter(m => { if ((G[m.eventId] || []).length || seen.has(m.eventId)) return false; seen.add(m.eventId); return true; }).length + LC.never.filter(n => !(n.grounds || []).length).length : 0;
         const polOpen = (CONTEXT_POLICIES[c.id] || []).filter(p => !(p.grounds || []).length).length;
         const invOpen = aggregates.flatMap(x => (x.invariants || []).filter(iv => !iv.fr)).length;
         const groups = [

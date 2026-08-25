@@ -34,61 +34,75 @@ export const CLAIMS_LIFECYCLES = {
         def: "A pause flag on the file, typed by who set it (fraud & SIU, disputes). It stops payment approval and closing; only its owner releases it. Not a stage — the file keeps its stage while held." },
     ],
     moves: [
-      { from: null, event: "Claim opened", to: "opened",
+      { id: "TRN-ADJUD-open", from: null, eventId: "adj-opened", to: "opened",
         onlyIf: "The claim-opened message arrives from Intake & registration — one file per claim number, replays change nothing." },
-      { from: "opened", event: "Policy verified", to: "verified",
+      { id: "TRN-ADJUD-verify-policy", from: "opened", eventId: "adj-policy", to: "verified",
         onlyIf: "The stored coverage snapshot shows the policy in force at the date of loss." },
-      { from: "opened", event: "Claim denied — policy not in force", to: "denied",
+      { id: "TRN-ADJUD-deny-not-in-force", from: "opened", eventId: "adj-denied-force", to: "denied",
         onlyIf: "The snapshot shows no policy in force — the reasons go on record with the denial." },
-      { from: "verified", event: "Coverage confirmed", to: "covered",
+      { id: "TRN-ADJUD-confirm-coverage", from: "verified", eventId: "adj-coverage", to: "covered",
         onlyIf: "The loss falls under a covered line, within its limits and deductible." },
-      { from: "verified", event: "Claim denied — no coverage", to: "denied",
+      { id: "TRN-ADJUD-deny-no-coverage", from: "verified", eventId: "adj-denied-cover", to: "denied",
         onlyIf: "No covered line responds — the reasons go on record with the denial." },
-      { from: "covered", event: "Reserve established", to: "covered",
+      { id: "TRN-ADJUD-establish-reserve", from: "covered", eventId: "adj-reserve", to: "covered",
         onlyIf: "An initial reserve is set per coverage line — recorded on the file; the stage does not change." },
-      { from: "covered", event: "Fault determined", to: "covered",
+      { id: "TRN-ADJUD-determine-fault", from: "covered", eventId: "adj-fault", to: "covered",
         onlyIf: "Fault is determined under the applicable rules — recorded; the stage does not change." },
-      { from: "covered", event: "Settlement calculated", to: "settling",
+      { id: "TRN-ADJUD-calculate-settlement", from: "covered", eventId: "adj-calculated", to: "settling",
         onlyIf: "The repair-verified message brought the estimate of record (or the total-loss settlement stands in for it)." },
-      { from: "settling", event: "Payment authorized", to: "authorized",
+      { id: "TRN-ADJUD-authorize-payment", from: "settling", eventId: "adj-payauth", to: "authorized",
         onlyIf: "NO open holds, and the amount is within the handler's authority.",
         tells: "payment instruction → Claim payments" },
-      { from: "authorized", event: "Claim closed", to: "closed",
+      { id: "TRN-ADJUD-close", from: "authorized", eventId: "adj-closed", to: "closed",
         onlyIf: "The payment-settled message is back and the closure checklist is green: all settled, no holds, no open tasks, documents complete.",
         tells: "recovery referral → Recovery & subrogation, when someone else should pay" },
-      { from: "closed", event: "Credit accepted after close", to: "closed",
+      { id: "TRN-ADJUD-accept-credit", from: "closed", eventId: "adj-credit", to: "closed",
         onlyIf: "Money comes back (salvage proceeds, a recovery) — recorded as a new entry; nothing existing changes." },
-      { from: "denied", event: "Claim reopened", to: "covered",
+      { id: "TRN-ADJUD-reopen-from-denied", from: "denied", eventId: "adj-reopened", to: "covered",
         onlyIf: "The decision is challenged — a NEW decision version opens; the old one is never edited." },
-      { from: "closed", event: "Claim reopened", to: "covered",
+      { id: "TRN-ADJUD-reopen-from-closed", from: "closed", eventId: "adj-reopened", to: "covered",
         onlyIf: "A dispute reopens the closed file the same way — new version, full history." },
-      { from: null, event: "Hold applied", to: null, flag: "hold",
+      { id: "TRN-ADJUD-apply-hold", from: null, eventId: "adj-hold", to: null, flag: "hold",
         onlyIf: "Someone with standing says stop — at any stage before Closed; the hold is typed by its origin." },
     ],
     never: [
-      { rule: "No payment is approved while any hold is open.",
+      { id: "TRL-ADJUD-holds-gate-money", inv: "INV-ADJUD-holds-gate",
+        rule: "No payment is approved while any hold is open.",
         why: "Holds exist to stop money — an approval that ignores one is the bug the business cannot forgive." },
-      { rule: "A closed file is never edited.",
+      { id: "TRL-ADJUD-closed-never-edited", inv: "INV-ADJUD-closed-append-only",
+        rule: "A closed file is never edited.",
         why: "Late money lands as new credit entries; what was decided stays exactly as decided." },
-      { rule: "A denial never leaves without its reasons.",
+      { id: "TRL-ADJUD-denial-carries-reasons",
+        rule: "A denial never leaves without its reasons.",
         why: "The reasons are what the claimant can challenge — and what the regulator reads." },
-      { rule: "Reopening never overwrites a decision.",
+      { id: "TRL-ADJUD-reopen-versions-decisions", inv: "INV-ADJUD-decisions-append-only",
+        rule: "Reopening never overwrites a decision.",
         why: "A new decision version is added; every prior decision stays on record." },
-      { rule: "No approval beyond the handler's authority.", grounds: ["FR5"],
+      { id: "TRL-ADJUD-authority-limit", inv: "INV-ADJUD-reserve-evented-authority", grounds: ["FR5"],
+        rule: "No approval beyond the handler's authority.",
         why: "Bigger amounts need a bigger authority — the limit is checked in code, not trusted." },
     ],
   },
 };
 
 /* Each move's "grounded in" refs come from its event card on the wall —
-   derived, never re-authored. An event with no refs is an unmined
-   assertion (the design discovered it; Discover hasn't captured it). */
+   derived, never re-authored, JOINED BY CARD ID (D-187: never by title).
+   An event with no refs is an unmined assertion. */
 export function lifecycleGrounds(ctxId) {
   const lc = CLAIMS_LIFECYCLES[ctxId];
   if (!lc) return {};
   const storm = CLAIMS_DESIGN_STORMS.find((m) => m.contextId === ctxId);
   return Object.fromEntries(
-    (storm ? storm.nodes : []).filter((n) => n.kind === "event").map((n) => [n.summary, n.grounds || []])
+    (storm ? storm.nodes : []).filter((n) => n.kind === "event").map((n) => [n.id, n.grounds || []])
+  );
+}
+
+/* Display names derive from the wall — the card id is the reference, the
+   title is presentation. Rename a card and every page follows. */
+export function lifecycleEventNames(ctxId) {
+  const storm = CLAIMS_DESIGN_STORMS.find((m) => m.contextId === ctxId);
+  return Object.fromEntries(
+    (storm ? storm.nodes : []).filter((n) => n.kind === "event").map((n) => [n.id, n.summary])
   );
 }
 
@@ -99,10 +113,12 @@ export function lifecycleCheck(ctxId) {
   const lc = CLAIMS_LIFECYCLES[ctxId];
   if (!lc) return null;
   const storm = CLAIMS_DESIGN_STORMS.find((m) => m.contextId === ctxId);
-  const wallEvents = new Set(storm ? storm.nodes.filter((n) => n.kind === "event").map((n) => n.summary) : []);
-  const storyEvents = new Set(lc.moves.map((m) => m.event));
-  const cardsWithoutRow = [...wallEvents].filter((e) => !storyEvents.has(e));
-  const rowsWithoutCard = [...storyEvents].filter((e) => !wallEvents.has(e));
+  const wall = storm ? storm.nodes.filter((n) => n.kind === "event") : [];
+  const wallIds = new Set(wall.map((n) => n.id));
+  const nameOf = Object.fromEntries(wall.map((n) => [n.id, n.summary]));
+  const storyIds = new Set(lc.moves.map((m) => m.eventId));
+  const cardsWithoutRow = [...wallIds].filter((e) => !storyIds.has(e)).map((e) => nameOf[e]);
+  const rowsWithoutCard = [...storyIds].filter((e) => !wallIds.has(e));
   const reach = new Set();
   const grow = (id) => {
     if (!id || reach.has(id)) return;
