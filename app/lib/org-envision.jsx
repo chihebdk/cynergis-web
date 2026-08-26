@@ -209,6 +209,7 @@ const XCUT_ENTRIES = [
   // Delivery re-homed into Build › Delivery backlog (D-050) — one door, one room
   { key: 'xglossary', label: 'Glossary',           ico: 'spark' },
   { key: 'xdeps',     label: 'Dependencies',       ico: 'link' },
+  { key: 'xinfra',    label: 'Infrastructure',     ico: 'board' },   // D-198: the service-needs register (cross-phase)
   { key: 'xrisk',     label: 'Risk register',      ico: 'alert' },
   { key: 'xgov',      label: 'Governance',         ico: 'lock' },
 ];
@@ -803,6 +804,8 @@ function ProductPage({ product, portfolio }) {
               ? <ProductSources product={product} prd={prd} />
               : entry === 'xgraph'
                 ? <ProductGraph product={product} prd={prd} />
+            : entry === 'xinfra'
+                ? (typeof ProductInfra !== 'undefined' ? <ProductInfra /> : null)
             : entry === 'xglossary'
                 ? <XSurface phase="X" entry="glossary" prd={prd} />
             : entry === 'xdeps'

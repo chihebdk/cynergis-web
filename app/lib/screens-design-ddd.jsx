@@ -9,6 +9,7 @@ import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds, lifecycleEventName
 import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CONTEXT_CAPABILITIES } from '../flow/claims-capabilities';
 import { CLAIMS_CONTRACTS } from '../flow/claims-contracts';
+import { INFRA_NEEDS, infraGaps } from '../flow/claims-infra';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
 import { BC_PACKET } from '../flow/claims-bc-packet';
@@ -1886,6 +1887,77 @@ function BcWorkspace({ product, prd, onBack }) {
   );
 }
 window.BcWorkspace = BcWorkspace;
+
+/* ============================================================
+   D-198 — More › Infrastructure: the service-needs register.
+   Ports & adapters for infrastructure: the NEED is the stable,
+   tool-agnostic entry (INF- id, what demand joins point at); the
+   TOOL is a binding value with a status. Gaps first — a demanded
+   need that is not enabled blocks the walking skeleton.
+   ============================================================ */
+const INF_STATUS = {
+  'enabled':          { label: 'enabled',             cls: 'automated' },
+  'in-review':        { label: 'in security review',  cls: 'manual' },
+  'not-provisioned':  { label: 'not yet provisioned', cls: 'refusal' },
+};
+function ProductInfra() {
+  const gaps = infraGaps();
+  return (
+    <div className="asc-page env-page">
+      <div className="ddd-wrap">
+        <div className="ddd-intro">
+          <div className="ddd-eyebrow"><DDPico d={DDI.cap} w={12} /> PRODUCT · CROSS-PHASE REGISTER</div>
+          <h2 className="ddd-page-title">Infrastructure — the service needs</h2>
+          <p className="ddd-lead">
+            Tool-agnostic by rule: each entry is an <b>abstract service need</b> the design demands — the concrete
+            tool is a <b>binding value</b> on it, swappable without breaking a single join. Demand comes from the
+            design by id: trigger doors, how-it&apos;s-built decisions, service levels, security rows and contracts.
+            Design assumed this register; Build confirms against it; Operate lives on it.
+          </p>
+        </div>
+
+        {gaps.length > 0 && (
+          <div className="asc-section ddd-sec">
+            <div className="asc-sec-head">
+              <div className="asc-sec-title">⚠ Gaps — demanded, not enabled</div>
+              <div className="asc-sec-sub">The pre-skeleton checklist: nothing that demands these can reach production until the binding lands.</div>
+            </div>
+            {gaps.map(n => (
+              <div className="ddd-lc-never disc" key={n.id}>
+                <b>{n.name}<br /><IdChip id={n.id} /> <span className={'ddd-scn-kind ' + (INF_STATUS[n.binding.status] || {}).cls}>{(INF_STATUS[n.binding.status] || {}).label}</span></b>
+                <span>{n.binding.note || n.what} Blocks <b>{n.demandedBy.length}</b> demands.</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> The register — {INFRA_NEEDS.length} needs</div>
+            <div className="asc-sec-sub">Need · what it is · the binding (a value, not an identity) · who demands it. Constraints are needs too — residency and hardening bind the same way.</div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>Need</th><th>What</th><th>Implemented by</th><th>Status</th><th>Demanded by</th></tr></thead>
+              <tbody>
+                {INFRA_NEEDS.map(n => (
+                  <tr key={n.id}>
+                    <td><b>{n.name}</b><br /><IdChip id={n.id} />{n.kind === 'constraint' && <span className="agu-tbl-tag" style={{ marginLeft: 6 }}>constraint</span>}</td>
+                    <td>{n.what}</td>
+                    <td>{n.binding.implementedBy}</td>
+                    <td><span className={'ddd-scn-kind ' + (INF_STATUS[n.binding.status] || {}).cls}>{(INF_STATUS[n.binding.status] || {}).label}</span></td>
+                    <td className="ddd-inf-dem"><b>{n.demandedBy.length}</b> · {n.demandedBy.slice(0, 3).map(d => <code className="ddd-idchip" key={d}>{d}</code>)}{n.demandedBy.length > 3 && <span className="ddd-idchip"> +{n.demandedBy.length - 3}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+window.ProductInfra = ProductInfra;
 window.DesignContextMap = DesignContextMap;
 window.DesignSystemMap = DesignSystemMap;
 window.DesignRealization = DesignRealization;

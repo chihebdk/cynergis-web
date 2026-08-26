@@ -30,6 +30,9 @@ const { CONTEXT_POLICIES } = await load('claims-policies');
 const { BC_PACKET } = await load('claims-bc-packet');
 const { CLAIMS_CONTRACTS } = await load('claims-contracts');
 const { CONTEXT_CAPABILITIES } = await load('claims-capabilities');
+const infraSrc = readFileSync(join(ROOT, 'flow', 'claims-infra.js'), 'utf8').replace(/^"use client";/, '');
+writeFileSync(join(tmp, 'claims-infra.mjs'), infraSrc);
+const { INFRA_NEEDS } = await load('claims-infra');
 
 const prd = readFileSync(join(ROOT, 'lib', 'prd-data.js'), 'utf8');
 const dmm = readFileSync(join(ROOT, 'lib', 'domain-model-data.js'), 'utf8');
@@ -140,6 +143,20 @@ for (const ctx of CTXS) {
 const allSupported = new Set(Object.values(BC_PACKET).flatMap(pk => pk.scenarios.map(sc => sc.at).filter(Boolean)));
 const activeATs = ['AT1','AT2','AT3','AT5','AT6','AT7','AT8'];   // AT4 belongs to deferred AB
 activeATs.forEach(at => { if (!allSupported.has(at)) F.push(`product: Discover ${at} supported by NO component test in any box`); });
+
+// infra register: every demandedBy id must resolve to a real design element
+const allEvents = new Set(CLAIMS_DESIGN_STORMS.flatMap(m => m.nodes.filter(n => n.kind === 'event').map(n => n.id)));
+const packetIds = new Set([
+  ...Object.values(BC_PACKET).flatMap(pk => [...pk.serviceLevels, ...pk.security, ...pk.measures, ...pk.howBuilt.decisions, ...pk.knownGaps, ...pk.scenarios, ...pk.readModels].map(x => x.id)),
+  ...CLAIMS_CONTRACTS.map(c => c.id),
+]);
+const infraIds = new Set();
+INFRA_NEEDS.forEach(n => {
+  if (infraIds.has(n.id)) F.push(`infra: duplicate ${n.id}`); infraIds.add(n.id);
+  (n.demandedBy || []).forEach(d => {
+    if (!allEvents.has(d) && !packetIds.has(d)) F.push(`infra: ${n.id} demandedBy ${d} resolves to nothing`);
+  });
+});
 
 // registry-level checks
 CLAIMS_CONTRACTS.forEach(ct => { reg(ct.id, 'registry');

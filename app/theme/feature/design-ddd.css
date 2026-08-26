@@ -489,3 +489,7 @@
 
 /* D-194: the serves chips on a capability row */
 .ddd-cap-serves { display: inline-flex; align-items: baseline; gap: 5px; font-size: 11.5px; color: var(--ink-3, #6b7280); margin-left: 6px; }
+
+/* D-198: the infrastructure register */
+.ddd-inf-dem { white-space: nowrap; }
+.ddd-inf-dem code { margin-right: 4px; }
