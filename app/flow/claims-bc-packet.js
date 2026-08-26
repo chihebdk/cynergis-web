@@ -167,5 +167,242 @@ export const BC_PACKET = {
       { id: "GAP-INTAKE-abandoned", text: "Abandoned reports (never completed, never chased to conclusion) have no terminal stage — the story assumes every report registers.", where: "Lifecycle" },
       { id: "GAP-INTAKE-how-built", text: "How it's built is PROPOSED — the architect has not confirmed.", where: "How it's built" },
     ],
-  }
+  },
+
+  "CTX-REPAIR": {
+    scenarios: [
+      { id: "CAT-REPAIR-open", name: "A request opens a case and finds a shop", transition: "TRN-REPAIR-assign", uc: "UC6",
+        given: "An appraisal request from adjudication and a shop in capacity", when: "the case is assigned", then: "The shop holds the vehicle under programme terms; the case is Assigned.", kind: "move", grounds: [] },
+      { id: "CAT-REPAIR-estimate-of-record", name: "One estimate of record; supplements append", rule: "TRL-REPAIR-one-estimate",
+        given: "An approved estimate on the case", when: "hidden damage is found and approved", then: "The supplement APPENDS to the estimate of record — the record's total grows; no second estimate exists.", kind: "move", grounds: [] },
+      { id: "CAT-REPAIR-breach-hands-over", name: "Over the line, the vehicle changes stories", transition: "TRN-REPAIR-declare-breach", uc: "UC7", at: "AT7",
+        given: "An estimate over the total-loss line", when: "the breach is declared", then: "Repair activity stops; threshold-breach publishes WITH the estimate of record; the case ends Handed over.", kind: "move", grounds: ["FR9"] },
+      { id: "CAT-REPAIR-verify", name: "Verification signs on evidence, then tells adjudication", transition: "TRN-REPAIR-verify", uc: "UC6",
+        given: "Completed work matching the approved estimate and supplements", when: "coordination verifies", then: "repair-verified publishes with the estimate of record; the case is Verified.", kind: "move", grounds: [] },
+      { id: "CAT-REPAIR-refuse-unapproved-work", name: "Work before approval is refused", rule: "TRL-REPAIR-no-work-before-approval",
+        given: "An estimate not yet approved", when: "work authorization is attempted", then: "REFUSED — unpriced work is unpriced liability.", kind: "refusal", grounds: [] },
+      { id: "CAT-REPAIR-refuse-settling", name: "Coordination never settles a total loss", rule: "TRL-REPAIR-never-settle-total-loss",
+        given: "A breached estimate", when: "any settlement action is attempted here", then: "REFUSED — the vehicle is Total loss & salvage's story.", kind: "refusal", grounds: ["FR9"] },
+    ],
+    readModels: [
+      { id: "RM-REPAIR-shop-capacity", eventIds: ["dr-requested", "dr-accepted"], readerIds: ["SEC-REPAIR-coordinator"], name: "Network capacity & programme terms", serves: "assignment", readers: "coordinators", desc: "Who can take the vehicle, at what agreed rates." },
+      { id: "RM-REPAIR-estimate-vs-guide", eventIds: ["dr-estimate", "dr-approved"], readerIds: ["SEC-REPAIR-coordinator"], name: "Estimate vs guide view", serves: "estimate review & approval", readers: "coordinators", desc: "The priced lines against guide times and rates — review works this view." },
+      { id: "RM-REPAIR-threshold-line", eventIds: ["dr-breach"], readerIds: ["SEC-REPAIR-coordinator"], name: "Total-loss threshold view", serves: "breach declaration", readers: "coordinators", desc: "The applicable line for this vehicle — the breach is computed, not eyeballed." },
+      { id: "RM-REPAIR-repair-file", eventIds: ["dr-verified"], readerIds: ["SEC-REPAIR-coordinator"], name: "Repair file — evidence view", serves: "verification", readers: "coordinators", desc: "Photos, invoices, supplements against the approved estimate." },
+    ],
+    serviceLevels: [
+      { id: "SL-REPAIR-assignment", obligation: "Assignment", level: "within 1 business day of the request", why: "A vehicle nobody has taken is a claimant without a car and a clock nobody owns.", grounds: [] },
+      { id: "SL-REPAIR-approval", obligation: "Estimate approval", level: "same day as the estimate lands", why: "The shop cannot start, the claimant cannot plan, until the price is signed.", grounds: [] },
+      { id: "SL-REPAIR-breach", obligation: "Breach declaration", level: "immediate on crossing the line", why: "Every repair hour past the line is money spent on a vehicle that will not be repaired.", grounds: ["FR9"] },
+      { id: "SL-REPAIR-supplement", obligation: "Supplement decision", level: "within 2 business days", why: "An undecided supplement is a car on a lift and a shop not working.", grounds: [] },
+    ],
+    security: [
+      { id: "SEC-REPAIR-coordinator", who: "Repair coordinator", may: "assign, approve, verify — every approval attributed", grounds: [] },
+      { id: "SEC-REPAIR-shops", who: "Network shops", may: "see and work their own cases through the partner surface — never another shop's, never the claim", grounds: [] },
+      { id: "SEC-REPAIR-adjud", who: "Claim adjudication", may: "request and receive through the contracts — the case itself stays here", grounds: [] },
+      { id: "SEC-REPAIR-data-class", who: "The data itself", may: "claimant PII plus commercially sensitive network rates — the rates never reach the shops' competitors", grounds: [] },
+    ],
+    howBuilt: {
+      status: "proposed — for the architect to confirm in Build",
+      decisions: [
+        { id: "HB-REPAIR-packaging", aspect: "Packaging", choice: "One deployable service owning the repair case", why: "Internal modules per rail: assignment, estimate & supplements, verification." },
+        { id: "HB-REPAIR-store", aspect: "Store", choice: "Relational, private — estimate and supplement lines are naturally tabular", why: "Sums, rates and guide comparisons are queries, not documents." },
+        { id: "HB-REPAIR-doors", aspect: "Doors", choice: "Message doors on the claims cluster + the partner API for shops", why: "Per the trigger records; the partner surface is the one public face." },
+        { id: "HB-REPAIR-runtime", aspect: "Runtime", choice: "The claims cluster", why: "Its seams are adjudication and total loss; the shop API fronts through the gateway." },
+      ],
+    },
+    ownership: [
+      { role: "Owning team", who: "Repair network desk (Claims operations)", note: "The team that manages the shops owns the case the shops work." },
+      { role: "Decider", who: "ClaimsCore product owner", note: "Signs the threshold-breach contract on the publisher side." },
+      { role: "On call", who: "the owning team's rotation (from Build)", note: "A stuck assignment is a claimant without a car." },
+      { role: "Knowledge steward", who: "the box's agent + its knowledge-graph slice", note: "Keeps the wall, the packet and the code pointing at the same facts." },
+    ],
+    measures: [
+      { id: "MEA-REPAIR-cycle", measure: "Cycle time, request → verified", def: "Median calendar days", target: "baseline first; the claimant feels this number directly", grounds: [] },
+      { id: "MEA-REPAIR-supplement-rate", measure: "Supplement rate", def: "Cases with ≥1 supplement / all cases", target: "falling — supplements are estimates that missed", grounds: [] },
+      { id: "MEA-REPAIR-breach-rate", measure: "Breach rate", def: "Cases handed over / all cases", target: "watched — a rising line means estimates arrive too late", grounds: ["FR9"] },
+      { id: "MEA-REPAIR-variance", measure: "Approved vs final variance", def: "Final (with supplements) against first approval", target: "shrinking — the first price should be the price", grounds: [] },
+    ],
+    knownGaps: [
+      { id: "GAP-REPAIR-reassignment", text: "Shop no-show / reassignment has no card — the chase policy escalates into a moment the flow never states.", where: "Event flow" },
+      { id: "GAP-REPAIR-supplement-dispute", text: "A declined supplement's dispute path is unmodelled — the shop's recourse today is a phone call.", where: "Lifecycle" },
+      { id: "GAP-REPAIR-how-built", text: "How it's built is PROPOSED — the architect has not confirmed.", where: "How it's built" },
+    ],
+  },
+
+  "CTX-PAYMENTS": {
+    scenarios: [
+      { id: "CAT-PAYMENTS-exactly-once", name: "A replayed instruction executes nothing", rule: "TRL-PAYMENTS-exactly-once", uc: "UC6", at: "AT5",
+        given: "An instruction_id already on the ledger", when: "the same instruction arrives again", then: "REFUSED as a no-op — the existing entry answers; nothing dispatches twice.", kind: "refusal", grounds: ["FR6"] },
+      { id: "CAT-PAYMENTS-dispatch", name: "A verified payee, then dispatch", transition: "TRN-PAYMENTS-dispatch", uc: "UC6", at: "AT5",
+        given: "An instruction whose payee verifies", when: "dispatch runs", then: "The payment leaves for execution; the ledger reads dispatched.", kind: "move", grounds: ["FR6"] },
+      { id: "CAT-PAYMENTS-settle", name: "The outcome always returns", transition: "TRN-PAYMENTS-settle", uc: "UC6", at: "AT5",
+        given: "A dispatched payment", when: "execution confirms", then: "The ledger reads settled; payment-settled publishes to adjudication.", kind: "move", grounds: ["FR6"] },
+      { id: "CAT-PAYMENTS-fail-loud", name: "A bounce is recorded and tasked, never silent", transition: "TRN-PAYMENTS-fail", 
+        given: "A dispatched payment", when: "execution reports a bounce", then: "The failure lands with its reason; ops is tasked; adjudication is notified.", kind: "move", grounds: [] },
+      { id: "CAT-PAYMENTS-credit", name: "Money in books first, then publishes", transition: "TRN-PAYMENTS-book-credit",
+        given: "Salvage proceeds or a recovery receipt", when: "the credit books", then: "The ledger is already true when credit-received publishes — open or closed claim alike.", kind: "move", grounds: [] },
+      { id: "CAT-PAYMENTS-refuse-edit", name: "Ledger entries never change", rule: "TRL-PAYMENTS-append-only",
+        given: "Any existing ledger entry", when: "an edit or delete is attempted", then: "REFUSED — corrections are new entries with their reason.", kind: "refusal", grounds: [] },
+    ],
+    readModels: [
+      { id: "RM-PAYMENTS-payee-verification", eventIds: ["dp-received", "dp-dispatched"], readerIds: ["SEC-PAYMENTS-ops"], name: "Payee & banking view", serves: "dispatch validation", readers: "payment ops", desc: "Verified payee identity and instructions — dispatch reads it, never free text." },
+      { id: "RM-PAYMENTS-ledger-balance", eventIds: ["dp-settled", "dp-credit"], readerIds: ["SEC-PAYMENTS-ops", "SEC-PAYMENTS-actuarial"], name: "Ledger balance view", serves: "the money's single truth", readers: "ops · actuarial", desc: "Instructed, dispatched, settled, credited — per claim." },
+      { id: "RM-PAYMENTS-failure-queue", eventIds: ["dp-failed"], readerIds: ["SEC-PAYMENTS-ops"], name: "Failure queue", serves: "bounce handling", readers: "payment ops", desc: "Every bounce with its reason and age — nothing leaves but by resolution." },
+      { id: "RM-PAYMENTS-suspense", eventIds: ["dp-credit"], readerIds: ["SEC-PAYMENTS-ops"], name: "Suspense queue", serves: "unmatched credits", readers: "payment ops", desc: "Money that matched no claim — visible, aging, never dropped." },
+    ],
+    serviceLevels: [
+      { id: "SL-PAYMENTS-dispatch", obligation: "Dispatch", level: "same day as the instruction", why: "An authorized payment sitting undispatched is the delay the claimant cannot see or forgive.", grounds: ["FR6"] },
+      { id: "SL-PAYMENTS-outcome", obligation: "Outcome relay", level: "same day as execution reports", why: "Adjudication closes on it — a late outcome is a file that cannot close.", grounds: ["FR6"] },
+      { id: "SL-PAYMENTS-credit", obligation: "Credit booking", level: "same day as receipt", why: "Unbooked money in is money invisible to the audit.", grounds: [] },
+      { id: "SL-PAYMENTS-suspense", obligation: "Suspense aging", level: "escalated at 5 days", why: "Suspense is where money goes to be forgotten — unless someone is paged.", grounds: [] },
+    ],
+    security: [
+      { id: "SEC-PAYMENTS-ops", who: "Payment ops", may: "work failures and suspense; never create an instruction — only adjudication instructs", grounds: ["FR6"] },
+      { id: "SEC-PAYMENTS-adjud", who: "Claim adjudication", may: "instruct through the contract only — the ledger itself is never written from outside", grounds: ["FR6"] },
+      { id: "SEC-PAYMENTS-execution", who: "Legacy payment execution", may: "receive dispatches and report outcomes — a conformist behind the contract", grounds: [] },
+      { id: "SEC-PAYMENTS-actuarial", who: "Actuarial", may: "read the ledger stream — never write, never see payee banking detail", grounds: [] },
+      { id: "SEC-PAYMENTS-data-class", who: "The data itself", may: "banking details — the highest class in the product; access logged, masked by default", grounds: [] },
+    ],
+    howBuilt: {
+      status: "proposed — for the architect to confirm in Build",
+      decisions: [
+        { id: "HB-PAYMENTS-packaging", aspect: "Packaging", choice: "One deployable service owning the ledger", why: "Small, hot, and correctness-critical — the strongest candidate in the cut for its own service from day one." },
+        { id: "HB-PAYMENTS-store", aspect: "Store", choice: "Append-only relational ledger, private", why: "The design IS a ledger; the store should refuse updates structurally." },
+        { id: "HB-PAYMENTS-doors", aspect: "Doors", choice: "Message doors both sides; the execution adapter is the one conformist edge", why: "Instructions in, outcomes out, credits in — all contracts, all message-shaped." },
+        { id: "HB-PAYMENTS-runtime", aspect: "Runtime", choice: "The claims cluster, hardened tier", why: "Banking-detail handling pulls the strictest controls in the product." },
+      ],
+    },
+    ownership: [
+      { role: "Owning team", who: "Claims finance ops", note: "The ledger is a finance artifact operated inside claims — the team reflects both." },
+      { role: "Decider", who: "ClaimsCore product owner, with finance sign-off", note: "Contract changes on the money seams carry a second signature." },
+      { role: "On call", who: "the owning team's rotation (from Build)", note: "A failed disbursement pages the people who can fix it." },
+      { role: "Knowledge steward", who: "the box's agent + its knowledge-graph slice", note: "Keeps the wall, the packet and the code pointing at the same facts." },
+    ],
+    measures: [
+      { id: "MEA-PAYMENTS-settle-rate", measure: "First-pass settle rate", def: "Settled without failure / all instructions", target: "rising — every bounce is rework and a waiting claimant", grounds: [] },
+      { id: "MEA-PAYMENTS-latency", measure: "Instructed → settled", def: "Median hours", target: "same-day — the claimant's money should not sleep here", grounds: ["FR6"] },
+      { id: "MEA-PAYMENTS-suspense-aging", measure: "Suspense aging", def: "Oldest unmatched credit, days", target: "under 5 — visible money, resolved fast", grounds: [] },
+      { id: "MEA-PAYMENTS-credit-match", measure: "Credit match rate", def: "Credits auto-matched to a claim / all credits", target: "rising — suspense should be the exception", grounds: [] },
+    ],
+    knownGaps: [
+      { id: "GAP-PAYMENTS-retry", text: "Retry-after-failure has no card — a failed payment's second attempt is a moment the flow never states.", where: "Event flow" },
+      { id: "GAP-PAYMENTS-suspense-card", text: "The suspense queue has no card — unmatched credits are handled by a policy with no wall anchor.", where: "Event flow" },
+      { id: "GAP-PAYMENTS-how-built", text: "How it's built is PROPOSED — the architect has not confirmed.", where: "How it's built" },
+    ],
+  },
+
+  "CTX-TOTALLOSS": {
+    scenarios: [
+      { id: "CAT-TOTALLOSS-open", name: "A breach opens exactly one case", transition: "TRN-TOTALLOSS-receive", uc: "UC7", at: "AT7",
+        given: "A threshold breach with the estimate of record", when: "the case opens", then: "One salvage case per vehicle; the valuation starts from the estimate that crossed the line.", kind: "move", grounds: ["UC7", "FR9"] },
+      { id: "CAT-TOTALLOSS-valuation", name: "The offer stands on comparables", rule: "TRL-TOTALLOSS-valuation-on-record", uc: "UC7",
+        given: "A case without comparables on record", when: "an offer is attempted", then: "REFUSED — the offer that cannot show its evidence loses the dispute it causes.", kind: "refusal", grounds: ["FR9"] },
+      { id: "CAT-TOTALLOSS-lien-gate", name: "Liens are read before money moves", rule: "TRL-TOTALLOSS-lien-before-funds",
+        given: "An accepted offer and an uncleared lien", when: "settlement is attempted", then: "REFUSED — the holder is named, the owner told why, the funds wait.", kind: "refusal", grounds: [] },
+      { id: "CAT-TOTALLOSS-settle", name: "Acceptance settles through the claim's path", transition: "TRN-TOTALLOSS-settle", uc: "UC7",
+        given: "An accepted offer, liens clear", when: "settlement runs", then: "The indemnity travels adjudication's settlement path; the case moves to Settled.", kind: "move", grounds: ["UC7", "FR9"] },
+      { id: "CAT-TOTALLOSS-proceeds", name: "Disposal sends the proceeds home", transition: "TRN-TOTALLOSS-dispose", uc: "UC7",
+        given: "A titled vehicle sold by the network", when: "the sale completes", then: "salvage-proceeds publishes; the ledger books the credit; one disposition, closed.", kind: "move", grounds: ["FR9"] },
+    ],
+    readModels: [
+      { id: "RM-TOTALLOSS-comparables", eventIds: ["dt-valued"], readerIds: ["SEC-TOTALLOSS-specialist"], name: "Valuation comparables", serves: "the offer", readers: "total-loss specialists", desc: "Actual-cash-value evidence for this vehicle and market." },
+      { id: "RM-TOTALLOSS-lien-title", eventIds: ["dt-settled", "dt-branded"], readerIds: ["SEC-TOTALLOSS-specialist"], name: "Lien & title status", serves: "settlement & transfer", readers: "total-loss specialists", desc: "Registered interests and the payout order — read before funds move." },
+      { id: "RM-TOTALLOSS-market", eventIds: ["dt-disposed"], readerIds: ["SEC-TOTALLOSS-specialist"], name: "Salvage market view", serves: "disposal", readers: "total-loss specialists", desc: "What comparable salvage is fetching — the reserve price stands on it." },
+    ],
+    serviceLevels: [
+      { id: "SL-TOTALLOSS-valuation", obligation: "Valuation", level: "within 3 business days of the breach", why: "The owner is waiting to hear whether they still have a car.", grounds: ["FR9"] },
+      { id: "SL-TOTALLOSS-offer", obligation: "Offer", level: "within 1 business day of valuation", why: "A valued vehicle without an offer is a decision withheld.", grounds: [] },
+      { id: "SL-TOTALLOSS-proceeds", obligation: "Proceeds publication", level: "same day as the sale", why: "The ledger's truth includes the money the vehicle became.", grounds: ["FR9"] },
+    ],
+    security: [
+      { id: "SEC-TOTALLOSS-specialist", who: "Total-loss specialist", may: "value, offer, settle — every offer attributed with its comparables", grounds: [] },
+      { id: "SEC-TOTALLOSS-network", who: "Salvage network", may: "receive titled vehicles and report sales through the partner surface — nothing of the claim", grounds: [] },
+      { id: "SEC-TOTALLOSS-registry", who: "Title registry", may: "receive brand filings — an external authority, integrated at the edge", grounds: [] },
+      { id: "SEC-TOTALLOSS-data-class", who: "The data itself", may: "owner PII and lien positions — financial interests logged on every read", grounds: [] },
+    ],
+    howBuilt: {
+      status: "proposed — for the architect to confirm in Build",
+      decisions: [
+        { id: "HB-TOTALLOSS-packaging", aspect: "Packaging", choice: "A module beside adjudication initially; its own service only if volume demands", why: "Low volume, high judgment — the smallest deployable footprint that keeps the wall." },
+        { id: "HB-TOTALLOSS-store", aspect: "Store", choice: "Relational, private", why: "Cases, liens and dispositions are rows with sums and dates." },
+        { id: "HB-TOTALLOSS-doors", aspect: "Doors", choice: "Message doors + the registry and network adapters", why: "Per the trigger records; two external authorities integrate at the edge." },
+        { id: "HB-TOTALLOSS-runtime", aspect: "Runtime", choice: "The claims cluster", why: "Its seams are repair, adjudication and payments." },
+      ],
+    },
+    ownership: [
+      { role: "Owning team", who: "Total loss & salvage desk (Claims operations)", note: "One desk, one vehicle story — valuation to proceeds." },
+      { role: "Decider", who: "ClaimsCore product owner", note: "Signs the salvage-proceeds contract on the publisher side." },
+      { role: "On call", who: "the owning team's rotation (from Build)", note: "A stalled title is an owner unpaid." },
+      { role: "Knowledge steward", who: "the box's agent + its knowledge-graph slice", note: "Keeps the wall, the packet and the code pointing at the same facts." },
+    ],
+    measures: [
+      { id: "MEA-TOTALLOSS-cycle", measure: "Breach → disposed", def: "Median calendar days", target: "baseline first — the whole vehicle story in one number", grounds: [] },
+      { id: "MEA-TOTALLOSS-recovery-pct", measure: "Proceeds vs ACV", def: "What the salvage returned against what the vehicle was worth", target: "watched — the market's grade on our disposals", grounds: ["FR9"] },
+      { id: "MEA-TOTALLOSS-acceptance", measure: "Offer acceptance rate", def: "First offers accepted / all offers", target: "rising — comparables shown is offers believed", grounds: [] },
+      { id: "MEA-TOTALLOSS-lien-days", measure: "Lien clearance time", def: "Median days acceptance → liens clear", target: "falling — the gate should be fast, not just firm", grounds: [] },
+    ],
+    knownGaps: [
+      { id: "GAP-TOTALLOSS-owner-retains", text: "The owner-retains-vehicle path (they keep the salvage, netted from the settlement) is unmodelled.", where: "Lifecycle" },
+      { id: "GAP-TOTALLOSS-acv-dispute", text: "An ACV dispute (the appraisal clause) has no card — the disagreement path lives in a policy exception only.", where: "Event flow" },
+      { id: "GAP-TOTALLOSS-how-built", text: "How it's built is PROPOSED — the architect has not confirmed.", where: "How it's built" },
+    ],
+  },
+
+  "CTX-RECOVERY": {
+    scenarios: [
+      { id: "CAT-RECOVERY-open-post-close", name: "Only a closed claim opens a case", rule: "TRL-RECOVERY-closed-claim-basis",
+        given: "A referral on a claim that is not closed", when: "the case is opened", then: "REFUSED back to adjudication — the basis must be frozen.", kind: "refusal", grounds: [] },
+      { id: "CAT-RECOVERY-demand-ceiling", name: "No demand above the quantum paid", rule: "TRL-RECOVERY-demand-ceiling",
+        given: "A position with quantum paid on record", when: "a demand above it is attempted", then: "REFUSED — the ceiling is what the file spent.", kind: "refusal", grounds: [] },
+      { id: "CAT-RECOVERY-demand", name: "The demand argues the file's facts", transition: "TRN-RECOVERY-demand",
+        given: "A complete frozen position", when: "the demand issues", then: "Fault basis, quantum, and evidence references — the responsible party can check every line.", kind: "move", grounds: [] },
+      { id: "CAT-RECOVERY-credit-via-ledger", name: "Money returns through the ledger, always", rule: "TRL-RECOVERY-credits-via-payments",
+        given: "A direct payment offer from a carrier", when: "acceptance is attempted outside the ledger", then: "REFUSED — routed through Claim payments; the audit sees every dollar.", kind: "refusal", grounds: [] },
+      { id: "CAT-RECOVERY-close", name: "Closure records the outcome, whatever it is", transition: "TRN-RECOVERY-close",
+        given: "Nothing more recoverable", when: "the case closes", then: "Recovered, compromised, or exhausted — with reasons; the claim file is untouched throughout.", kind: "move", grounds: [] },
+    ],
+    readModels: [
+      { id: "RM-RECOVERY-position", eventIds: ["dv-referred", "dv-demand"], readerIds: ["SEC-RECOVERY-specialist"], name: "Position file", serves: "the demand", readers: "recovery specialists", desc: "Fault, quantum paid, and evidence from the closed claim — the demand is built from this view." },
+      { id: "RM-RECOVERY-ledger", eventIds: ["dv-received", "dv-closed"], readerIds: ["SEC-RECOVERY-specialist"], name: "Recovery ledger view", serves: "collection & closure", readers: "recovery specialists", desc: "Demanded against received, per party — the close decision reads the balance." },
+      { id: "RM-RECOVERY-clock", eventIds: ["dv-demand"], readerIds: ["SEC-RECOVERY-specialist"], name: "Response clock view", serves: "escalation", readers: "recovery specialists", desc: "Every open demand's deadline — the escalation policy watches this view." },
+    ],
+    serviceLevels: [
+      { id: "SL-RECOVERY-demand", obligation: "Demand issue", level: "within 10 business days of referral", why: "Recovery value decays — late demands meet empty positions and faded memories.", grounds: [] },
+      { id: "SL-RECOVERY-escalation", obligation: "Escalation", level: "at the response deadline, not after", why: "A deadline nobody enforces is a suggestion.", grounds: [] },
+      { id: "SL-RECOVERY-credit-relay", obligation: "Receipt to ledger", level: "same day", why: "Recovered money is not recovered until the ledger says so.", grounds: [] },
+    ],
+    security: [
+      { id: "SEC-RECOVERY-specialist", who: "Recovery specialist", may: "build positions, issue demands, close cases — the claim file itself is read-only to them", grounds: [] },
+      { id: "SEC-RECOVERY-carriers", who: "Other carriers", may: "receive demands and pay — their process, our position; nothing of ours to edit", grounds: [] },
+      { id: "SEC-RECOVERY-data-class", who: "The data itself", may: "the closed file's facts, frozen at referral — PII whose retention clock is already running", grounds: [] },
+    ],
+    howBuilt: {
+      status: "proposed — for the architect to confirm in Build",
+      decisions: [
+        { id: "HB-RECOVERY-packaging", aspect: "Packaging", choice: "A module beside adjudication; the lightest box in the cut", why: "Lowest volume, longest clocks — a service of its own buys nothing yet." },
+        { id: "HB-RECOVERY-store", aspect: "Store", choice: "Relational, private", why: "Cases, demands, receipts — small and tabular." },
+        { id: "HB-RECOVERY-doors", aspect: "Doors", choice: "Message door in (referral); carrier correspondence at the edge", why: "One seam in, the ledger path out." },
+        { id: "HB-RECOVERY-runtime", aspect: "Runtime", choice: "The claims cluster", why: "Beside the file it argues from and the ledger it feeds." },
+      ],
+    },
+    ownership: [
+      { role: "Owning team", who: "Recovery & subrogation desk (Claims operations)", note: "Its own clock, its own counterparties — a desk, deliberately." },
+      { role: "Decider", who: "ClaimsCore product owner", note: "Owns the biggest open item: no use case names recovery at all." },
+      { role: "On call", who: "the owning team's rotation (from Build)", note: "Clock-driven — the pager is mostly the calendar." },
+      { role: "Knowledge steward", who: "the box's agent + its knowledge-graph slice", note: "Keeps the wall, the packet and the code pointing at the same facts." },
+    ],
+    measures: [
+      { id: "MEA-RECOVERY-capture", measure: "Capture rate", def: "Received / referred, in dollars", target: "the box's reason to exist, in one number", grounds: [] },
+      { id: "MEA-RECOVERY-time-to-demand", measure: "Referral → demand", def: "Median business days", target: "under 10 — recovery value decays", grounds: [] },
+      { id: "MEA-RECOVERY-response-rate", measure: "Response rate", def: "Demands answered by the deadline / all demands", target: "watched — silence is a counterparty strategy", grounds: [] },
+      { id: "MEA-RECOVERY-arbitration", measure: "Arbitration rate", def: "Cases escalated / all cases", target: "watched — arbitration is slower and costlier than agreement", grounds: [] },
+    ],
+    knownGaps: [
+      { id: "GAP-RECOVERY-no-usecase", text: "NO use case names recovery — the whole box is design-discovered supply with no captured demand. The largest single Discover gap in the cut.", where: "Capabilities" },
+      { id: "GAP-RECOVERY-partial", text: "Partial recoveries (instalments against one demand) are unmodelled — Received assumes one payment.", where: "Lifecycle" },
+      { id: "GAP-RECOVERY-how-built", text: "How it's built is PROPOSED — the architect has not confirmed.", where: "How it's built" },
+    ],
+  },
+
 };

@@ -175,6 +175,32 @@ window.__DOMAIN__ = {
         },
         {
           id: 'AGG-REPAIRCASE', name: 'Repair case', context: 'CTX-REPAIR', ucs: [],
+          shape: {
+            description: 'One case per appraisal request: the assignment, the estimate of record with its appended supplements, and the verification evidence. Over the total-loss line, the case ends in a handover, not a repair.',
+            tables: [
+              { name: 'repair_case', purpose: 'the root — one row per appraisal request', columns: [
+                { name: 'case_id', role: 'id', type: 'string', desc: 'One per request from adjudication.' },
+                { name: 'claim_number', role: 'ref', refTo: 'Claim file (Claim adjudication)', type: 'string', desc: 'The requesting file — referenced, never joined.' },
+                { name: 'stage', type: 'enum', desc: 'The state machine\u2019s pointer.' },
+                { name: 'shop', role: 'ref', refTo: 'Network shop (partner registry)', type: 'string', desc: 'Who has the vehicle.' },
+                { name: 'coverage_ceiling', type: 'money', desc: 'The limit the estimate works under — from the request, not the reserve.' },
+              ] },
+              { name: 'estimate_line', owned: true, purpose: 'the estimate of record — lines priced against guide times and rates', columns: [
+                { name: 'line_no', role: 'id', type: 'number', desc: 'One row per damage line.' },
+                { name: 'work_and_parts', type: 'structured', desc: 'What is repaired or replaced, at what rate.' },
+                { name: 'amount', type: 'money', desc: 'The line\u2019s price — the record\u2019s total is their sum.' },
+              ] },
+              { name: 'supplement', owned: true, purpose: 'hidden damage — appends to the estimate of record, never replaces', columns: [
+                { name: 'supplement_no', role: 'id', type: 'number', desc: 'One per discovery, in order.' },
+                { name: 'reason_and_amount', type: 'text + money', desc: 'What was found and what it adds.' },
+                { name: 'approved_at', type: 'date', desc: 'Empty = found but not yet approved — work waits.' },
+              ] },
+              { name: 'verification', owned: true, purpose: 'the evidence the sign-off stands on', columns: [
+                { name: 'evidence_refs', type: 'refs', desc: 'Photos, invoices, certification — by reference.' },
+                { name: 'verified_by_at', type: 'who/when', desc: 'Who signed the completed work, and when.' },
+              ] },
+            ],
+          },
           commands: ['Open the appraisal assignment', 'Accept the assignment', 'Price the estimate', 'Approve estimate & supplements', 'Verify the repair'],
           events: ['Appraisal requested', 'Assignment accepted', 'Estimate received', 'Threshold breach declared', 'Estimate approved', 'Supplement approved', 'Repair completed', 'Repair verified'],
           invariants: [
@@ -184,6 +210,31 @@ window.__DOMAIN__ = {
         },
         {
           id: 'AGG-PAYLEDGER', name: 'Payment ledger', context: 'CTX-PAYMENTS', ucs: [],
+          shape: {
+            description: 'One ledger per claim: instructions in, disbursements out, credits back — append-only, the single truth about the money. Every entry carries the thread back to who authorized and what executed.',
+            tables: [
+              { name: 'payment_ledger', purpose: 'the root — one row per claim', columns: [
+                { name: 'claim_number', role: 'id', type: 'string', desc: 'One ledger per claim — the identity payments shares with everyone.' },
+                { name: 'balance', type: 'money', desc: 'Instructed \u00b7 dispatched \u00b7 settled \u00b7 credited — derived from the entries, never edited.' },
+              ] },
+              { name: 'instruction', owned: true, purpose: 'one row per payment instruction — the exactly-once boundary', columns: [
+                { name: 'instruction_id', role: 'id', type: 'string', desc: 'The idempotency key — a replay lands on this row and stops.' },
+                { name: 'payee_amount_line', type: 'structured', desc: 'Who, how much, against which coverage line.' },
+                { name: 'authority_ref', type: 'string', desc: 'Who authorized, under which limit — the audit thread.' },
+                { name: 'status', type: 'enum', desc: 'instructed \u00b7 dispatched \u00b7 settled \u00b7 failed.' },
+              ] },
+              { name: 'disbursement', owned: true, purpose: 'the execution record per dispatch', columns: [
+                { name: 'dispatched_at', role: 'id', type: 'date', desc: 'When it left for execution.' },
+                { name: 'method_and_outcome', type: 'structured', desc: 'How it moved, and what execution reported back.' },
+                { name: 'failure_reason', type: 'text', desc: 'Present only on a bounce — never silent.' },
+              ] },
+              { name: 'credit', owned: true, purpose: 'money back in — salvage and recovery, append-only', columns: [
+                { name: 'credit_id', role: 'id', type: 'string', desc: 'One per receipt.' },
+                { name: 'source_and_amount', type: 'enum + money', desc: 'salvage \u00b7 recovery, and what came back.' },
+                { name: 'origin_ref', role: 'ref', refTo: 'Salvage case / Recovery case', type: 'string', desc: 'The case that produced the money.' },
+              ] },
+            ],
+          },
           commands: ['Receive the instruction', 'Dispatch the payment', 'Confirm settlement', 'Record a failure', 'Book a credit'],
           events: ['Payment instruction received', 'Instruction dispatched', 'Payment failed', 'Settlement confirmed', 'Credit received'],
           invariants: [
@@ -193,6 +244,30 @@ window.__DOMAIN__ = {
         },
         {
           id: 'AGG-SALVAGECASE', name: 'Salvage case', context: 'CTX-TOTALLOSS', ucs: ['UC7'],
+          shape: {
+            description: 'One case per vehicle: the valuation the offer stands on, the settlement with liens read first, the title\u2019s movement, and the disposition that sends the proceeds home through the ledger.',
+            tables: [
+              { name: 'salvage_case', purpose: 'the root — one row per vehicle', columns: [
+                { name: 'case_id', role: 'id', type: 'string', desc: 'One per threshold breach.' },
+                { name: 'claim_number', role: 'ref', refTo: 'Claim file (Claim adjudication)', type: 'string', desc: 'The claim behind the vehicle.' },
+                { name: 'vin', type: 'string', desc: 'The vehicle — one disposition, ever.' },
+                { name: 'stage', type: 'enum', desc: 'The state machine\u2019s pointer.' },
+                { name: 'acv_and_offer', type: 'money', desc: 'Actual cash value and the offer that stood on it.' },
+              ] },
+              { name: 'valuation', owned: true, purpose: 'the comparables the offer stands on', columns: [
+                { name: 'comparable_refs', type: 'refs', desc: 'Market evidence for this vehicle and market.' },
+                { name: 'method_and_at', type: 'structured', desc: 'How the value was reached, and when.' },
+              ] },
+              { name: 'lien', owned: true, purpose: 'registered interests — read before any funds move', columns: [
+                { name: 'holder', role: 'id', type: 'string', desc: 'Who holds the interest.' },
+                { name: 'amount_and_cleared', type: 'money + date', desc: 'What is owed, and when it cleared — empty gates settlement.' },
+              ] },
+              { name: 'disposition', owned: true, purpose: 'the sale — proceeds home through the ledger', columns: [
+                { name: 'buyer_and_proceeds', type: 'structured + money', desc: 'Who bought, for how much.' },
+                { name: 'ledger_entry', role: 'ref', refTo: 'Payment ledger (Claim payments)', type: 'string', desc: 'The credit the proceeds became.' },
+              ] },
+            ],
+          },
           commands: ['Open from the threshold breach', 'Value the vehicle', 'Offer & accept the settlement', 'Brand & transfer title', 'Dispose the salvage'],
           events: ['Threshold breach received', 'Vehicle valued', 'Settlement offered & accepted', 'Title branded & transferred', 'Salvage disposed'],
           invariants: [
@@ -202,6 +277,28 @@ window.__DOMAIN__ = {
         },
         {
           id: 'AGG-RECOVERYCASE', name: 'Recovery case', context: 'CTX-RECOVERY', ucs: [],
+          shape: {
+            description: 'One case per referral: the frozen position from the closed claim, the demands built on it, and the receipts that go home through the ledger. The claim file itself is never touched.',
+            tables: [
+              { name: 'recovery_case', purpose: 'the root — one row per referral', columns: [
+                { name: 'case_id', role: 'id', type: 'string', desc: 'One per referral from adjudication.' },
+                { name: 'claim_number', role: 'ref', refTo: 'Claim file (Claim adjudication)', type: 'string', desc: 'The closed file behind the case — read-only by doctrine.' },
+                { name: 'stage', type: 'enum', desc: 'The state machine\u2019s pointer.' },
+                { name: 'fault_position', type: 'structured', desc: 'The determined fault and its basis, as referred — frozen.' },
+                { name: 'quantum_paid', type: 'money', desc: 'What the file actually spent — the ceiling of every demand.' },
+              ] },
+              { name: 'demand', owned: true, purpose: 'one row per demand issued', columns: [
+                { name: 'demand_id', role: 'id', type: 'string', desc: 'One per party demanded.' },
+                { name: 'party_and_amount', type: 'structured + money', desc: 'Who owes, and how much is claimed — never above the ceiling.' },
+                { name: 'issued_at_response_due', type: 'dates', desc: 'The clock the escalation policy watches.' },
+              ] },
+              { name: 'receipt', owned: true, purpose: 'money back — through the ledger, never directly', columns: [
+                { name: 'receipt_id', role: 'id', type: 'string', desc: 'One per payment received.' },
+                { name: 'amount', type: 'money', desc: 'What came back.' },
+                { name: 'ledger_entry', role: 'ref', refTo: 'Payment ledger (Claim payments)', type: 'string', desc: 'The credit it became on the ledger.' },
+              ] },
+            ],
+          },
           commands: ['Open from the referral', 'Build & issue the demand', 'Receive the recovery', 'Close the case'],
           events: ['Recovery referred', 'Demand issued', 'Recovery received', 'Recovery closed'],
           invariants: [
