@@ -81,6 +81,9 @@ export const CLAIMS_LIFECYCLES = {
       { id: "TRL-ADJUD-authority-limit", inv: "INV-ADJUD-reserve-evented-authority", grounds: ["FR5"],
         rule: "No approval beyond the handler's authority.",
         why: "Bigger amounts need a bigger authority — the limit is checked in code, not trusted." },
+      { id: "TRL-ADJUD-status-every-move", grounds: ["FR10"],
+        rule: "Every stage change publishes to the status stream.",
+        why: "The claimant's picture of the claim is only as true as the stream — a silent move is a lie by omission." },
     ],
   },
 
