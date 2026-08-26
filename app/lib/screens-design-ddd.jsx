@@ -2012,6 +2012,141 @@ function ProductInfra() {
   );
 }
 window.ProductInfra = ProductInfra;
+
+/* ============================================================
+   D-200 — Infrastructure becomes its own PLACE (the D-179 pattern,
+   third application): its own left rail under the product header.
+   Rail: Environments as a selector (the abstract node on top, made
+   navigation) · below it, the available services with status dots.
+   Main: the selected environment's banner, then either one service's
+   detail or the overview (cloud · gaps · register).
+   ============================================================ */
+const INF_DOT = { 'enabled': '#16a34a', 'in-review': '#d97706', 'not-provisioned': '#dc2626' };
+
+function InfraServiceDetail({ n }) {
+  const st = INF_STATUS[n.binding.status] || {};
+  return (
+    <div className="asc-section ddd-sec">
+      <div className="asc-sec-head">
+        <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> {n.name}</div>
+        <div className="asc-sec-sub">{n.what}</div>
+      </div>
+      <div className="agu">
+        <div className="agu-h">
+          <span className="agu-nm">{n.binding.implementedBy}</span>
+          <IdChip id={n.id} />
+          {n.kind === 'constraint' && <span className="agu-tbl-tag">constraint</span>}
+          <span className={'ddd-scn-kind ' + st.cls}>{st.label}</span>
+        </div>
+        {n.binding.note && <div className="agu-about">{n.binding.note}</div>}
+        {n.binding.module && (
+          <div className="ddd-lc-def"><b>Curated module</b> — <code className="ddd-idchip">tf: {n.binding.module.source} @ {n.binding.module.version}</code> · secure, HA, observable, monitored, permission-enabled by construction.</div>
+        )}
+        <div className="ddd-lc-def" style={{ marginTop: 8 }}><b>Demanded by ({n.demandedBy.length})</b>
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '4px' }}>{n.demandedBy.map(d => <code className="ddd-idchip" key={d}>{d}</code>)}</span></div>
+      </div>
+    </div>
+  );
+}
+
+function InfraWorkspace({ product, prd, onBack }) {
+  const [envId, setEnvId] = React.useState('ENV-STAGING');
+  const [selSvc, setSelSvc] = React.useState(null);
+  const env = ENVIRONMENTS.find(e => e.id === envId) || ENVIRONMENTS[0];
+  const gaps = infraGaps();
+  const svc = selSvc && INFRA_NEEDS.find(n => n.id === selSvc);
+  return (
+    <div className="asc-body">
+      <aside className="asc-rail bc-rail">
+        <button type="button" className="bc-rail-back" onClick={onBack}>
+          <DDPico d={DDI.arrow} w={12} /> Product
+        </button>
+        <div className="bc-rail-head">
+          <div className="bc-rail-name">Infrastructure</div>
+          <span className="agu-store">{CLOUD_SETUP.provider}</span>
+        </div>
+        <div className="env-railgroup">
+          <div className="env-railgroup-h"><span>Environments</span></div>
+          {ENVIRONMENTS.map(e => (
+            <div key={e.id} className={'asc-nav env-navitem' + (envId === e.id ? ' on' : '')} onClick={() => setEnvId(e.id)}>
+              <span className="bc-nav-ico"><DDPico d={DDI.flow} w={15} /></span>
+              <span className="env-navlabel">{e.name}</span>
+            </div>
+          ))}
+        </div>
+        <div className="env-railgroup">
+          <div className="env-railgroup-h"><span>Available services</span></div>
+          <div className={'asc-nav env-navitem' + (!selSvc ? ' on' : '')} onClick={() => setSelSvc(null)}>
+            <span className="bc-nav-ico"><DDPico d={DDI.ctx} w={15} /></span>
+            <span className="env-navlabel">Overview</span>
+          </div>
+          {INFRA_NEEDS.map(n => (
+            <div key={n.id} className={'asc-nav env-navitem' + (selSvc === n.id ? ' on' : '')} onClick={() => setSelSvc(n.id)}
+              title={(INF_STATUS[n.binding.status] || {}).label}>
+              <span className="ddd-inf-raildot" style={{ background: INF_DOT[n.binding.status] || '#9ca3af' }}></span>
+              <span className="env-navlabel">{n.name.split(' — ')[0]}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
+      <main className="asc-main">
+        <div className="asc-page env-page">
+          <div className="ddd-wrap">
+            <div className="ddd-crumbhead">
+              <h2 className="ddd-crumb-title">
+                <button type="button" className="ddd-crumb-link" onClick={onBack}>{product.name}</button>
+                <span className="ddd-crumb-sep">›</span>
+                <span className="ddd-crumb-cur">Infrastructure</span>
+              </h2>
+              <span className={'ddd-scn-kind ' + ((INF_STATUS[(env.id === 'ENV-PROD' ? 'enabled' : 'enabled')] || {}).cls)} style={{ visibility: 'hidden' }}>·</span>
+            </div>
+            <div className="ddd-lc-never" style={{ marginBottom: 16 }}>
+              <b>{env.name}<br /><IdChip id={env.id} /> <code className="ddd-idchip">{env.binding.subscription}</code></b>
+              <span>{env.purpose} <b>Gates:</b> {env.gates} <b>Data:</b> {env.dataRule}</span>
+            </div>
+            {svc ? <InfraServiceDetail n={svc} /> : (<>
+              {gaps.length > 0 && (
+                <div className="asc-section ddd-sec">
+                  <div className="asc-sec-head">
+                    <div className="asc-sec-title">⚠ Gaps — demanded, not enabled</div>
+                    <div className="asc-sec-sub">The pre-skeleton checklist: nothing that demands these can reach production until the binding lands.</div>
+                  </div>
+                  {gaps.map(n => (
+                    <div className="ddd-lc-never disc" key={n.id} style={{ cursor: 'pointer' }} onClick={() => setSelSvc(n.id)}>
+                      <b>{n.name}<br /><IdChip id={n.id} /> <span className={'ddd-scn-kind ' + (INF_STATUS[n.binding.status] || {}).cls}>{(INF_STATUS[n.binding.status] || {}).label}</span></b>
+                      <span>{n.binding.note || n.what} Blocks <b>{n.demandedBy.length}</b> demands.</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="asc-section ddd-sec">
+                <div className="asc-sec-head">
+                  <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The cloud — where the bindings live</div>
+                  <div className="asc-sec-sub">Tenant <code className="ddd-idchip">{CLOUD_SETUP.tenant}</code> · {CLOUD_SETUP.regions} · {CLOUD_SETUP.iac}</div>
+                </div>
+                <div className="agu">
+                  <div className="agu-tbl">
+                    <div className="agu-tbl-h">organization<span className="agu-tbl-p">management groups, root to landing zone</span></div>
+                    {CLOUD_SETUP.orgModel.map(g => (
+                      <div className="agu-row" key={g.group}><span className="agu-f">{g.group}</span><span className="agu-d">{g.holds}</span></div>
+                    ))}
+                  </div>
+                  <div className="agu-tbl">
+                    <div className="agu-tbl-h">org policies<span className="agu-tbl-p">inherited by every subscription — deny beats intent</span></div>
+                    {CLOUD_SETUP.policies.map(pcy => (
+                      <div className="agu-row" key={pcy.id}><span className="agu-f"><IdChip id={pcy.id} /></span><span className="agu-d">{pcy.rule}{pcy.binds ? <> · binds <code className="ddd-idchip">{pcy.binds}</code></> : null}</span></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>)}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+window.InfraWorkspace = InfraWorkspace;
 window.DesignContextMap = DesignContextMap;
 window.DesignSystemMap = DesignSystemMap;
 window.DesignRealization = DesignRealization;

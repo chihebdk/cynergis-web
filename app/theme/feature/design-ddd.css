@@ -493,3 +493,6 @@
 /* D-198: the infrastructure register */
 .ddd-inf-dem { white-space: nowrap; }
 .ddd-inf-dem code { margin-right: 4px; }
+
+/* D-200: the infra workspace rail — service status dots */
+.ddd-inf-raildot { width: 8px; height: 8px; border-radius: 999px; flex: 0 0 auto; }

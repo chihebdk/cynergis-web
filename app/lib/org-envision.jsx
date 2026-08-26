@@ -780,6 +780,17 @@ function ProductPage({ product, portfolio }) {
   const BcW = typeof window !== 'undefined' ? window.BcWorkspace : null;
   const bcCtxOk = ctxSel && window.__DDD__ && window.__DDD__.byProduct[product.id]
     && window.__DDD__.byProduct[product.id].contexts.some(x => x.id === ctxSel);
+  // D-200: Infrastructure is its own place — same graduation as the BC workspace
+  const InfraW = typeof window !== 'undefined' ? window.InfraWorkspace : null;
+  if (entry === 'xinfra' && InfraW) {
+    const backToProduct = () => { navEntry(firstEntry(phase)); };
+    const infraInner = (
+      <div className="asc-prodwrap">
+        <InfraW product={product} prd={prd} onBack={backToProduct} />
+      </div>
+    );
+    return TP ? <TP prd={prd} arch={window.__ARCH__} goTo={goTo}>{infraInner}</TP> : infraInner;
+  }
   if (phase === 'Design' && entry === 'contexts' && bcCtxOk && BcW) {
     const backToList = () => { window.__cynCtxSel = null; window.__cynCtxTab = 'flow'; setCtxSel(null); pushUrl({}); scrollTop(); };
     const bcInner = (
