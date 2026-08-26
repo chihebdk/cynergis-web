@@ -9,7 +9,7 @@ import { CLAIMS_LIFECYCLES, lifecycleCheck, lifecycleGrounds, lifecycleEventName
 import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CONTEXT_CAPABILITIES } from '../flow/claims-capabilities';
 import { CLAIMS_CONTRACTS } from '../flow/claims-contracts';
-import { INFRA_NEEDS, infraGaps } from '../flow/claims-infra';
+import { INFRA_NEEDS, infraGaps, ENVIRONMENTS, CLOUD_SETUP } from '../flow/claims-infra';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
 import { BC_PACKET } from '../flow/claims-bc-packet';
@@ -1916,6 +1916,60 @@ function ProductInfra() {
           </p>
         </div>
 
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Environments — the promotion path</div>
+            <div className="asc-sec-sub">The abstract node ON TOP (D-199): environments survive a vendor switch; the cloud binds each one to a subscription. Data rules and gates tighten left to right.</div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>Environment</th><th>Purpose</th><th>Gates</th><th>Data rule</th><th>Bound to</th></tr></thead>
+              <tbody>
+                {ENVIRONMENTS.map(e => (
+                  <tr key={e.id}>
+                    <td><b>{e.name}</b><br /><IdChip id={e.id} /></td>
+                    <td>{e.purpose}</td><td>{e.gates}</td><td>{e.dataRule}</td>
+                    <td><code className="ddd-idchip">{e.binding.subscription}</code><br />{e.binding.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The cloud — where the bindings live</div>
+            <div className="asc-sec-sub">The binding layer, specific on purpose: this tenant, this structure, these org policies. Everything below it is created through the curated Terraform modules — secure, highly available, observable, monitored, permission-enabled by construction.</div>
+          </div>
+          <div className="agu">
+            <div className="agu-h">
+              <span className="agu-nm">{CLOUD_SETUP.provider}</span>
+              <IdChip id={CLOUD_SETUP.id} />
+              <span className="agu-store">{CLOUD_SETUP.regions}</span>
+            </div>
+            <div className="agu-about">Tenant <code className="ddd-idchip">{CLOUD_SETUP.tenant}</code> · {CLOUD_SETUP.iac}</div>
+            <div className="agu-tbl">
+              <div className="agu-tbl-h">organization<span className="agu-tbl-p">management groups, root to landing zone</span></div>
+              {CLOUD_SETUP.orgModel.map(g => (
+                <div className="agu-row" key={g.group}>
+                  <span className="agu-f">{g.group}</span>
+                  <span className="agu-d">{g.holds}</span>
+                </div>
+              ))}
+            </div>
+            <div className="agu-tbl">
+              <div className="agu-tbl-h">org policies<span className="agu-tbl-p">inherited by every subscription — deny beats intent</span></div>
+              {CLOUD_SETUP.policies.map(pcy => (
+                <div className="agu-row" key={pcy.id}>
+                  <span className="agu-f"><IdChip id={pcy.id} /></span>
+                  <span className="agu-d">{pcy.rule}{pcy.binds ? <> · binds <code className="ddd-idchip">{pcy.binds}</code></> : null}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {gaps.length > 0 && (
           <div className="asc-section ddd-sec">
             <div className="asc-sec-head">
@@ -1944,7 +1998,7 @@ function ProductInfra() {
                   <tr key={n.id}>
                     <td><b>{n.name}</b><br /><IdChip id={n.id} />{n.kind === 'constraint' && <span className="agu-tbl-tag" style={{ marginLeft: 6 }}>constraint</span>}</td>
                     <td>{n.what}</td>
-                    <td>{n.binding.implementedBy}</td>
+                    <td>{n.binding.implementedBy}{n.binding.module && <><br /><code className="ddd-idchip">tf: {n.binding.module.source} @ {n.binding.module.version}</code></>}</td>
                     <td><span className={'ddd-scn-kind ' + (INF_STATUS[n.binding.status] || {}).cls}>{(INF_STATUS[n.binding.status] || {}).label}</span></td>
                     <td className="ddd-inf-dem"><b>{n.demandedBy.length}</b> · {n.demandedBy.slice(0, 3).map(d => <code className="ddd-idchip" key={d}>{d}</code>)}{n.demandedBy.length > 3 && <span className="ddd-idchip"> +{n.demandedBy.length - 3}</span>}</td>
                   </tr>
