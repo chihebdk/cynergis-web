@@ -2050,7 +2050,7 @@ function InfraServiceDetail({ n }) {
 }
 
 function InfraWorkspace({ product, prd, onBack }) {
-  const [envId, setEnvId] = React.useState('ENV-STAGING');
+  const [envId, setEnvId] = React.useState('ENV-DEV');
   const [selSvc, setSelSvc] = React.useState(null);
   const env = ENVIRONMENTS.find(e => e.id === envId) || ENVIRONMENTS[0];
   const gaps = infraGaps();
