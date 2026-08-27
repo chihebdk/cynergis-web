@@ -102,7 +102,8 @@ const PHASE_ENTRIES = {
     // lives on the journeys' reconciliation and the walls' capabilities.
   ],
   Build: [
-    { key: 'buildmap', label: 'Build map',            ico: 'compass' },   // D-202: the paved road + the deployables — Build's first artifact
+    { key: 'platform',   label: 'Platform',           ico: 'tree' },      // D-205: what the platform team provides — the paved surface
+    { key: 'components', label: 'Components',         ico: 'product' },   // D-205: the deployable components — cards → full pages
     { key: 'infra',    label: 'Resources', ico: 'tree' },   // as-built cloud resources & environments (D-035/D-039); key stays 'infra' for deep links
     { key: 'integ',    label: 'Integrations',         ico: 'link' },   // D-040: below Resources — the surfaces others integrate with
     { key: 'backlog',  label: 'Delivery backlog',     ico: 'board' },
@@ -656,13 +657,17 @@ function PhaseEntry({ phase, entry, product, prd }) {
   const def = entriesFor(phase).find(e => e.key === entry) || { key: entry, label: 'Retired surface', ico: 'arrow' };  // stale deep links land softly
   const status = phaseEntryStatus(phase, entry, product, prd);
   const designMap = { contexts: DesignContexts, contextmap: DesignContextMap };  // realization folded into the drill-in; the Domain model page retired into the BC tabs
-  const buildMap = { buildmap: typeof BuildMap !== 'undefined' ? BuildMap : null };   // D-202
+  const buildMap = {   // D-205 (buildmap = legacy deep link)
+    platform: typeof BuildPlatform !== 'undefined' ? BuildPlatform : null,
+    components: typeof BuildComponents !== 'undefined' ? BuildComponents : null,
+    buildmap: typeof BuildPlatform !== 'undefined' ? BuildPlatform : null,
+  };
   const DesignCmp = phase === 'Design' ? designMap[entry] : (phase === 'Build' ? buildMap[entry] : null);
   const content = DesignCmp
     ? <DesignCmp product={product} prd={prd} />
     : (typeof DisDesContent !== 'undefined') ? DisDesContent({ phase, entry, prd }) : null;
   // the Bounded contexts surface renders its own title (hub) / breadcrumb (drill-in)
-  const selfHeaded = (phase === 'Design' && entry === 'contexts') || entry === 'buildmap';
+  const selfHeaded = (phase === 'Design' && entry === 'contexts') || ['buildmap', 'platform', 'components'].includes(entry);
   return (
     <div className="asc-page env-page">
       {!selfHeaded && <EntryHead entry={def} status={status} eyebrow={phase + ' · entry'} />}

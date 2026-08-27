@@ -11,6 +11,27 @@
    Statuses: proposed → confirmed (the architect's Build opening).
    ============================================================ */
 
+/* ── D-205: THE PLATFORM — what the platform engineering team provides.
+   Products run ON it; the product page shows the high level and links
+   out to the platform team's own page (built later). ── */
+export const PLATFORM = {
+  id: "PLT-MERIDIAN",
+  name: "Meridian Runtime Platform",
+  owner: "Platform engineering",
+  what: "The paved surface products run on: EKS clusters per environment, the gateways, the claims event stream, identity, secrets, observability, CI/CD with the curated Terraform modules. Products consume it as a service — the platform team owns its internals.",
+  link: { label: "Open the platform page →", href: null, note: "the platform team's own page — to be built" },
+  provides: [
+    { name: "Kubernetes runtimes", inf: "INF-RUNTIME" },
+    { name: "API gateways — public & partner", inf: "INF-API-GW" },
+    { name: "Event stream (pub/sub)", inf: "INF-PUBSUB" },
+    { name: "Schema & API registries", inf: "INF-SCHEMA-REG" },
+    { name: "Identity — staff & customer", inf: "INF-IDENTITY-STAFF" },
+    { name: "Secrets & keys", inf: "INF-SECRETS" },
+    { name: "Observability", inf: "INF-OBSERVABILITY" },
+    { name: "CI/CD · ECR · curated Terraform modules", inf: null },
+  ],
+};
+
 /* ── D-204: the RUNTIME CATALOG — every target runtime available on the
    bound cloud. One is chosen PER DEPLOYABLE; the catalog says when each
    fits. RT- ids; the choice lives on the deployable record. ── */
@@ -59,16 +80,24 @@ export const STACK = [
 ];
 
 export const DEPLOYABLES = [
-  { id: "DEP-INTAKE", name: "intake-svc", status: "proposed", contains: ["CTX-INTAKE"], hb: "HB-INTAKE-packaging",
+  { id: "DEP-INTAKE", name: "intake-svc", status: "proposed",
+    versions: { "ENV-DEV": "0.4.0-rc.2", "ENV-QA": null, "ENV-PREPROD": null, "ENV-PROD": null }, versionsNote: "QA and beyond await the skeleton gate — promotion needs the stream",
+    links: { code: "https://github.com/meridian-insurance/intake-svc", image: "https://console.aws.amazon.com/ecr/meridian/intake-svc", pipeline: "https://ci.meridian.internal/intake-svc", logs: "https://grafana.meridian.internal/d/intake-svc" }, contains: ["CTX-INTAKE"], hb: "HB-INTAKE-packaging",
     runtime: "RT-EKS", artifact: { kind: "OCI container image", ref: "ecr: meridian/intake-svc", build: "CI on merge — Dockerfile · SBOM · signed" },
     note: "The front door: portal API, desk, police ACL, triage — one deployable, latency-facing." },
-  { id: "DEP-ADJUD", name: "adjudication-svc", status: "proposed", contains: ["CTX-ADJUD", "CTX-TOTALLOSS", "CTX-RECOVERY"], hb: "HB-ADJUD-packaging",
+  { id: "DEP-ADJUD", name: "adjudication-svc", status: "proposed",
+    versions: { "ENV-DEV": "0.6.0-rc.1", "ENV-QA": null, "ENV-PREPROD": null, "ENV-PROD": null }, versionsNote: "QA and beyond await the skeleton gate — promotion needs the stream",
+    links: { code: "https://github.com/meridian-insurance/adjudication-svc", image: "https://console.aws.amazon.com/ecr/meridian/adjudication-svc", pipeline: "https://ci.meridian.internal/adjudication-svc", logs: "https://grafana.meridian.internal/d/adjudication-svc" }, contains: ["CTX-ADJUD", "CTX-TOTALLOSS", "CTX-RECOVERY"], hb: "HB-ADJUD-packaging",
     runtime: "RT-EKS", artifact: { kind: "OCI container image", ref: "ecr: meridian/adjudication-svc", build: "CI on merge — Dockerfile · SBOM · signed" },
     note: "Total loss & Recovery ride as MODULES beside the claim file — never split, cheaply extracted later when volume argues." },
-  { id: "DEP-REPAIR", name: "repair-svc", status: "proposed", contains: ["CTX-REPAIR"], hb: "HB-REPAIR-packaging",
+  { id: "DEP-REPAIR", name: "repair-svc", status: "proposed",
+    versions: { "ENV-DEV": "0.3.1-rc.3", "ENV-QA": null, "ENV-PREPROD": null, "ENV-PROD": null }, versionsNote: "QA and beyond await the skeleton gate — promotion needs the stream",
+    links: { code: "https://github.com/meridian-insurance/repair-svc", image: "https://console.aws.amazon.com/ecr/meridian/repair-svc", pipeline: "https://ci.meridian.internal/repair-svc", logs: "https://grafana.meridian.internal/d/repair-svc" }, contains: ["CTX-REPAIR"], hb: "HB-REPAIR-packaging",
     runtime: "RT-EKS", artifact: { kind: "OCI container image", ref: "ecr: meridian/repair-svc", build: "CI on merge — Dockerfile · SBOM · signed" },
     note: "The partner-facing box: the shop surface fronts through the partner edge." },
-  { id: "DEP-PAYMENTS", name: "payments-svc", status: "proposed", contains: ["CTX-PAYMENTS"], hb: "HB-PAYMENTS-packaging",
+  { id: "DEP-PAYMENTS", name: "payments-svc", status: "proposed",
+    versions: { "ENV-DEV": "0.2.0-rc.4", "ENV-QA": null, "ENV-PREPROD": null, "ENV-PROD": null }, versionsNote: "QA and beyond await the skeleton gate — promotion needs the stream",
+    links: { code: "https://github.com/meridian-insurance/payments-svc", image: "https://console.aws.amazon.com/ecr/meridian/payments-svc", pipeline: "https://ci.meridian.internal/payments-svc", logs: "https://grafana.meridian.internal/d/payments-svc" }, contains: ["CTX-PAYMENTS"], hb: "HB-PAYMENTS-packaging",
     runtime: "RT-EKS", runtimeNote: "hardened node group (INF-HARDENED)", artifact: { kind: "OCI container image", ref: "ecr: meridian/payments-svc", build: "CI on merge — Dockerfile · SBOM · signed · stricter admission policy" },
     note: "Its own service from day one — correctness-critical, hardened tier, gated on INF-HARDENED for prod." },
 ];

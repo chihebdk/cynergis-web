@@ -499,3 +499,15 @@
 
 /* D-204: connection chips on the deployment record */
 .ddd-inf-conn { font-size: 11.5px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; white-space: nowrap; background: var(--panel); }
+
+/* D-205: the platform bands + component cards */
+.plt-band { border: 1px solid var(--line); border-radius: var(--r-md, 10px); padding: 12px 16px; margin-bottom: 8px; }
+.plt-band-h { font: 650 11px var(--font-sans, ui-sans-serif); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3, #6b7280); margin-bottom: 8px; }
+.plt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.plt-products { background: var(--panel); }
+.plt-platform { background: #eef2ff; border-color: #c7d2fe; }
+.plt-cloud { background: var(--panel-2); }
+.ddd-cmp-card { cursor: pointer; }
+.ddd-cmp-card:hover { border-color: #818cf8; }
+.ddd-cmp-vers { display: inline-flex; flex-wrap: wrap; gap: 10px; margin-left: 12px; }
+.ddd-cmp-ver { font-size: 11.5px; color: var(--ink-3, #6b7280); white-space: nowrap; }

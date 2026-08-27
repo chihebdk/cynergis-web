@@ -10,7 +10,7 @@ import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CONTEXT_CAPABILITIES } from '../flow/claims-capabilities';
 import { CLAIMS_CONTRACTS } from '../flow/claims-contracts';
 import { INFRA_NEEDS, infraGaps, ENVIRONMENTS, CLOUD_SETUP } from '../flow/claims-infra';
-import { STACK, DEPLOYABLES, RUNTIMES } from '../flow/claims-stack';
+import { STACK, DEPLOYABLES, RUNTIMES, PLATFORM } from '../flow/claims-stack';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
 import { BC_PACKET } from '../flow/claims-bc-packet';
@@ -2052,7 +2052,7 @@ function InfraServiceDetail({ n }) {
 
 function InfraWorkspace({ product, prd, onBack }) {
   const [envId, setEnvId] = React.useState('ENV-DEV');
-  const [selSvc, setSelSvc] = React.useState(null);
+  const [selSvc, setSelSvc] = React.useState(() => { const v = window.__cynInfraSel || null; delete window.__cynInfraSel; return v; });
   const env = ENVIRONMENTS.find(e => e.id === envId) || ENVIRONMENTS[0];
   const gaps = infraGaps();
   const svc = selSvc && INFRA_NEEDS.find(n => n.id === selSvc);
@@ -2339,6 +2339,284 @@ function BuildMap() {
   );
 }
 window.BuildMap = BuildMap;
+
+/* ============================================================
+   D-205 — Build › Platform + Build › Components.
+   PLATFORM: the platform team's provision, high level, linking out
+   (their page comes later); the paved road and deviations live here
+   because they are platform-level decisions.
+   COMPONENTS: small link-rich cards (what runs where, version per
+   environment, everything a link) → a FULL PAGE per component with
+   the implementation detail: deployment, connections (each opening
+   its Infrastructure service page), environment with secret sources.
+   ============================================================ */
+function BuildPlatform() {
+  const gaps = infraGaps();
+  const goInfraSvc = (id) => {
+    const nav = window.__cynNav || {};
+    if (id) window.__cynInfraSel = id;
+    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: nav.phase || 'Build', entry: 'xinfra' });
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+  const goCtxD = (ctx, tab) => {
+    const nav = window.__cynNav || {};
+    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx, tab });
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+  const product = STACK.filter(d => d.scope === 'product');
+  const deviations = STACK.filter(d => d.scope !== 'product');
+  return (
+    <div className="ddd-wrap">
+      <div className="ddd-intro">
+        <div className="ddd-eyebrow"><DDPico d={DDI.agg} w={12} /> BUILD · THE PLATFORM</div>
+        <h2 className="ddd-page-title">{PLATFORM.name}</h2>
+        <p className="ddd-lead">{PLATFORM.what} <b>Owner: {PLATFORM.owner}.</b> <IdChip id={PLATFORM.id} /></p>
+      </div>
+
+      {gaps.length > 0 && (
+        <div className="ddd-lc-never disc" style={{ marginBottom: 16, cursor: 'pointer' }} onClick={() => goInfraSvc(null)}>
+          <b>⚠ Platform gaps</b>
+          <span>{gaps.map(g => `${g.name.split(' — ')[0]} — ${g.binding.status === 'in-review' ? 'in security review' : 'not yet provisioned'}`).join(' · ')} — open Infrastructure →</span>
+        </div>
+      )}
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> The platform, at a glance</div>
+          <div className="asc-sec-sub">Products on top · the platform's services in the middle · the landing zone underneath. Chips open the service in Infrastructure.
+            {' '}<button type="button" className="ddd-crumb-link" disabled title={PLATFORM.link.note} style={{ opacity: 0.55, cursor: 'not-allowed' }}>{PLATFORM.link.label}</button>
+          </div>
+        </div>
+        <div className="plt-band plt-products">
+          <div className="plt-band-h">Product components — ClaimsCore</div>
+          <div className="plt-chips">{DEPLOYABLES.map(d => <span className="ddd-inf-conn" key={d.id}>{d.name}</span>)}<span className="ddd-at-chip only">accident benefits — deferred</span></div>
+        </div>
+        <div className="plt-band plt-platform">
+          <div className="plt-band-h">{PLATFORM.name} · {PLATFORM.owner}</div>
+          <div className="plt-chips">
+            {PLATFORM.provides.map(pv => pv.inf
+              ? <button key={pv.name} type="button" className="ddd-inf-conn ddd-lc-ev" onClick={() => goInfraSvc(pv.inf)}>{pv.name}</button>
+              : <span key={pv.name} className="ddd-inf-conn">{pv.name}</span>)}
+          </div>
+        </div>
+        <div className="plt-band plt-cloud">
+          <div className="plt-band-h">AWS landing zone — {CLOUD_SETUP.tenant.split(' ')[0]} · {CLOUD_SETUP.regions.split(' ')[0]}</div>
+          <div className="plt-chips">{ENVIRONMENTS.map(e => <span className="ddd-inf-conn" key={e.id}>{e.binding.account}</span>)}<span className="ddd-inf-conn">SCPs: residency · tagging · no-public-data · baseline logs</span></div>
+        </div>
+      </div>
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> The paved road — {product.length} layers</div>
+          <div className="asc-sec-sub">Platform-level decisions: one choice per layer; deviations below, each with a written reason.</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ddd-lc-table">
+            <thead><tr><th>Layer</th><th>Choice</th><th>Why</th><th>Status</th></tr></thead>
+            <tbody>
+              {product.map(d => (
+                <tr key={d.id}>
+                  <td><b>{d.layer}</b><br /><IdChip id={d.id} /></td>
+                  <td>{d.choice}{d.binds && <><br /><code className="ddd-idchip">binds {d.binds}</code></>}</td>
+                  <td>{d.why}</td>
+                  <td><span className={'ddd-scn-kind ' + (STK_STATUS[d.status] || 'manual')}>{d.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {deviations.map(d => (
+          <div className="ddd-lc-never" key={d.id} style={{ marginTop: 8 }}>
+            <b>{d.layer}<br /><IdChip id={d.id} /> <button type="button" className="dm-chip comp ddd-lc-ev" onClick={() => goCtxD(d.scope, 'howbuilt')}>{HOME_NAMES[d.scope] || d.scope}</button></b>
+            <span>{d.choice} — {d.why} <span className={'ddd-scn-kind ' + (STK_STATUS[d.status] || 'manual')}>{d.status}</span></span>
+          </div>
+        ))}
+      </div>
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Runtimes the platform offers</div>
+          <div className="asc-sec-sub">A component's runtime is a selection from this catalog, never an invention.</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ddd-lc-table">
+            <thead><tr><th>Runtime</th><th>When it fits</th><th>Chosen by</th></tr></thead>
+            <tbody>
+              {RUNTIMES.map(rt => {
+                const users = DEPLOYABLES.filter(d => d.runtime === rt.id);
+                return (
+                  <tr key={rt.id}>
+                    <td><b>{rt.name}</b><br /><IdChip id={rt.id} /></td>
+                    <td>{rt.when}</td>
+                    <td>{users.length ? users.map(d => <code className="ddd-idchip" key={d.id} style={{ marginRight: 5 }}>{d.name}</code>) : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+window.BuildPlatform = BuildPlatform;
+
+const VAR_SOURCE = (v, svc) => {
+  if (v === 'DB_URL') return { kind: 'secret', where: `credentials from Secrets Manager · /claims/${svc}/db` };
+  if (v === 'SECRETS_PREFIX') return { kind: 'config', where: `the prefix itself — values live under /claims/${svc}/` };
+  if (v.startsWith('OIDC')) return { kind: 'secret', where: `client secret from Secrets Manager · /claims/${svc}/oidc` };
+  return { kind: 'config', where: 'platform-injected at deploy' };
+};
+
+function BuildComponents() {
+  const [sel, setSel] = React.useState(null);
+  const goCtxD = (ctx, tab = 'howbuilt') => {
+    const nav = window.__cynNav || {};
+    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx, tab });
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+  const goInfraSvc = (id) => {
+    const nav = window.__cynNav || {};
+    if (id) window.__cynInfraSel = id;
+    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: nav.phase || 'Build', entry: 'xinfra' });
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+  const dep = sel && DEPLOYABLES.find(d => d.id === sel);
+
+  if (dep) {
+    const rt = RUNTIMES.find(r => r.id === dep.runtime);
+    const { needs, env } = deployableConnections(dep);
+    const svc = dep.name;
+    return (
+      <div className="ddd-wrap">
+        <div className="ddd-crumbhead">
+          <h2 className="ddd-crumb-title">
+            <button type="button" className="ddd-crumb-link" onClick={() => setSel(null)}>Components</button>
+            <span className="ddd-crumb-sep">›</span>
+            <span className="ddd-crumb-cur">{dep.name}</span>
+          </h2>
+          <span className={'ddd-scn-kind ' + (STK_STATUS[dep.status] || 'manual')}>{dep.status}</span>
+        </div>
+        <p className="ddd-detail-note">{dep.note} <code className="ddd-idchip">{dep.id}</code> · realizes <code className="ddd-idchip">{dep.hb}</code> · boxes: {dep.contains.map(c => (
+          <button key={c} type="button" className="dm-chip comp ddd-lc-ev" onClick={() => goCtxD(c)}>{HOME_NAMES[c] || c}</button>
+        ))}</p>
+
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Deployment</div>
+            <div className="asc-sec-sub">Runtime, artifact and where each version runs — the platform promotes, the gates decide.</div>
+          </div>
+          <div className="agu">
+            <div className="agu-tbl">
+              <div className="agu-tbl-h">runtime & artifact</div>
+              <div className="agu-row"><span className="agu-f">runtime</span><span className="agu-d"><b>{rt?.name}</b> <IdChip id={dep.runtime} />{dep.runtimeNote && <> · {dep.runtimeNote}</>} · on <b>{PLATFORM.name}</b></span></div>
+              <div className="agu-row"><span className="agu-f">artifact</span><span className="agu-d">{dep.artifact.kind} — <a className="ddd-crumb-link" href={dep.links.image} target="_blank" rel="noreferrer">{dep.artifact.ref}</a> · {dep.artifact.build}</span></div>
+              <div className="agu-row"><span className="agu-f">links</span><span className="agu-d">
+                <a className="ddd-crumb-link" href={dep.links.code} target="_blank" rel="noreferrer">code repo</a> · {' '}
+                <a className="ddd-crumb-link" href={dep.links.pipeline} target="_blank" rel="noreferrer">deployment pipeline</a> · {' '}
+                <button type="button" className="ddd-crumb-link" onClick={() => goCtxD(dep.contains[0], 'scenarios')}>component tests</button> · {' '}
+                <a className="ddd-crumb-link" href={dep.links.logs} target="_blank" rel="noreferrer">logs</a>
+              </span></div>
+            </div>
+            <div className="agu-tbl">
+              <div className="agu-tbl-h">versions by environment<span className="agu-tbl-p">{dep.versionsNote}</span></div>
+              {ENVIRONMENTS.map(e => (
+                <div className="agu-row" key={e.id}>
+                  <span className="agu-f">{e.name}</span>
+                  <span className="agu-d">{dep.versions[e.id]
+                    ? <code className="ddd-idchip">{dep.versions[e.id]}</code>
+                    : (e.id === 'ENV-PROD' && dep.id === 'DEP-PAYMENTS'
+                      ? <span className="ddd-at-chip only">gated — INF-HARDENED in review</span>
+                      : <span className="ddd-at-chip only">not deployed — skeleton gate</span>)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Connections — {needs.length}</div>
+            <div className="asc-sec-sub">Everything this component touches, derived from the design's demand joins. Each opens its Infrastructure service page.</div>
+          </div>
+          {needs.map(n => (
+            <div className="ddd-lc-never" key={n.id} style={{ cursor: 'pointer' }} onClick={() => goInfraSvc(n.id)}>
+              <b><span className="ddd-inf-raildot" style={{ background: INF_DOT[n.binding.status] || '#9ca3af', display: 'inline-block', marginRight: 6 }}></span>
+                {n.name.split(' — ')[0]}<br /><IdChip id={n.id} /></b>
+              <span>{n.binding.implementedBy}{n.binding.module && <> · <code className="ddd-idchip">tf: {n.binding.module.source}</code></>}
+                {(n.env || []).length > 0 && <> · hands this component: {(n.env || []).map(v => <code className="ddd-idchip" key={v} style={{ marginRight: 4 }}>{v}</code>)}</>}
+                {' '}· open service →</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="asc-section ddd-sec">
+          <div className="asc-sec-head">
+            <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Environment — {env.length} variables</div>
+            <div className="asc-sec-sub">Where each value comes from: platform config at deploy, or a named secret — nothing hand-set, nothing in the image.</div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ddd-lc-table">
+              <thead><tr><th>Variable</th><th>Source</th><th>Where</th></tr></thead>
+              <tbody>
+                {env.map(v => { const src = VAR_SOURCE(v, svc); return (
+                  <tr key={v}>
+                    <td><code className="ddd-idchip">{v}</code></td>
+                    <td><span className={'ddd-scn-kind ' + (src.kind === 'secret' ? 'refusal' : 'move')}>{src.kind}</span></td>
+                    <td>{src.where}</td>
+                  </tr>
+                ); })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ddd-wrap">
+      <div className="ddd-intro">
+        <div className="ddd-eyebrow"><DDPico d={DDI.cap} w={12} /> BUILD · COMPONENTS</div>
+        <h2 className="ddd-page-title">Components — what actually runs</h2>
+        <p className="ddd-lead">
+          One card per deployable component on <b>{PLATFORM.name}</b> — high level here, everything a link;
+          click a card for the full implementation page. A box is never split; the seventh box (Accident benefits)
+          is deferred and has no component yet.
+        </p>
+      </div>
+      <div className="asc-section ddd-sec">
+        {DEPLOYABLES.map(dep => (
+          <div className="agu ddd-cmp-card" key={dep.id} onClick={() => setSel(dep.id)} role="button" tabIndex={0}>
+            <div className="agu-h">
+              <span className="dm-agg-ico"><DDPico d={DDI.cap} w={15} /></span>
+              <span className="agu-nm">{dep.name}</span>
+              <IdChip id={dep.id} />
+              <span className={'ddd-scn-kind ' + (STK_STATUS[dep.status] || 'manual')}>{dep.status}</span>
+              <span className="agu-store">container on Kubernetes · {PLATFORM.name}</span>
+            </div>
+            <div className="agu-about">
+              {dep.contains.map(c => HOME_NAMES[c] || c).join(' · ')} —{' '}
+              <a className="ddd-crumb-link" href={dep.links.code} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>code</a> · {' '}
+              <a className="ddd-crumb-link" href={dep.links.image} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>image</a> · {' '}
+              <a className="ddd-crumb-link" href={dep.links.pipeline} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>pipeline</a> · {' '}
+              <a className="ddd-crumb-link" href={dep.links.logs} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>logs</a>
+              <span className="ddd-cmp-vers">
+                {ENVIRONMENTS.map(e => (
+                  <span className="ddd-cmp-ver" key={e.id}>{e.name}: {dep.versions[e.id] ? <code className="ddd-idchip">{dep.versions[e.id]}</code> : <span className="ddd-idchip">—</span>}</span>
+                ))}
+              </span>
+            </div>
+          </div>
+        ))}
+        <div className="agu" style={{ borderStyle: 'dashed' }}>
+          <div className="agu-h"><span className="agu-nm">— accident benefits —</span><span className="ddd-at-chip only">deferred · no component until designed</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+window.BuildComponents = BuildComponents;
 window.DesignContextMap = DesignContextMap;
 window.DesignSystemMap = DesignSystemMap;
 window.DesignRealization = DesignRealization;
