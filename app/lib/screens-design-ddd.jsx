@@ -2158,9 +2158,9 @@ window.InfraWorkspace = InfraWorkspace;
 const STK_STATUS = { confirmed: 'automated', proposed: 'manual' };
 function BuildMap() {
   const gaps = infraGaps();
-  const goCtx = (ctx) => {
+  const goCtx = (ctx, tab = 'howbuilt') => {
     const nav = window.__cynNav || {};
-    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx, tab: 'howbuilt' });
+    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx, tab });
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
   const goInfra = () => {
@@ -2214,8 +2214,8 @@ function BuildMap() {
 
       <div className="asc-section ddd-sec">
         <div className="asc-sec-head">
-          <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The deployables — {DEPLOYABLES.length}, from six boxes</div>
-          <div className="asc-sec-sub">4 services + 2 modules riding along. Every card points at the how-built record it realizes; boxes click through to their workspaces.</div>
+          <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The deployables — {DEPLOYABLES.length}, from six of seven boxes</div>
+          <div className="asc-sec-sub">The rule is asymmetric: a box is NEVER split across deployables; a deployable MAY carry several whole boxes — the box is a language boundary, the deployable an operational one, and they coincide only when an operational fact demands it (Payments: hardened tier). Inside a shared deployable the walls survive: own modules, own schemas, the same contracts. Boxes click through to their workspaces.</div>
         </div>
         {DEPLOYABLES.map(dep => (
           <div className="agu" key={dep.id}>
@@ -2233,6 +2233,18 @@ function BuildMap() {
             <div className="agu-about">{dep.note} <code className="ddd-idchip">realizes {dep.hb}</code></div>
           </div>
         ))}
+        {/* D-203: the seventh box, said out loud — silent absence reads as loss */}
+        <div className="agu" style={{ borderStyle: 'dashed' }}>
+          <div className="agu-h">
+            <span className="dm-agg-ico"><DDPico d={DDI.cap} w={15} /></span>
+            <span className="agu-nm">— no deployable yet —</span>
+            <span className="ddd-at-chip only">deferred by plan</span>
+            <span className="agu-ucs">
+              <button type="button" className="dm-chip comp ddd-lc-ev" title="CTX-AB" onClick={() => goCtx('CTX-AB', 'flow')}>Accident benefits</button>
+            </span>
+          </div>
+          <div className="agu-about">The seventh box — deliberately last (SABS clocks, HCAI). No design-level storm, no contracts, no how-built record yet — a deployable decision for an undesigned box would be an invention. It joins this map when its design work runs.</div>
+        </div>
       </div>
 
       <div className="asc-section ddd-sec">
