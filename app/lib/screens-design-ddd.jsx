@@ -10,6 +10,7 @@ import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CONTEXT_CAPABILITIES } from '../flow/claims-capabilities';
 import { CLAIMS_CONTRACTS } from '../flow/claims-contracts';
 import { INFRA_NEEDS, infraGaps, ENVIRONMENTS, CLOUD_SETUP } from '../flow/claims-infra';
+import { STACK, DEPLOYABLES } from '../flow/claims-stack';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
 import { BC_PACKET } from '../flow/claims-bc-packet';
@@ -2147,6 +2148,109 @@ function InfraWorkspace({ product, prd, onBack }) {
   );
 }
 window.InfraWorkspace = InfraWorkspace;
+
+/* ============================================================
+   D-202 — Build › Build map: the paved road + the deployables.
+   The first Build artifact: what we build, on what, and what is
+   still only proposed. Boxes click through to their workspaces;
+   the skeleton's infra gates show on top.
+   ============================================================ */
+const STK_STATUS = { confirmed: 'automated', proposed: 'manual' };
+function BuildMap() {
+  const gaps = infraGaps();
+  const goCtx = (ctx) => {
+    const nav = window.__cynNav || {};
+    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx, tab: 'howbuilt' });
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+  const goInfra = () => {
+    const nav = window.__cynNav || {};
+    window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: nav.phase || 'Build', entry: 'xinfra' });
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+  const product = STACK.filter(d => d.scope === 'product');
+  const deviations = STACK.filter(d => d.scope !== 'product');
+  return (
+    <div className="ddd-wrap">
+      <div className="ddd-intro">
+        <div className="ddd-eyebrow"><DDPico d={DDI.cap} w={12} /> BUILD · THE FIRST ARTIFACT</div>
+        <h2 className="ddd-page-title">Build map — the paved road &amp; the deployables</h2>
+        <p className="ddd-lead">
+          The stack is decided <b>once per layer</b> at product level; a per-box deviation is the same kind of record
+          with a box scope and a written reason — the road stays paved, the exits are explicit. Below it, the
+          design→build mapping: <b>the box is the unit of modeling, the deployable is chosen per box, and a box is
+          never split.</b> Everything here is proposed until the architect confirms it.
+        </p>
+      </div>
+
+      {gaps.length > 0 && (
+        <div className="ddd-lc-never disc" style={{ marginBottom: 16, cursor: 'pointer' }} onClick={goInfra}>
+          <b>⚠ The skeleton is gated</b>
+          <span>{gaps.map(g => `${g.name} — ${(g.binding.status === 'in-review' ? 'in security review' : 'not yet provisioned')} (blocks ${g.demandedBy.length})`).join(' · ')} — open Infrastructure →</span>
+        </div>
+      )}
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> The paved road — {product.length} layers</div>
+          <div className="asc-sec-sub">One choice per layer, product-wide. Where a choice binds an infrastructure need, the chip says which.</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ddd-lc-table">
+            <thead><tr><th>Layer</th><th>Choice</th><th>Why</th><th>Status</th></tr></thead>
+            <tbody>
+              {product.map(d => (
+                <tr key={d.id}>
+                  <td><b>{d.layer}</b><br /><IdChip id={d.id} /></td>
+                  <td>{d.choice}{d.binds && <><br /><code className="ddd-idchip">binds {d.binds}</code></>}</td>
+                  <td>{d.why}</td>
+                  <td><span className={'ddd-scn-kind ' + (STK_STATUS[d.status] || 'manual')}>{d.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The deployables — {DEPLOYABLES.length}, from six boxes</div>
+          <div className="asc-sec-sub">4 services + 2 modules riding along. Every card points at the how-built record it realizes; boxes click through to their workspaces.</div>
+        </div>
+        {DEPLOYABLES.map(dep => (
+          <div className="agu" key={dep.id}>
+            <div className="agu-h">
+              <span className="dm-agg-ico"><DDPico d={DDI.cap} w={15} /></span>
+              <span className="agu-nm">{dep.name}</span>
+              <IdChip id={dep.id} />
+              <span className={'ddd-scn-kind ' + (STK_STATUS[dep.status] || 'manual')}>{dep.status}</span>
+              <span className="agu-ucs">
+                {dep.contains.map(ctx => (
+                  <button key={ctx} type="button" className="dm-chip comp ddd-lc-ev" title={ctx} onClick={() => goCtx(ctx)}>{HOME_NAMES[ctx] || ctx}</button>
+                ))}
+              </span>
+            </div>
+            <div className="agu-about">{dep.note} <code className="ddd-idchip">realizes {dep.hb}</code></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
+          <div className="asc-sec-title">Deviations — the explicit exits</div>
+          <div className="asc-sec-sub">Same record, box scope, written reason. A deviation without a reason is not a deviation — it is drift.</div>
+        </div>
+        {deviations.map(d => (
+          <div className="ddd-lc-never" key={d.id}>
+            <b>{d.layer}<br /><IdChip id={d.id} /> <button type="button" className="dm-chip comp ddd-lc-ev" onClick={() => goCtx(d.scope)}>{HOME_NAMES[d.scope] || d.scope}</button></b>
+            <span>{d.choice} — {d.why} {d.changes && <code className="ddd-idchip">changes {d.changes}</code>} <span className={'ddd-scn-kind ' + (STK_STATUS[d.status] || 'manual')}>{d.status}</span></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+window.BuildMap = BuildMap;
 window.DesignContextMap = DesignContextMap;
 window.DesignSystemMap = DesignSystemMap;
 window.DesignRealization = DesignRealization;
