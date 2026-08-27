@@ -10,7 +10,7 @@ import { CONTEXT_POLICIES } from '../flow/claims-policies';
 import { CONTEXT_CAPABILITIES } from '../flow/claims-capabilities';
 import { CLAIMS_CONTRACTS } from '../flow/claims-contracts';
 import { INFRA_NEEDS, infraGaps, ENVIRONMENTS, CLOUD_SETUP } from '../flow/claims-infra';
-import { STACK, DEPLOYABLES } from '../flow/claims-stack';
+import { STACK, DEPLOYABLES, RUNTIMES } from '../flow/claims-stack';
 import { CLAIMS_DESIGN_STORMS } from '../flow/claims-design-storms';
 import { HOME_NAMES } from '../flow/journeys';
 import { BC_PACKET } from '../flow/claims-bc-packet';
@@ -2156,6 +2156,26 @@ window.InfraWorkspace = InfraWorkspace;
    the skeleton's infra gates show on top.
    ============================================================ */
 const STK_STATUS = { confirmed: 'automated', proposed: 'manual' };
+
+/* D-204: a deployable's CONNECTIONS are DERIVED from the demand joins —
+   the infra register already knows which design element needs what, and
+   every element's id tells us its box. Nothing authored twice. */
+function deployableConnections(dep) {
+  const evCtx = {};
+  CLAIMS_DESIGN_STORMS.forEach(m => m.nodes.forEach(n => { if (n.kind === 'event') evCtx[n.id] = m.contextId; }));
+  const idCtx = d => {
+    if (evCtx[d]) return [evCtx[d]];
+    const m = d.match(/^(?:HB|SEC|SL|MEA|GAP|RM|CAT|POL|TRN|TRL)-([A-Z]+)-/);
+    if (m) return ['CTX-' + m[1]];
+    if (d.startsWith('CT-')) { const ct = CLAIMS_CONTRACTS.find(k => k.id === d); return ct ? [ct.from, ct.to].filter(x => /^CTX-/.test(x)) : []; }
+    return [];
+  };
+  const boxes = new Set(dep.contains);
+  const needs = INFRA_NEEDS.filter(n => n.id !== 'INF-RUNTIME'   // the runtime is the record's own row, not a connection
+    && (n.demandedBy || []).some(d => idCtx(d).some(c => boxes.has(c))));
+  const env = ['SERVICE_NAME', 'ENVIRONMENT', ...new Set(needs.flatMap(n => n.env || []))];
+  return { needs, env };
+}
 function BuildMap() {
   const gaps = infraGaps();
   const goCtx = (ctx, tab = 'howbuilt') => {
@@ -2214,25 +2234,81 @@ function BuildMap() {
 
       <div className="asc-section ddd-sec">
         <div className="asc-sec-head">
+          <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Target runtimes — the catalog</div>
+          <div className="asc-sec-sub">Every runtime the bound cloud offers, and when each fits. The CHOICE is made per deployable, below — the catalog exists so a choice is a selection, never an invention.</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ddd-lc-table">
+            <thead><tr><th>Runtime</th><th>When it fits</th><th>Chosen by</th></tr></thead>
+            <tbody>
+              {RUNTIMES.map(rt => {
+                const users = DEPLOYABLES.filter(d => d.runtime === rt.id);
+                return (
+                  <tr key={rt.id}>
+                    <td><b>{rt.name}</b><br /><IdChip id={rt.id} /></td>
+                    <td>{rt.when}</td>
+                    <td>{users.length ? users.map(d => <code className="ddd-idchip" key={d.id} style={{ marginRight: 5 }}>{d.name}</code>) : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="asc-section ddd-sec">
+        <div className="asc-sec-head">
           <div className="asc-sec-title"><DDPico d={DDI.agg} w={14} /> The deployables — {DEPLOYABLES.length}, from six of seven boxes</div>
           <div className="asc-sec-sub">The rule is asymmetric: a box is NEVER split across deployables; a deployable MAY carry several whole boxes — the box is a language boundary, the deployable an operational one, and they coincide only when an operational fact demands it (Payments: hardened tier). Inside a shared deployable the walls survive: own modules, own schemas, the same contracts. Boxes click through to their workspaces.</div>
         </div>
-        {DEPLOYABLES.map(dep => (
-          <div className="agu" key={dep.id}>
-            <div className="agu-h">
-              <span className="dm-agg-ico"><DDPico d={DDI.cap} w={15} /></span>
-              <span className="agu-nm">{dep.name}</span>
-              <IdChip id={dep.id} />
-              <span className={'ddd-scn-kind ' + (STK_STATUS[dep.status] || 'manual')}>{dep.status}</span>
-              <span className="agu-ucs">
-                {dep.contains.map(ctx => (
-                  <button key={ctx} type="button" className="dm-chip comp ddd-lc-ev" title={ctx} onClick={() => goCtx(ctx)}>{HOME_NAMES[ctx] || ctx}</button>
-                ))}
-              </span>
+        {DEPLOYABLES.map(dep => {
+          const rt = RUNTIMES.find(r => r.id === dep.runtime);
+          const { needs, env } = deployableConnections(dep);
+          return (
+            <div className="agu" key={dep.id}>
+              <div className="agu-h">
+                <span className="dm-agg-ico"><DDPico d={DDI.cap} w={15} /></span>
+                <span className="agu-nm">{dep.name}</span>
+                <IdChip id={dep.id} />
+                <span className={'ddd-scn-kind ' + (STK_STATUS[dep.status] || 'manual')}>{dep.status}</span>
+                <span className="agu-ucs">
+                  {dep.contains.map(ctx => (
+                    <button key={ctx} type="button" className="dm-chip comp ddd-lc-ev" title={ctx} onClick={() => goCtx(ctx)}>{HOME_NAMES[ctx] || ctx}</button>
+                  ))}
+                </span>
+              </div>
+              <div className="agu-about">{dep.note} <code className="ddd-idchip">realizes {dep.hb}</code></div>
+              <div className="agu-tbl">
+                <div className="agu-tbl-h">deployment record<span className="agu-tbl-p">runtime · artifact · connections · environment — one unit, everything it touches</span></div>
+                <div className="agu-row">
+                  <span className="agu-f">runtime</span>
+                  <span className="agu-d"><b>{rt ? rt.name : dep.runtime}</b> <IdChip id={dep.runtime} />{dep.runtimeNote && <> · {dep.runtimeNote}</>}</span>
+                </div>
+                <div className="agu-row">
+                  <span className="agu-f">artifact</span>
+                  <span className="agu-d">{dep.artifact.kind} — <code className="ddd-idchip">{dep.artifact.ref}</code> · {dep.artifact.build}</span>
+                </div>
+                <div className="agu-row">
+                  <span className="agu-f">connects to</span>
+                  <span className="agu-d" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {needs.map(n => (
+                      <span key={n.id} className="ddd-inf-conn" title={`${n.id} · ${(n.binding && n.binding.implementedBy) || ''} · ${n.binding.status}`}>
+                        <span className="ddd-inf-raildot" style={{ background: INF_DOT[n.binding.status] || '#9ca3af', display: 'inline-block', marginRight: 5 }}></span>
+                        {n.name.split(' — ')[0]}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+                <div className="agu-row">
+                  <span className="agu-f">environment</span>
+                  <span className="agu-d" style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {env.map(v => <code className="ddd-idchip" key={v}>{v}</code>)}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="agu-about">{dep.note} <code className="ddd-idchip">realizes {dep.hb}</code></div>
-          </div>
-        ))}
+          );
+        })}
         {/* D-203: the seventh box, said out loud — silent absence reads as loss */}
         <div className="agu" style={{ borderStyle: 'dashed' }}>
           <div className="agu-h">
