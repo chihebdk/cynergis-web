@@ -1919,7 +1919,7 @@ function ProductInfra() {
         <div className="asc-section ddd-sec">
           <div className="asc-sec-head">
             <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Environments — the promotion path</div>
-            <div className="asc-sec-sub">The abstract node ON TOP (D-199): environments survive a vendor switch; the cloud binds each one to a subscription. Data rules and gates tighten left to right.</div>
+            <div className="asc-sec-sub">The abstract node ON TOP (D-199): environments survive a vendor switch; the cloud binds each one to an account. Data rules and gates tighten left to right.</div>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table className="ddd-lc-table">
@@ -1929,7 +1929,7 @@ function ProductInfra() {
                   <tr key={e.id}>
                     <td><b>{e.name}</b><br /><IdChip id={e.id} /></td>
                     <td>{e.purpose}</td><td>{e.gates}</td><td>{e.dataRule}</td>
-                    <td><code className="ddd-idchip">{e.binding.subscription}</code><br />{e.binding.note}</td>
+                    <td><code className="ddd-idchip">{e.binding.account}</code><br />{e.binding.note}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1950,7 +1950,7 @@ function ProductInfra() {
             </div>
             <div className="agu-about">Tenant <code className="ddd-idchip">{CLOUD_SETUP.tenant}</code> · {CLOUD_SETUP.iac}</div>
             <div className="agu-tbl">
-              <div className="agu-tbl-h">organization<span className="agu-tbl-p">management groups, root to landing zone</span></div>
+              <div className="agu-tbl-h">organization<span className="agu-tbl-p">org units, root to landing zone</span></div>
               {CLOUD_SETUP.orgModel.map(g => (
                 <div className="agu-row" key={g.group}>
                   <span className="agu-f">{g.group}</span>
@@ -1959,7 +1959,7 @@ function ProductInfra() {
               ))}
             </div>
             <div className="agu-tbl">
-              <div className="agu-tbl-h">org policies<span className="agu-tbl-p">inherited by every subscription — deny beats intent</span></div>
+              <div className="agu-tbl-h">org policies<span className="agu-tbl-p">inherited by every account — deny beats intent</span></div>
               {CLOUD_SETUP.policies.map(pcy => (
                 <div className="agu-row" key={pcy.id}>
                   <span className="agu-f"><IdChip id={pcy.id} /></span>
@@ -2101,7 +2101,7 @@ function InfraWorkspace({ product, prd, onBack }) {
               <span className={'ddd-scn-kind ' + ((INF_STATUS[(env.id === 'ENV-PROD' ? 'enabled' : 'enabled')] || {}).cls)} style={{ visibility: 'hidden' }}>·</span>
             </div>
             <div className="ddd-lc-never" style={{ marginBottom: 16 }}>
-              <b>{env.name}<br /><IdChip id={env.id} /> <code className="ddd-idchip">{env.binding.subscription}</code></b>
+              <b>{env.name}<br /><IdChip id={env.id} /> <code className="ddd-idchip">{env.binding.account}</code></b>
               <span>{env.purpose} <b>Gates:</b> {env.gates} <b>Data:</b> {env.dataRule}</span>
             </div>
             {svc ? <InfraServiceDetail n={svc} /> : (<>
@@ -2126,13 +2126,13 @@ function InfraWorkspace({ product, prd, onBack }) {
                 </div>
                 <div className="agu">
                   <div className="agu-tbl">
-                    <div className="agu-tbl-h">organization<span className="agu-tbl-p">management groups, root to landing zone</span></div>
+                    <div className="agu-tbl-h">organization<span className="agu-tbl-p">org units, root to landing zone</span></div>
                     {CLOUD_SETUP.orgModel.map(g => (
                       <div className="agu-row" key={g.group}><span className="agu-f">{g.group}</span><span className="agu-d">{g.holds}</span></div>
                     ))}
                   </div>
                   <div className="agu-tbl">
-                    <div className="agu-tbl-h">org policies<span className="agu-tbl-p">inherited by every subscription — deny beats intent</span></div>
+                    <div className="agu-tbl-h">org policies<span className="agu-tbl-p">inherited by every account — deny beats intent</span></div>
                     {CLOUD_SETUP.policies.map(pcy => (
                       <div className="agu-row" key={pcy.id}><span className="agu-f"><IdChip id={pcy.id} /></span><span className="agu-d">{pcy.rule}{pcy.binds ? <> · binds <code className="ddd-idchip">{pcy.binds}</code></> : null}</span></div>
                     ))}
