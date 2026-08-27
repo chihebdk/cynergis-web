@@ -2470,6 +2470,8 @@ const VAR_SOURCE = (v, svc) => {
 
 function BuildComponents() {
   const [sel, setSel] = React.useState(null);
+  const [cTab, setCTab] = React.useState('deployment');   // D-205 polish: tabbed detail
+  const openDep = (id) => { setSel(id); setCTab('deployment'); };
   const goCtxD = (ctx, tab = 'howbuilt') => {
     const nav = window.__cynNav || {};
     window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx, tab });
@@ -2501,6 +2503,13 @@ function BuildComponents() {
           <button key={c} type="button" className="dm-chip comp ddd-lc-ev" onClick={() => goCtxD(c)}>{HOME_NAMES[c] || c}</button>
         ))}</p>
 
+        <div className="ddd-tabs ddd-subtabs">
+          {[['deployment', 'Deployment'], ['resources', 'Resources'], ['env', 'Environment variables'], ['secrets', 'Secrets']].map(([k, l]) => (
+            <button key={k} type="button" className={'ddd-tab' + (cTab === k ? ' on' : '')} onClick={() => setCTab(k)}>{l}</button>
+          ))}
+        </div>
+
+        {cTab === 'deployment' && (
         <div className="asc-section ddd-sec">
           <div className="asc-sec-head">
             <div className="asc-sec-title"><DDPico d={DDI.cap} w={14} /> Deployment</div>
@@ -2533,10 +2542,12 @@ function BuildComponents() {
             </div>
           </div>
         </div>
+        )}
 
+        {cTab === 'resources' && (
         <div className="asc-section ddd-sec">
           <div className="asc-sec-head">
-            <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Connections — {needs.length}</div>
+            <div className="asc-sec-title"><DDPico d={DDI.flow} w={14} /> Resources — {needs.length}</div>
             <div className="asc-sec-sub">Everything this component touches, derived from the design's demand joins. Each opens its Infrastructure service page.</div>
           </div>
           {needs.map(n => (
@@ -2549,27 +2560,51 @@ function BuildComponents() {
             </div>
           ))}
         </div>
+        )}
 
-        <div className="asc-section ddd-sec">
-          <div className="asc-sec-head">
-            <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Environment — {env.length} variables</div>
-            <div className="asc-sec-sub">Where each value comes from: platform config at deploy, or a named secret — nothing hand-set, nothing in the image.</div>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="ddd-lc-table">
-              <thead><tr><th>Variable</th><th>Source</th><th>Where</th></tr></thead>
-              <tbody>
-                {env.map(v => { const src = VAR_SOURCE(v, svc); return (
-                  <tr key={v}>
-                    <td><code className="ddd-idchip">{v}</code></td>
-                    <td><span className={'ddd-scn-kind ' + (src.kind === 'secret' ? 'refusal' : 'move')}>{src.kind}</span></td>
-                    <td>{src.where}</td>
-                  </tr>
-                ); })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {cTab === 'env' && (() => {
+          const cfg = env.filter(v => VAR_SOURCE(v, svc).kind === 'config');
+          return (
+            <div className="asc-section ddd-sec">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title"><DDPico d={DDI.policy} w={14} /> Environment variables — {cfg.length}</div>
+                <div className="asc-sec-sub">Platform-injected configuration at deploy — per environment, from the binding of each connected resource. Nothing hand-set, nothing in the image.</div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="ddd-lc-table">
+                  <thead><tr><th>Variable</th><th>Where the value comes from</th></tr></thead>
+                  <tbody>
+                    {cfg.map(v => (
+                      <tr key={v}><td><code className="ddd-idchip">{v}</code></td><td>{VAR_SOURCE(v, svc).where}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
+        {cTab === 'secrets' && (() => {
+          const sec = env.filter(v => VAR_SOURCE(v, svc).kind === 'secret');
+          return (
+            <div className="asc-section ddd-sec">
+              <div className="asc-sec-head">
+                <div className="asc-sec-title"><DDPico d={DDI.shield} w={14} /> Secrets — {sec.length}</div>
+                <div className="asc-sec-sub">Stored in AWS Secrets Manager (the INF-SECRETS binding) under <code className="ddd-idchip">/claims/{svc}/</code> — access logged, rotated by the platform, mounted at deploy. Never in code, config or the image.</div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="ddd-lc-table">
+                  <thead><tr><th>Variable</th><th>Secret path</th></tr></thead>
+                  <tbody>
+                    {sec.map(v => (
+                      <tr key={v}><td><code className="ddd-idchip">{v}</code></td><td>{VAR_SOURCE(v, svc).where}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -2587,7 +2622,7 @@ function BuildComponents() {
       </div>
       <div className="asc-section ddd-sec">
         {DEPLOYABLES.map(dep => (
-          <div className="agu ddd-cmp-card" key={dep.id} onClick={() => setSel(dep.id)} role="button" tabIndex={0}>
+          <div className="agu ddd-cmp-card" key={dep.id} onClick={() => openDep(dep.id)} role="button" tabIndex={0}>
             <div className="agu-h">
               <span className="dm-agg-ico"><DDPico d={DDI.cap} w={15} /></span>
               <span className="agu-nm">{dep.name}</span>
