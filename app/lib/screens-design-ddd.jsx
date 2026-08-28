@@ -2461,6 +2461,114 @@ function BuildPlatform() {
 }
 window.BuildPlatform = BuildPlatform;
 
+/* D-206: a component's CONFIGURATION of a resource — derived from the
+   contracts registry and the platform's naming conventions. The join view:
+   only what THIS component uses, shown the way the code will see it. */
+function resourceConfig(dep, need) {
+  const svc = dep.name;
+  const short = svc.replace('-svc', '');
+  const boxes = dep.contains;
+  const cts = CLAIMS_CONTRACTS.filter(ct => boxes.includes(ct.to) || boxes.includes(ct.from));
+  const rows = [];
+  if (need.id === 'INF-PUBSUB') {
+    const consumes = cts.filter(ct => boxes.includes(ct.to) && !boxes.includes(ct.from)).map(ct => `claims.${ct.name}.v1`);
+    const produces = cts.filter(ct => boxes.includes(ct.from)).map(ct => `claims.${ct.name}.v1`);
+    if (consumes.length) rows.push({ k: 'consumes', v: consumes.join(' · ') });
+    if (produces.length) rows.push({ k: 'produces', v: produces.join(' · ') });
+    rows.push({ k: 'consumer group', v: `claims-${short}` });
+    rows.push({ k: 'dead letters', v: '<topic>.dlq — one per consumed topic' });
+  } else if (need.id === 'INF-SCHEMA-REG') {
+    rows.push({ k: 'subjects', v: cts.map(ct => `${ct.name}-value`).join(' · ') });
+    rows.push({ k: 'compatibility', v: 'BACKWARD — additive fields only; the change policy, enforced here' });
+  } else if (need.id === 'INF-RELDB') {
+    rows.push({ k: 'databases', v: boxes.map(b => `claims_${b.replace('CTX-', '').toLowerCase()}`).join(' · ') });
+    rows.push({ k: 'isolation', v: 'private schemas — no cross-box reads, enforced by grants' });
+  } else if (need.id === 'INF-DOCDB') {
+    rows.push({ k: 'database', v: `claims_${short}` });
+    rows.push({ k: 'note', v: 'STK-INTAKE-STORE proposes Postgres JSONB instead — this binding retires if confirmed' });
+  } else if (need.id === 'INF-SECRETS') {
+    rows.push({ k: 'prefix', v: `/claims/${svc}/` });
+    rows.push({ k: 'mounted', v: 'at deploy, as env vars — never files in the image' });
+  } else if (need.id === 'INF-OBJSTORE') {
+    rows.push({ k: 'bucket', v: 'meridian-claims-evidence-<env>' });
+    rows.push({ k: 'access', v: `prefix ${short}/ — component-scoped IAM role` });
+  } else if (need.id === 'INF-IDENTITY-STAFF') {
+    rows.push({ k: 'issuer', v: 'https://sso.meridian.internal' });
+    rows.push({ k: 'audience', v: svc });
+  } else if (need.id === 'INF-IDENTITY-CUSTOMER') {
+    rows.push({ k: 'issuer', v: 'https://id.meridian.ca' });
+    rows.push({ k: 'audience', v: svc });
+  } else if (need.id === 'INF-OBSERVABILITY') {
+    rows.push({ k: 'otlp endpoint', v: 'the platform collector — per-node, injected' });
+    rows.push({ k: 'dashboards', v: `grafana.meridian.internal/d/${svc}` });
+  } else if (need.id === 'INF-API-GW') {
+    rows.push({ k: 'routes', v: 'POST /claims/loss-reports — the public front door' });
+  } else if (need.id === 'INF-PARTNER-EDGE') {
+    rows.push({ k: 'routes', v: 'partner surface — authenticated, own cases only' });
+  } else if (need.id === 'INF-HARDENED') {
+    rows.push({ k: 'node group', v: 'hardened-money — isolated, egress deny-by-default' });
+    rows.push({ k: 'admission', v: 'restricted policy set + stricter image admission' });
+  } else if (need.id === 'INF-RESIDENCY') {
+    rows.push({ k: 'regions', v: 'ca-central-1 · ca-west-1 — SCP-enforced' });
+  } else if (need.id === 'INF-MAINFRAME-LINK') {
+    rows.push({ k: 'path', v: 'Direct Connect VIF → the mainframe partition per environment' });
+  }
+  return rows;
+}
+const RES_CONSOLE = {
+  'INF-PUBSUB': 'https://console.aws.amazon.com/msk/home#/clusters',
+  'INF-SCHEMA-REG': 'https://console.aws.amazon.com/glue/home#/v2/data-catalog/schemaRegistries',
+  'INF-RELDB': 'https://console.aws.amazon.com/rds/home#databases:',
+  'INF-DOCDB': 'https://console.aws.amazon.com/docdb/home#clusters',
+  'INF-OBJSTORE': 'https://s3.console.aws.amazon.com/s3/buckets',
+  'INF-SECRETS': 'https://console.aws.amazon.com/secretsmanager/listsecrets',
+  'INF-IDENTITY-STAFF': 'https://console.aws.amazon.com/singlesignon/home',
+  'INF-IDENTITY-CUSTOMER': 'https://console.aws.amazon.com/cognito/v2/idp/user-pools',
+  'INF-API-GW': 'https://console.aws.amazon.com/apigateway/main/apis',
+  'INF-PARTNER-EDGE': 'https://console.aws.amazon.com/apigateway/main/apis',
+  'INF-OBSERVABILITY': 'https://grafana.meridian.internal',
+  'INF-MAINFRAME-LINK': 'https://console.aws.amazon.com/directconnect/v2/home',
+  'INF-HARDENED': 'https://console.aws.amazon.com/eks/home#/clusters',
+};
+
+function ResourceModal({ dep, need, onClose, onOpenInfra }) {
+  React.useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+  const rows = resourceConfig(dep, need);
+  const st = INF_STATUS[need.binding.status] || {};
+  const tf = need.binding.module ? `https://github.com/meridian-insurance/platform-terraform/tree/main/modules/${need.binding.module.source.split('/')[1]}` : null;
+  const console_ = RES_CONSOLE[need.id];
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10050, background: 'rgba(15,18,30,.45)', display: 'grid', placeItems: 'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(560px, 94vw)', maxHeight: '86vh', overflowY: 'auto', background: 'var(--panel, #fff)', borderRadius: 14, padding: '18px 20px', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+          <span className="ddd-inf-raildot" style={{ background: INF_DOT[need.binding.status] || '#9ca3af', display: 'inline-block' }}></span>
+          <b style={{ fontSize: 14 }}>{need.name.split(' — ')[0]}</b>
+          <IdChip id={need.id} />
+          <span className={'ddd-scn-kind ' + st.cls}>{st.label}</span>
+          <button type="button" aria-label="Close" onClick={onClose} style={{ marginLeft: 'auto', border: 0, background: 'none', fontSize: 16, color: 'var(--ink-3, #9ca3af)', cursor: 'pointer' }}>×</button>
+        </div>
+        <div className="agu-about" style={{ marginBottom: 10 }}>{need.binding.implementedBy}{need.binding.module && <> · <code className="ddd-idchip">tf: {need.binding.module.source} @ {need.binding.module.version}</code></>}</div>
+        <div className="agu-tbl">
+          <div className="agu-tbl-h">configuration<span className="agu-tbl-p">as {dep.name} uses it — conventions + the contracts registry</span></div>
+          {rows.map(r => (
+            <div className="agu-row" key={r.k}><span className="agu-f">{r.k}</span><span className="agu-d">{r.v}</span></div>
+          ))}
+          {!rows.length && <div className="agu-row"><span className="agu-d">No component-specific configuration — platform-level only.</span></div>}
+        </div>
+        <div className="ddd-lc-def" style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          {tf && <a className="ddd-crumb-link" href={tf} target="_blank" rel="noreferrer">Terraform module (GitHub)</a>}
+          {console_ && <a className="ddd-crumb-link" href={console_} target="_blank" rel="noreferrer">cloud console</a>}
+          <button type="button" className="ddd-crumb-link" onClick={() => { onClose(); onOpenInfra(need.id); }}>open in Infrastructure →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const VAR_SOURCE = (v, svc) => {
   if (v === 'DB_URL') return { kind: 'secret', where: `credentials from Secrets Manager · /claims/${svc}/db` };
   if (v === 'SECRETS_PREFIX') return { kind: 'config', where: `the prefix itself — values live under /claims/${svc}/` };
@@ -2471,7 +2579,8 @@ const VAR_SOURCE = (v, svc) => {
 function BuildComponents() {
   const [sel, setSel] = React.useState(null);
   const [cTab, setCTab] = React.useState('deployment');   // D-205 polish: tabbed detail
-  const openDep = (id) => { setSel(id); setCTab('deployment'); };
+  const [resSel, setResSel] = React.useState(null);        // D-206: the resource-config modal
+  const openDep = (id) => { setSel(id); setCTab('deployment'); setResSel(null); };
   const goCtxD = (ctx, tab = 'howbuilt') => {
     const nav = window.__cynNav || {};
     window.cynPushUrl?.({ v: 'prod', pf: nav.pf, prod: nav.prod, sub: 'dashboard', phase: 'Design', entry: 'contexts', ctx, tab });
@@ -2551,14 +2660,16 @@ function BuildComponents() {
             <div className="asc-sec-sub">Everything this component touches, derived from the design's demand joins. Each opens its Infrastructure service page.</div>
           </div>
           {needs.map(n => (
-            <div className="ddd-lc-never" key={n.id} style={{ cursor: 'pointer' }} onClick={() => goInfraSvc(n.id)}>
+            <div className="ddd-lc-never" key={n.id} style={{ cursor: 'pointer' }} onClick={() => setResSel(n.id)}>
               <b><span className="ddd-inf-raildot" style={{ background: INF_DOT[n.binding.status] || '#9ca3af', display: 'inline-block', marginRight: 6 }}></span>
                 {n.name.split(' — ')[0]}<br /><IdChip id={n.id} /></b>
               <span>{n.binding.implementedBy}{n.binding.module && <> · <code className="ddd-idchip">tf: {n.binding.module.source}</code></>}
                 {(n.env || []).length > 0 && <> · hands this component: {(n.env || []).map(v => <code className="ddd-idchip" key={v} style={{ marginRight: 4 }}>{v}</code>)}</>}
-                {' '}· open service →</span>
+                {' '}· configuration →</span>
             </div>
           ))}
+          {resSel && (() => { const rn = needs.find(x => x.id === resSel); return rn
+            ? <ResourceModal dep={dep} need={rn} onClose={() => setResSel(null)} onOpenInfra={goInfraSvc} /> : null; })()}
         </div>
         )}
 
