@@ -21,10 +21,16 @@ import './lib/screens-design-ddd';
 import './lib/org-prio';
 import './lib/org-envision';
 import OrgApp from './lib/org-app';
+import TourHost from './tour/tour-engine';   // the guided demo walkthrough
 
 // Mermaid was a CDN global in the prototype; provide it the same way.
 if (typeof window !== 'undefined') window.mermaid = mermaid;
 
 export default function CynergisApp() {
-  return <OrgApp />;
+  return (
+    <>
+      <OrgApp />
+      <TourHost />
+    </>
+  );
 }

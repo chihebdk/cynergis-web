@@ -47,6 +47,40 @@ Repository settings to match, once: **Settings → Pages → Source = GitHub Act
 domain `demo.cynergis.org`, *Enforce HTTPS* on. DNS: a `CNAME` record for `demo` pointing at
 `<user>.github.io`.
 
+### The guided tour
+
+First-time visitors get a 25-step walkthrough that starts at the organisation and
+ends at the go-forward decision. It is in `app/tour/`: `tour-steps.jsx` is the
+script (data only) and `tour-engine.jsx` drives it.
+
+Two properties worth preserving if you edit it. The app stays **interactive**
+while a step is up — the dim is a spread box-shadow on the spotlight ring and
+every tour surface except the card is `pointer-events:none` — and progression is
+**manual**, so nothing auto-advances. Each step also carries the nav state it
+needs, which means a visitor who only presses "Next step" still sees everything;
+clicking is an invitation, never a requirement.
+
+Steps navigate by replaying the shell's own `popstate` handler (`cynPushUrl` writes
+history but the shell keeps its view in React state, so pushing alone would not
+move it). Anchors resolve by visible text where possible, since a text match
+survives a rail gaining an entry and an `nth-child` does not.
+
+Controls:
+
+| | |
+|---|---|
+| `?tour=1` | open it on load; `&tstep=N` starts at step N — how a specific step is shared |
+| `?tour=0` | suppress it and mark it seen |
+| Launcher | the "Guided tour" button, bottom right |
+| Console | `window.onthosTour(N)` opens it at step N |
+| Keyboard | → / Enter next · ← back · Esc end |
+
+It shows once per browser (`localStorage`, key `onthos.tour.v1.seen`) and is
+always restartable from the launcher. Every step is verifiable in isolation by
+loading its deep link: the tour root carries `data-tour-id`, `data-tour-anchor`
+(`found` / `missing`) and `data-tour-hit` (what the anchor matched) for exactly
+that purpose.
+
 ### What "no server" costs
 
 One thing: the gated write path (D-077). The governance acts in Operate, Realize and the

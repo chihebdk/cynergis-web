@@ -11,6 +11,7 @@ import './theme/feature/org-refchart.css';
 import '@xyflow/react/dist/style.css';
 import './theme/feature/flow-canvas.css';
 import './theme/feature/inline.css';
+import './theme/feature/tour.css';
 
 export const metadata = {
   title: 'Meridian Auto Insurance · OTO Studio',
