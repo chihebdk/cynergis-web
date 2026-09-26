@@ -2,11 +2,12 @@
   "name": "cynergis",
   "version": "0.1.0",
   "private": true,
-  "description": "Cynergis — product lifecycle management platform (Next.js port of the design handoff).",
+  "description": "Cynergis / Onthos — the web application (Next.js App Router). Standalone repo carved from the Ascent monorepo.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "audit": "node scripts/design-audit.mjs"
   },
   "dependencies": {
     "@flowai/canvas": "file:vendor/flowai-canvas-0.2.52.tgz",
@@ -26,5 +27,8 @@
     "@types/node": "^26.0.1",
     "postcss": "^8.5.2",
     "tailwindcss": "^4.0.6"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }

@@ -1,3 +1,47 @@
+# Cynergis / Onthos — web application
+
+The standalone web application repo, carved out of the `Ascent` monorepo with its history
+intact (`git subtree split --prefix=cynergis`). This repo holds **only** the Next.js app —
+no product-definition documents, no knowledge-graph generators, no promotional material —
+so it can be built and deployed by a CI/CD pipeline on its own.
+
+## Quick start
+
+```bash
+npm ci           # exact install from the lockfile (what CI runs)
+npm run dev      # http://localhost:3000
+npm run audit    # the design-packet coherence gate — exit 0 = publishable
+npm run build    # production build
+npm start        # serve the production build
+```
+
+Node **20.9 or newer** (CI pins the version in `.nvmrc`).
+
+## CI/CD
+
+`.github/workflows/ci.yml` runs on every push to `main`, every pull request, and on demand:
+
+| Step | Command | Gate |
+|---|---|---|
+| Install | `npm ci` | lockfile must be in sync |
+| Design audit | `npm run audit` | every id-join resolves both ways; every lifecycle stage reaches a terminal; every transition is tested |
+| Build | `npm run build` | the app compiles |
+
+The build output (`.next`) is uploaded as a workflow artifact.
+
+**Deployment note:** the app is not a static export — it serves a dynamic route
+(`/api/kg-changes`), so it needs a Node runtime (`npm start`, a container, or any
+Next.js-aware host). `npm ci` requires the `vendor/*.tgz` tarballs that are committed
+here: the `@flowai/*` packages are local file dependencies, not registry packages.
+
+### Dependencies on the monorepo
+
+None at build time. The app is self-contained: its own lockfile, its own vendored packages,
+no path escaping the repo root. Design data lives in `app/flow/*.js` and is compiled into
+the bundle, so a build needs nothing from `Ascent`.
+
+---
+
 # Cynergis (Next.js)
 
 A Next.js (App Router) port of the `design_handoff_cynergis` static prototype — the product

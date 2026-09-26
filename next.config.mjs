@@ -1,12 +1,11 @@
-import path from 'node:path';
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false, // the ported prototype mutates window on mount
-  // Root spans the Ascent dir so it can resolve the sibling flowai/ packages
-  // (@flowai/canvas is a file: dep symlinked to ../flowai/flowai/packages/canvas).
-  // Root spans the Ascent dir so it can resolve the sibling flowai/ packages.
-  turbopack: { root: path.join(import.meta.dirname, '..') },
+  // In this standalone repo the app IS the workspace root. Stated explicitly so
+  // the build never infers it from a lockfile further up the filesystem.
+  // (In the Ascent monorepo this pointed one level up to reach sibling packages;
+  // the @flowai packages are vendored tarballs here, resolved from node_modules.)
+  turbopack: { root: import.meta.dirname },
 };
 
 export default nextConfig;
