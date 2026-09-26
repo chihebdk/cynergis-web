@@ -7,7 +7,7 @@
    ============================================================ */
 :root{
   /* ---- Accent (theme driver) ----
-     D-128: the palette derives from the Onthos logo, measured in OKLCH from
+     D-128: the palette derives from the OTO logo, measured in OKLCH from
      the mark itself — indigo node #343bd9 = oklch(0.467 0.233 271) drives the
      accent; the wordmark ink #131a21 = oklch(0.214 0.017 249) is what the
      parametric --ink ramp lands on at this hue. */

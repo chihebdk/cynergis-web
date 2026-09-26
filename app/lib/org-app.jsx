@@ -662,7 +662,7 @@ function OrgApp() {
     <div className="asc-app" style={{ gridTemplateRows:'80px 1fr' }}>
       <header className="asc-topbar">
         <div className="asc-brand" onClick={goOrg}>
-          <img className="asc-logo" src="/onthos-logo.png" alt="Onthos" />
+          <img className="asc-logo" src="/meridian-logo.svg" alt="Meridian Auto Insurance" />
         </div>
 
         <button className="asc-backbtn" disabled={!canBack} onClick={() => window.history.back()}
@@ -746,11 +746,12 @@ function OrgApp() {
         })()}
 
         <button type="button" className="asc-search" onClick={() => setPalOpen(true)}><Ico k="search" w={13} /> <span className="stxt">Search org &amp; knowledge mesh</span> <span className="kbd">⌘K</span></button>
-        {/* D-128 polish: the tenant chip — Onthos is the product, this is the
-            organization the workspace models (always visible, unlike the
-            context-aware path and the per-workspace rails) */}
-        <button type="button" className="asc-tenant" onClick={goOrg} title="The organization this workspace models">
-          <Ico k="org" w={13} /> {(window.__KG4__ && window.__KG4__.org) ? window.__KG4__.org.org.name : ORG.org.name}
+        {/* The brand zone is the tenant's own, the organization this workspace
+            models; the product names itself here, in a chip: OTO Studio, the
+            collection of every view over the graphs, in alpha (always visible,
+            unlike the context-aware path and the per-workspace rails) */}
+        <button type="button" className="asc-tenant" onClick={goOrg} title="OTO Studio, the portal over the knowledge graphs; in alpha">
+          <Ico k="product" w={13} /> OTO Studio · alpha
         </button>
         <div className="asc-userav">AT</div>
       </header>

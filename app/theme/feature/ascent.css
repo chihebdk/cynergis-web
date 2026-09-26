@@ -28,10 +28,10 @@ button{ font-family:inherit; }
   background:var(--panel); border-bottom:1px solid var(--line);
 }
 .asc-brand{ display:flex; align-items:center; cursor:pointer; }
-/* D-128: the Onthos wordmark replaces the letter mark; the tenant (the org
-   this workspace models) lives in its own chip on the right, not in the
-   brand zone */
-.asc-logo{ height:64px; width:auto; display:block; }
+/* The tenant's own mark and wordmark in the brand zone (the org this
+   workspace models: Meridian, the sample insurer); the product, OTO Studio,
+   names itself in the chip on the right */
+.asc-logo{ height:44px; width:auto; display:block; }
 .asc-tenant{
   display:flex; align-items:center; gap:7px; flex-shrink:0;
   height:32px; padding:0 13px; border-radius:999px;

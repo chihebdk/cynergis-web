@@ -13,7 +13,7 @@ import './theme/feature/flow-canvas.css';
 import './theme/feature/inline.css';
 
 export const metadata = {
-  title: 'Onthos — Meridian Auto Insurance',
+  title: 'Meridian Auto Insurance · OTO Studio',
   description: 'The DDD organization: domains, bounded contexts, durable teams — every surface derived from the knowledge graph.',
 };
 
