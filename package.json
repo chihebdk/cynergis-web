@@ -2,11 +2,11 @@
   "name": "cynergis",
   "version": "0.1.0",
   "private": true,
-  "description": "Cynergis / Onthos — the web application (Next.js App Router). Standalone repo carved from the Ascent monorepo.",
+  "description": "Cynergis / Onthos — the web application, built as a static site (Next.js App Router) and deployed to demo.cynergis.org.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "preview": "npx --yes serve out",
     "audit": "node scripts/design-audit.mjs"
   },
   "dependencies": {

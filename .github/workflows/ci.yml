@@ -1,4 +1,4 @@
-name: CI
+name: CI & Deploy
 
 on:
   push:
@@ -6,9 +6,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+# GITHUB_TOKEN rights the Pages deployment needs
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# one deployment at a time; never cancel a run that is mid-deploy
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -28,18 +35,44 @@ jobs:
         run: npm ci
 
       # The design packet's mechanical coherence gate: every id-join resolves
-      # both ways, every stage reaches a terminal, every transition is tested.
-      # Exit 0 = publishable.
+      # both ways, every lifecycle stage reaches a terminal, every transition
+      # is tested. Exit 0 = publishable.
       - name: Design audit
         run: npm run audit
 
-      - name: Build
+      # `output: 'export'` in next.config.mjs makes this emit a complete
+      # static site in out/ — no server, no database.
+      - name: Build static site
         run: npm run build
 
-      - name: Upload build output
-        if: success()
-        uses: actions/upload-artifact@v4
+      # public/ already carries CNAME and .nojekyll; assert they landed rather
+      # than trusting it, since a missing CNAME silently drops the custom
+      # domain and a missing .nojekyll would let Jekyll eat _next/.
+      - name: Verify the deploy artifact
+        run: |
+          test -f out/index.html || { echo "::error::out/index.html missing"; exit 1; }
+          test -d out/_next     || { echo "::error::out/_next missing"; exit 1; }
+          [ "$(cat out/CNAME 2>/dev/null)" = "demo.cynergis.org" ] \
+            || { echo "::error::out/CNAME is not demo.cynergis.org"; exit 1; }
+          touch out/.nojekyll
+          echo "artifact ok — $(du -sh out | cut -f1)"
+
+      - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
-          name: next-build
-          path: .next
-          retention-days: 7
+          path: out
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

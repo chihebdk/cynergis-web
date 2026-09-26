@@ -437,12 +437,21 @@ export function kgExecutors() {
   return _cache.executors;
 }
 
-/* Stage a change request onto the gated write path (doctrine 4). */
+/* Stage a change request onto the gated write path (doctrine 4).
+   This static demo build ships no intake: the route lived in the Ascent
+   monorepo beside kg/apply.js, and in the target state the intake is a PR
+   pipeline, not an endpoint. The fetch stays so the same code works wherever
+   an intake IS mounted at this path; it RESOLVES with an `error` instead of
+   rejecting, which keeps every call site's optimistic echo intact — the
+   surfaces already render `staged.error` as a warning line. */
+const NO_INTAKE = 'demo build — the gated write path is not wired here; this act is in-memory only';
 export function stageChange(op, target, payload) {
   return fetch('/api/kg-changes', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ op, target, payload }),
-  }).then(r => r.json());
+  })
+    .then(r => (r.ok ? r.json() : { error: NO_INTAKE }))
+    .catch(() => ({ error: NO_INTAKE }));
 }
 
 if (typeof window !== 'undefined') window.KG = { kgNode, kgOut, kgIn, kgById, telemetry, kgSlos, kgFleet, kgIncidents, kgOutcomes, kgValue, kgDecision, kgSearch, kgApprovals, kgRunbooks, kgExecutors, kgTests, kgEvalRuns, kgContracts, kgAgents, stageChange };
