@@ -1,59 +1,77 @@
 /* ============================================================
    THE GUIDED TOUR — chrome.
    Built on the design-system tokens so the tour reads as part of
-   the product, not a bolted-on widget.
+   the product rather than a bolted-on widget.
 
-   The interaction rule lives here: everything except the card is
-   pointer-events:none, so the visitor can keep clicking the app
-   while a step is on screen. The dim is a 9999px spread shadow on
-   the ring, which cuts a lit hole with no extra layers.
+   The card is PINNED bottom-left for the whole session: the tour
+   never moves it, so the visitor always knows where the
+   instruction is, and that corner is otherwise unused by the app.
+
+   Two dim states. AWAIT: the ring carries a 9999px spread shadow,
+   cutting one lit hole around the single armed control. CLEAR: no
+   dim at all — the page is meant to be read. Both layers are
+   pointer-events:none; blocking is done in JS (see tour-engine),
+   which is what lets scrolling stay completely native.
    ============================================================ */
 
 .tour-root {
   position: fixed;
   inset: 0;
   z-index: 9000;
-  pointer-events: none;           /* the app stays clickable */
+  pointer-events: none;
 }
 
-/* the lit hole */
+/* flat veil — the opening invitation, where the card is the only live thing */
+.tour-veil {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in oklch, var(--bg) 16%, rgb(4 6 14 / 0.66));
+  pointer-events: none;
+  animation: tour-fade .25s ease both;
+}
+@keyframes tour-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* the lit hole around the one armed control */
 .tour-ring {
   position: fixed;
   border-radius: 9px;
-  box-shadow: 0 0 0 9999px color-mix(in oklch, var(--bg) 18%, rgb(4 6 14 / 0.62));
-  outline: 2px solid var(--accent);
-  outline-offset: 0;
   pointer-events: none;
   transition: top .2s ease, left .2s ease, width .2s ease, height .2s ease;
-  animation: tour-ring-in .28s ease both;
 }
-@keyframes tour-ring-in {
-  from { outline-color: transparent; }
-  to   { outline-color: var(--accent); }
+.tour-ring.armed {
+  box-shadow: 0 0 0 9999px color-mix(in oklch, var(--bg) 16%, rgb(4 6 14 / 0.66));
+  outline: 2px solid var(--accent);
+  animation: tour-pulse 1.8s ease-in-out infinite;
 }
-
-/* fallback dim for steps with nothing to point at */
-.tour-dim {
-  position: fixed;
-  inset: 0;
-  background: color-mix(in oklch, var(--bg) 18%, rgb(4 6 14 / 0.62));
-  pointer-events: none;
+/* CLEAR phase: an outline that points, with nothing dimmed */
+.tour-ring.plain {
+  outline: 2px dashed color-mix(in oklch, var(--accent) 62%, transparent);
+}
+@keyframes tour-pulse {
+  0%, 100% { outline-color: var(--accent); }
+  50%      { outline-color: color-mix(in oklch, var(--accent) 45%, transparent); }
 }
 
 /* ---------- the card ---------- */
 .tour-card {
   position: fixed;
-  pointer-events: auto;           /* the one interactive surface */
+  left: 20px;
+  bottom: 20px;
+  width: 372px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  pointer-events: auto;              /* the one interactive surface */
   background: var(--panel);
   border: 1px solid var(--line-strong);
   border-radius: 12px;
   box-shadow: 0 18px 44px rgb(4 6 14 / 0.34), 0 2px 6px rgb(4 6 14 / 0.2);
   padding: 14px 16px 12px;
   font-family: var(--font-sans);
-  animation: tour-card-in .22s ease both;
+  animation: tour-card-in .24s ease both;
 }
 @keyframes tour-card-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -104,8 +122,8 @@
 }
 .tour-body b { color: var(--ink); font-weight: 600; }
 
-/* the invitation to click something */
-.tour-doit {
+/* "click this" — the instruction for the armed control */
+.tour-ask {
   display: flex;
   gap: 8px;
   align-items: flex-start;
@@ -113,12 +131,12 @@
   padding: 8px 10px;
   border-radius: 8px;
   background: var(--accent-soft);
-  border: 1px solid color-mix(in oklch, var(--accent) 26%, transparent);
+  border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent);
   font-size: 12px;
   line-height: 1.5;
   color: var(--ink);
 }
-.tour-doit-k {
+.tour-ask-k {
   flex: 0 0 auto;
   font-family: var(--font-mono);
   font-size: 9.5px;
@@ -126,6 +144,16 @@
   text-transform: uppercase;
   color: var(--accent);
   padding-top: 2px;
+}
+
+/* the follow-up line, once the page is clear */
+.tour-then {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-3);
 }
 
 .tour-warn {
@@ -139,7 +167,7 @@
   color: var(--ink-2);
 }
 
-/* ---------- progress pips ---------- */
+/* ---------- progress ---------- */
 .tour-progress {
   display: flex;
   flex-wrap: wrap;
@@ -148,7 +176,7 @@
 }
 .tour-pip {
   appearance: none;
-  width: 13px;
+  width: 11px;
   height: 4px;
   padding: 0;
   border: 0;
@@ -157,7 +185,7 @@
   cursor: pointer;
 }
 .tour-pip.past { background: color-mix(in oklch, var(--accent) 42%, transparent); }
-.tour-pip.on { background: var(--accent); width: 20px; }
+.tour-pip.on { background: var(--accent); width: 18px; }
 
 /* ---------- actions ---------- */
 .tour-actions {
@@ -168,6 +196,7 @@
   padding-top: 10px;
   border-top: 1px solid var(--line);
 }
+.tour-card-invite .tour-actions { margin-top: 12px; }
 .tour-actions-r { display: flex; gap: 6px; }
 
 .tour-btn {
@@ -181,62 +210,73 @@
   border: 1px solid var(--line-strong);
   background: var(--panel-2);
   color: var(--ink-2);
+  white-space: nowrap;
 }
 .tour-btn:hover:not(:disabled) { background: var(--panel-3); color: var(--ink); }
 .tour-btn:disabled { opacity: .4; cursor: default; }
 .tour-btn.ghost { border-color: transparent; background: transparent; color: var(--ink-3); }
 .tour-btn.ghost:hover:not(:disabled) { background: var(--panel-3); color: var(--ink); }
+
+/* The primary action is WHITE on the accent.
+   Not --accent-ink: that token is oklch(0.36 …), a dark indigo meant for accent
+   TEXT ON LIGHT surfaces. On the oklch(0.47 …) accent fill it reads as black on
+   dark blue — the contrast bug this replaces. */
 .tour-btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent-ink);
+  color: #fff;
   font-weight: 600;
 }
-.tour-btn.primary:hover { filter: brightness(1.06); }
+.tour-btn.primary:hover { background: color-mix(in oklch, var(--accent) 88%, white); border-color: color-mix(in oklch, var(--accent) 88%, white); }
 
-/* ---------- the launcher ---------- */
-.tour-launch {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 8500;
-  display: inline-flex;
+/* "Skip the click" — available but quiet, so the click stays the main path */
+.tour-btn.skip {
+  border-color: color-mix(in oklch, var(--accent) 34%, transparent);
+  background: transparent;
+  color: var(--accent);
+}
+.tour-btn.skip:hover { background: var(--accent-soft); }
+
+/* ---------- the persistent launcher (after the tour, or if declined) ---------- */
+.tour-card-mini {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  appearance: none;
-  font-family: var(--font-sans);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--accent-ink);
-  background: var(--accent);
-  border: 0;
-  border-radius: 999px;
-  padding: 9px 16px;
+  gap: 10px;
+  text-align: left;
+  padding: 11px 15px;
+  width: auto;
+  max-width: 320px;
   cursor: pointer;
-  box-shadow: 0 8px 22px rgb(4 6 14 / 0.26);
+  font-family: var(--font-sans);
 }
-.tour-launch:hover { filter: brightness(1.06); }
-.tour-launch-d {
-  width: 7px;
-  height: 7px;
+.tour-card-mini:hover { border-color: var(--accent); }
+.tour-mini-d {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--accent-ink);
-  opacity: .85;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
+.tour-mini-t { display: flex; flex-direction: column; gap: 1px; }
+.tour-mini-t b { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.tour-mini-sub { font-size: 11px; color: var(--ink-3); }
 
-/* ---------- narrow screens: the card goes to the bottom ---------- */
+/* while the gate is on, the cursor tells the truth: the page is inert */
+body.tour-gated { cursor: default; }
+
+/* ---------- narrow screens ---------- */
 @media (max-width: 720px) {
   .tour-card {
-    left: 12px !important;
-    right: 12px;
-    top: auto !important;
-    bottom: 12px;
-    width: auto !important;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
     max-width: none;
+    max-height: 56vh;
   }
-  .tour-launch { right: 12px; bottom: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tour-ring, .tour-card { animation: none; transition: none; }
+  .tour-ring, .tour-card, .tour-veil { animation: none; transition: none; }
 }

@@ -49,37 +49,56 @@ domain `demo.cynergis.org`, *Enforce HTTPS* on. DNS: a `CNAME` record for `demo`
 
 ### The guided tour
 
-First-time visitors get a 25-step walkthrough that starts at the organisation and
-ends at the go-forward decision. It is in `app/tour/`: `tour-steps.jsx` is the
-script (data only) and `tour-engine.jsx` drives it.
+First-time visitors are offered a 35-step walkthrough that starts at the
+organisation and ends at the go-forward decision. It lives in `app/tour/`:
+`tour-steps.jsx` is the script (data only) and `tour-engine.jsx` drives it.
 
-Two properties worth preserving if you edit it. The app stays **interactive**
-while a step is up — the dim is a spread box-shadow on the spotlight ring and
-every tour surface except the card is `pointer-events:none` — and progression is
-**manual**, so nothing auto-advances. Each step also carries the nav state it
-needs, which means a visitor who only presses "Next step" still sees everything;
-clicking is an invitation, never a requirement.
+**The interaction model.** The card is pinned to the bottom-left corner for the
+whole session — before, during and after the tour — because nothing in the
+product uses that corner. Each step has two phases:
 
-Steps navigate by replaying the shell's own `popstate` handler (`cynPushUrl` writes
-history but the shell keeps its view in React state, so pushing alone would not
-move it). Anchors resolve by visible text where possible, since a text match
-survives a rail gaining an entry and an `nth-child` does not.
+- **await** — the screen dims except one control, and that control is the only
+  thing on the page that still responds. The visitor has to click it, and their
+  click is what moves the app.
+- **clear** — the moment they do, the dim lifts. The whole page is visible and
+  legible, and *nothing* is clickable; only scrolling works. They read the screen
+  they just opened, then press "Next step" to arm the next control.
+
+A step can name `allow` selectors that stay live in the clear phase — used for the
+canvases, where the invitation is to switch layouts and hover nodes rather than
+press one button.
+
+**How the blocking works.** Not with a click-swallowing overlay: interaction is
+gated by capture-phase listeners that stop pointer and activation events outside
+the armed control, while `wheel`, `touchmove` and the scroll keys are never
+touched. So scrolling stays the browser's own, and the visual dim is a separate
+`pointer-events:none` layer that can never interfere. The gate lets the tour's own
+synthetic clicks through via an explicit bypass (see `ensure`).
+
+**Editing the script.** Anchors resolve by visible text where possible, since a
+text match survives a rail gaining an entry and an `nth-child` does not; `sel` +
+`text` together means "the element matching this selector whose text says this".
+Every step carries the `nav` its control lives on, applied on entry as a corrector
+— normally the visitor's click already got there, but it repairs Back, deep links
+and a click that did not navigate. `ensure` names a control to click when the
+target only exists after something is opened. A step whose control cannot be found
+degrades to the clear phase with Next enabled: a tour must never trap anyone.
 
 Controls:
 
 | | |
 |---|---|
 | `?tour=1` | open it on load; `&tstep=N` starts at step N — how a specific step is shared |
-| `?tour=0` | suppress it and mark it seen |
-| Launcher | the "Guided tour" button, bottom right |
+| `?tour=0` | decline it and mark it seen |
+| Launcher | the "Guided tour" card, bottom left, always present once the tour is not running |
 | Console | `window.onthosTour(N)` opens it at step N |
-| Keyboard | → / Enter next · ← back · Esc end |
+| Keyboard | → / Enter next (clear phase) · ← back · Esc end |
 
-It shows once per browser (`localStorage`, key `onthos.tour.v1.seen`) and is
-always restartable from the launcher. Every step is verifiable in isolation by
-loading its deep link: the tour root carries `data-tour-id`, `data-tour-anchor`
-(`found` / `missing`) and `data-tour-hit` (what the anchor matched) for exactly
-that purpose.
+It offers itself once per browser (`localStorage`, key `onthos.tour.v1.seen`) and
+stays restartable from the launcher. Every step is verifiable in isolation by
+loading its deep link: the tour root carries `data-tour-id`, `data-tour-phase`,
+`data-tour-anchor` (`found` / `missing`) and `data-tour-hit` (what the anchor
+matched) for exactly that purpose.
 
 ### What "no server" costs
 
