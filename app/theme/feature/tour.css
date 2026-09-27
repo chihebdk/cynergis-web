@@ -17,7 +17,14 @@
 .tour-root {
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  /* Above everything the app can raise, or the dim leaks: the flow canvas's
+     expand button is inline-styled z-index 9999 and its expanded shell 9998,
+     the graph explorer's expanded body 9998, and the trace overlay and the
+     modals sit at 10050 — the app's ceiling. Anything above the dim stays lit
+     and reads as a second highlight, which is exactly what happened with the
+     canvas expand button. This also keeps the card on top of an expanded
+     canvas instead of behind it. */
+  z-index: 10600;
   pointer-events: none;
 }
 
