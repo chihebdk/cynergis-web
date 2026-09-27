@@ -862,13 +862,11 @@ function OrgApp() {
                     { id:'chapters', label:'Chapters', icon:'cap' },
                     { id:'platforms', label:'Platforms', icon:'layers' },
                     { id:'riskcomp', label:'Risk & compliance', icon:'shield' },
-                  ]}
-                  foot={<>
-                    <div className="asc-rail-sect" style={{ marginTop:'14px' }}>Legacy</div>
-                    <div className={'asc-nav' + (sec === 'dashboard' ? ' on' : '')} onClick={() => navSub('dashboard')}><Ico k="dash" w={15} /> WealthGrow (legacy v3)</div>
-                    <div className={'asc-nav' + (sec === 'prioritize' ? ' on' : '')} onClick={() => navSub('prioritize')}><Ico k="board" w={15} /> Prioritize portfolios</div>
-                  </>} />
+                  ]} />
                 <main className="asc-main">
+                  {/* The Legacy rail entries were removed from the demo's first page.
+                      These branches stay so existing ?sub=dashboard / ?sub=prioritize
+                      links still land — the surface is unlinked, not deleted. */}
                   {sec === 'dashboard' ? <OrgDashboard onOpenPortfolio={openPortfolio} />
                     : sec === 'prioritize' ? <PrioritizePortfolios onOpenPortfolio={openPortfolio} />
                     : sec === 'overview' ? React.createElement(window.MerOverview || window.MeridianOrg)
