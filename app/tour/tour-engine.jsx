@@ -71,11 +71,30 @@ const CANDIDATES = '.asc-nav, .env-navitem, .env-seg, .asc-tab, .ddd-tab, .dd-is
   + '.mer-sub, .ddd-ctx, .ddd-cmp-card, .mer-prod, .ovw-domcard, .tstx-row, '
   + '.rlz-opt, .rlz-lever, button, a, [role="tab"], [role="button"]';
 
-/* A spec is { sel?, text?, within?, inner? }:
+/* A spec is { sel?, text?, nameSel?, within?, inner? }:
      sel + text  the element matching sel whose text says text — how one card
                  is picked out of a grid of identical ones
+     nameSel     REQUIRED for cards: match text against THIS element inside the
+                 candidate (its heading) rather than the candidate's whole text.
+                 Without it a card that merely MENTIONS the name can win — the
+                 Adjuster Workbench card says "…over ClaimsCore's claim module",
+                 and being the shorter card it beat ClaimsCore itself. When a
+                 nameSel is given and nothing matches, this returns null rather
+                 than falling back to a looser search: arming the wrong control
+                 is worse than a step that admits it cannot find its target.
      inner       after locating that element, the control to use INSIDE it
                  (a product card is the landmark; its link is the button) */
+function byName(cands, nameSel, text) {
+  const want = text.trim().toLowerCase();
+  const nameOf = (c) => {
+    const n = c.querySelector(nameSel);
+    return n ? (n.textContent || '').trim().toLowerCase() : null;
+  };
+  return cands.find(c => nameOf(c) === want)
+    || cands.find(c => { const n = nameOf(c); return n && n.includes(want); })
+    || null;
+}
+
 function resolve(spec) {
   if (!spec) return null;
   const scope = spec.within ? document.querySelector(spec.within) : document;
@@ -84,9 +103,11 @@ function resolve(spec) {
 
   if (spec.sel && spec.text) {
     for (const sl of [].concat(spec.sel)) {
-      const el = pickByText(Array.from(scope.querySelectorAll(sl)).filter(visible), spec.text);
+      const cands = Array.from(scope.querySelectorAll(sl)).filter(visible);
+      const el = spec.nameSel ? byName(cands, spec.nameSel, spec.text) : pickByText(cands, spec.text);
       if (el) { found = el; break; }
     }
+    if (!found && spec.nameSel) return null;      // no loose fallback — see above
   }
   if (!found && spec.text) {
     found = pickByText(Array.from(scope.querySelectorAll(CANDIDATES)).filter(visible), spec.text);
@@ -102,6 +123,19 @@ function resolve(spec) {
     if (inner) return inner;
   }
   return found;
+}
+
+/* The name of whatever got armed — shown nowhere, but published on the root as
+   data-tour-label so a step can be checked from outside for arming the RIGHT
+   card, not merely a card. The earlier instrumentation reported the element's
+   class, which could not tell two identical cards apart. */
+const CARDS = '.mer-prod, .ovw-domcard, .mer-sub, .ddd-ctx, .ddd-cmp-card, .tstx-row';
+const NAMES = '.mer-prod-top b, .ovw-dc-top b, h3, .ddd-ctx-nm, .agu-nm, .tstx-row-t';
+function labelOf(el) {
+  if (!el) return '';
+  const card = (el.closest && el.closest(CARDS)) || el;
+  const name = card.querySelector && card.querySelector(NAMES);
+  return ((name || card).textContent || '').trim().replace(/\s+/g, ' ').slice(0, 44);
 }
 
 /* Wait for an anchor to exist: the app is client-rendered with dynamic imports
@@ -376,7 +410,8 @@ export default function TourHost() {
     <div className="tour-root" data-tour-mode={mode} data-tour-step={i + 1} data-tour-id={step.id}
       data-tour-phase={mode === 'tour' ? phase : ''}
       data-tour-anchor={ring ? 'found' : lost ? 'missing' : armed ? 'pending' : 'none'}
-      data-tour-hit={armed ? ((armed.className || '').toString().trim().split(/\s+/).slice(0, 3).join(' ') || armed.tagName.toLowerCase()) : ''}>
+      data-tour-hit={armed ? ((armed.className || '').toString().trim().split(/\s+/).slice(0, 3).join(' ') || armed.tagName.toLowerCase()) : ''}
+      data-tour-label={armed ? labelOf(armed) : ''}>
 
       {veil && <div className="tour-veil" />}
       {ring && <div className={'tour-ring' + (phase === 'await' ? ' armed' : ' plain')}

@@ -12,6 +12,9 @@
              While it is armed, it is the ONLY live thing on the page.
              Clicking it is what moves the app.
      ask     the imperative shown beside the armed control
+             (for a card, ALWAYS give click a nameSel: matching a
+             card's whole text lets a sibling that merely mentions
+             the name win — see resolve() in the engine)
      look    something to outline when there is nothing to click
      then    a line shown once the page has cleared, after the click
      ensure  a control to click on entry ONLY when `click` cannot be
@@ -77,7 +80,7 @@ export const TOUR_STEPS = [
     body: <>Pick a domain and everything narrows to it: its structure, its funding, the business areas it breaks into and the products it ships.</>,
     ask: 'Click the Claims domain card.',
     nav: { v: 'org', sub: 'domains' },
-    click: { sel: ['.ovw-domcard'], text: 'Claims' },
+    click: { sel: ['.ovw-domcard'], nameSel: '.ovw-dc-top b', text: 'Claims' },
   },
   {
     id: 'claims-domain',
@@ -103,7 +106,7 @@ export const TOUR_STEPS = [
     body: <><b>ClaimsCore</b> is the claims modernisation product, and the one worked through end to end here. Opening it leaves the organisation view and enters the product itself.</>,
     ask: 'Click “open the product page →” on the ClaimsCore card.',
     nav: { ...CLAIMS, dtab: 'portfolio' },
-    click: { sel: ['.mer-prod'], text: 'ClaimsCore', inner: '.mer-gatelink' },
+    click: { sel: ['.mer-prod'], nameSel: '.mer-prod-top b', text: 'ClaimsCore', inner: '.mer-gatelink' },
   },
 
   /* ---------- the product ---------- */
@@ -159,7 +162,7 @@ export const TOUR_STEPS = [
     body: <>“Have my claim handled” is the spine of the whole product — first notice of loss through to the money leaving.</>,
     ask: 'Click “Have my claim handled”.',
     nav: { ...PROD, phase: 'Design', entry: 'journeys' },
-    click: { sel: ['.mer-sub'], text: 'Have my claim handled' },
+    click: { sel: ['.mer-sub'], nameSel: 'h3', text: 'Have my claim handled' },
     settle: 400,
   },
   {
@@ -173,7 +176,7 @@ export const TOUR_STEPS = [
     click: { sel: [EXPAND_FLOW] },
     /* the canvas exists only once a process is open: normally step 13's click
        did that, but a deep link or Back lands here with nothing open */
-    ensure: { sel: ['.mer-sub'], text: 'Have my claim handled' },
+    ensure: { sel: ['.mer-sub'], nameSel: 'h3', text: 'Have my claim handled' },
     allow: [CANVAS],
     settle: 1200,
   },
@@ -194,7 +197,7 @@ export const TOUR_STEPS = [
     ask: 'Click the Claim adjudication card.',
     then: 'Its left panel is everything a team needs to build it: the life story of a claim file, the data it owns, its rules, its tests, its handoffs and its open questions.',
     nav: { ...PROD, phase: 'Design', entry: 'contexts' },
-    click: { sel: ['.ddd-ctx'], text: 'Claim adjudication' },
+    click: { sel: ['.ddd-ctx'], nameSel: '.ddd-ctx-nm', text: 'Claim adjudication' },
   },
   {
     id: 'agents',
